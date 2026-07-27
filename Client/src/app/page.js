@@ -1,18 +1,3 @@
-// import React from "react";
-// import { Button } from "@/components/ui/button";
-
-// const page = () => {
-//   return (
-//     <div className="flex items-center justify-center h-screen bg-gray-100">
-//       <Button variant="default" size="lg">
-//         Click Me
-//       </Button>
-//     </div>
-//   );
-// };
-
-// export default page;
-
 "use client";
 
 import * as React from "react";
