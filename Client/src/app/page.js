@@ -31,7 +31,7 @@ function ModeToggle() {
   const { setTheme } = useTheme();
 
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex flex-col gap-4 items-center justify-center h-screen">
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
