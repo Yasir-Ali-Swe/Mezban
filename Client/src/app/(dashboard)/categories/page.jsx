@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -59,6 +58,8 @@ import {
     CheckCircle,
     XCircle,
     Loader2,
+    Filter,
+    ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -153,6 +154,7 @@ const CategoriesList = () => {
         page: parseInt(getFilterValue('page', '1')),
         limit: parseInt(getFilterValue('limit', '10')),
         search: getFilterValue('search', ''),
+        status: getFilterValue('status', 'all'),
     });
 
     // Dialog states
@@ -165,7 +167,7 @@ const CategoriesList = () => {
     const updateURL = useCallback((newFilters) => {
         const params = new URLSearchParams();
         Object.entries(newFilters).forEach(([key, value]) => {
-            if (value && value !== '') {
+            if (value && value !== '' && value !== 'all') {
                 params.set(key, value);
             }
         });
@@ -178,7 +180,7 @@ const CategoriesList = () => {
     const updateFilter = useCallback((key, value) => {
         setSearchParamsState(prev => {
             const newParams = { ...prev };
-            if (value && value !== '') {
+            if (value && value !== '' && value !== 'all') {
                 newParams[key] = value;
             } else {
                 newParams[key] = key === 'page' ? 1 : '';
@@ -209,6 +211,12 @@ const CategoriesList = () => {
                 cat.name.toLowerCase().includes(searchLower) ||
                 cat.categorySlug.toLowerCase().includes(searchLower)
             );
+        }
+
+        // Status filter
+        if (searchParamsState.status && searchParamsState.status !== 'all') {
+            const isActive = searchParamsState.status === 'active';
+            filtered = filtered.filter(cat => cat.isActive === isActive);
         }
 
         return filtered;
@@ -272,6 +280,11 @@ const CategoriesList = () => {
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
+    };
+
+    const capitalize = (value) => {
+        if (!value) return '';
+        return value.charAt(0).toUpperCase() + value.slice(1);
     };
 
     // Handle add category
@@ -358,6 +371,14 @@ const CategoriesList = () => {
         }
     };
 
+    // Get status label for display
+    const getStatusLabel = (status) => {
+        if (status === 'all') return 'All';
+        if (status === 'active') return 'Active';
+        if (status === 'inactive') return 'Inactive';
+        return 'All';
+    };
+
     return (
         <div className="space-y-4 sm:space-y-6 pb-8">
             {/* Page Header */}
@@ -415,19 +436,49 @@ const CategoriesList = () => {
                 </Card>
             </div>
 
-            {/* Search */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                <div className="relative flex-1 min-w-37.5 sm:min-w-50">
+            {/* Search and Filters - Side by Side */}
+            <div className="flex flex-row gap-3">
+                {/* Search Input */}
+                <div className="relative flex-1 max-w-140">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         placeholder="Search categories..."
                         value={searchParamsState.search}
                         onChange={(e) => updateFilter('search', e.target.value)}
-                        className="pl-8 h-8 sm:h-9 text-xs sm:text-sm w-full lg:w-120"
+                        className="pl-8 h-8 sm:h-9 text-xs sm:text-sm w-full"
                     />
                 </div>
 
-                {(searchParamsState.search) && (
+                {/* Status Filter Dropdown */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger render={
+                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-[140px]">
+                            <Filter className="h-3.5 w-3.5" />
+                            Status: {getStatusLabel(searchParamsState.status)}
+                            <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+                        </Button>
+                    } />
+                    <DropdownMenuContent align="start" className="w-40">
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => updateFilter('status', 'all')}>
+                                All
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateFilter('status', 'active')}>
+                                <CheckCircle className="mr-2 h-3.5 w-3.5 text-primary" />
+                                Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateFilter('status', 'inactive')}>
+                                <XCircle className="mr-2 h-3.5 w-3.5 text-destructive" />
+                                Inactive
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Clear Filters Button */}
+                {(searchParamsState.search || searchParamsState.status !== 'all') && (
                     <Button
                         variant="ghost"
                         size="sm"
@@ -437,11 +488,12 @@ const CategoriesList = () => {
                                 page: 1,
                                 limit: 10,
                                 search: '',
+                                status: 'all',
                             };
                             setSearchParamsState(newFilters);
                         }}
                     >
-                        Clear Search
+                        Clear Filters
                     </Button>
                 )}
             </div>
