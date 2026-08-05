@@ -224,6 +224,152 @@ const SORT_OPTIONS = [
     { value: 'stock', label: 'Stock' },
 ];
 
+const FilterControls = ({ searchParamsState, updateFilter, setSearchParamsState, capitalize }) => {
+    const hasActiveFilters =
+        searchParamsState.search || searchParamsState.category !== 'all' ||
+        searchParamsState.availability !== 'all' ||
+        searchParamsState.minPrice || searchParamsState.maxPrice ||
+        searchParamsState.sortBy !== 'name' || searchParamsState.order !== 'asc';
+
+    return (
+        <>
+            {/* Search */}
+            <div className="relative w-70 md:flex-1 md:max-w-120 shrink-0">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    placeholder="Search menu items..."
+                    value={searchParamsState.search}
+                    onChange={(e) => updateFilter('search', e.target.value)}
+                    className="pl-8 text-xs sm:text-sm h-8 sm:h-9"
+                />
+            </div>
+
+            {/* Category Dropdown */}
+            <DropdownMenu>
+                <DropdownMenuTrigger render={
+                    <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 whitespace-nowrap shrink-0">
+                        <Filter className="h-3.5 w-3.5" />
+                        {searchParamsState.category === 'all' ? 'Category' : capitalize(searchParamsState.category)}
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                } />
+                <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>Category</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => updateFilter('category', 'all')}>
+                            All
+                        </DropdownMenuItem>
+                        {DUMMY_CATEGORIES.map((cat) => (
+                            <DropdownMenuItem key={cat} onClick={() => updateFilter('category', cat)}>
+                                {cat}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Status Dropdown */}
+            <DropdownMenu>
+                <DropdownMenuTrigger render={
+                    <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 whitespace-nowrap shrink-0">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        {AVAILABILITY_OPTIONS.find(a => a.value === searchParamsState.availability)?.label || 'Status'}
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                } />
+                <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>Status</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {AVAILABILITY_OPTIONS.map((option) => (
+                            <DropdownMenuItem key={option.value} onClick={() => updateFilter('availability', option.value)}>
+                                {option.label}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Price Range */}
+            <div className="flex items-center gap-1 shrink-0">
+                <Input
+                    type="number"
+                    placeholder="Min"
+                    value={searchParamsState.minPrice}
+                    onChange={(e) => updateFilter('minPrice', e.target.value)}
+                    className="h-8 sm:h-9 text-xs sm:text-sm w-16 md:w-20"
+                />
+                <span className="text-xs text-muted-foreground">-</span>
+                <Input
+                    type="number"
+                    placeholder="Max"
+                    value={searchParamsState.maxPrice}
+                    onChange={(e) => updateFilter('maxPrice', e.target.value)}
+                    className="h-8 sm:h-9 text-xs sm:text-sm w-16 md:w-20"
+                />
+            </div>
+
+            {/* Sort Dropdown */}
+            <DropdownMenu>
+                <DropdownMenuTrigger render={
+                    <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 whitespace-nowrap shrink-0">
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                        {SORT_OPTIONS.find(s => s.value === searchParamsState.sortBy)?.label || 'Sort'}
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                } />
+                <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {SORT_OPTIONS.map((option) => (
+                            <DropdownMenuItem key={option.value} onClick={() => updateFilter('sortBy', option.value)}>
+                                {option.label}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>Order</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => updateFilter('order', 'asc')}>
+                            Ascending
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateFilter('order', 'desc')}>
+                            Descending
+                        </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 sm:h-9 text-xs sm:text-sm whitespace-nowrap shrink-0"
+                    onClick={() => {
+                        setSearchParamsState({
+                            page: 1,
+                            limit: 10,
+                            search: '',
+                            category: 'all',
+                            availability: 'all',
+                            minPrice: '',
+                            maxPrice: '',
+                            sortBy: 'name',
+                            order: 'asc',
+                        });
+                    }}
+                >
+                    Clear Filters
+                </Button>
+            )}
+        </>
+    );
+};
+
 const MenuList = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -497,138 +643,28 @@ const MenuList = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                <div className="relative flex-1 min-w-37.5 sm:min-w-50">
-                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder="Search menu items..."
-                        value={searchParamsState.search}
-                        onChange={(e) => updateFilter('search', e.target.value)}
-                        className="pl-8 h-8 sm:h-9 text-xs sm:text-sm"
-                    />
+            <div className="space-y-2">
+                {/* Mobile: horizontally scrollable */}
+                <div className="md:hidden overflow-x-auto scrollbar-hide py-1.5">
+                    <div className="flex items-center gap-2 w-max">
+                        <FilterControls
+                            searchParamsState={searchParamsState}
+                            updateFilter={updateFilter}
+                            setSearchParamsState={setSearchParamsState}
+                            capitalize={capitalize}
+                        />
+                    </div>
                 </div>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1">
-                            <Filter className="h-3.5 w-3.5" />
-                            Category: {searchParamsState.category === 'all' ? 'All' : capitalize(searchParamsState.category)}
-                            <ChevronDown className="h-3.5 w-3.5" />
-                        </Button>
-                    } />
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>Category</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => updateFilter('category', 'all')}>
-                                All
-                            </DropdownMenuItem>
-                            {DUMMY_CATEGORIES.map((cat) => (
-                                <DropdownMenuItem key={cat} onClick={() => updateFilter('category', cat)}>
-                                    {cat}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1">
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            Status: {AVAILABILITY_OPTIONS.find(a => a.value === searchParamsState.availability)?.label || 'All'}
-                            <ChevronDown className="h-3.5 w-3.5" />
-                        </Button>
-                    } />
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>Status</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {AVAILABILITY_OPTIONS.map((option) => (
-                                <DropdownMenuItem key={option.value} onClick={() => updateFilter('availability', option.value)}>
-                                    {option.label}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <div className="flex items-center gap-2">
-                    <Input
-                        type="number"
-                        placeholder="Min Price"
-                        value={searchParamsState.minPrice}
-                        onChange={(e) => updateFilter('minPrice', e.target.value)}
-                        className="h-8 sm:h-9 text-xs sm:text-sm w-24 sm:w-28"
-                    />
-                    <span className="text-xs text-muted-foreground">-</span>
-                    <Input
-                        type="number"
-                        placeholder="Max Price"
-                        value={searchParamsState.maxPrice}
-                        onChange={(e) => updateFilter('maxPrice', e.target.value)}
-                        className="h-8 sm:h-9 text-xs sm:text-sm w-24 sm:w-28"
+                {/* Desktop/laptop: full width, wraps and takes full width */}
+                <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2 py-1.5 md:w-full">
+                    <FilterControls
+                        searchParamsState={searchParamsState}
+                        updateFilter={updateFilter}
+                        setSearchParamsState={setSearchParamsState}
+                        capitalize={capitalize}
                     />
                 </div>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1">
-                            <ArrowUpDown className="h-3.5 w-3.5" />
-                            Sort: {SORT_OPTIONS.find(s => s.value === searchParamsState.sortBy)?.label || 'Name'}
-                            <ChevronDown className="h-3.5 w-3.5" />
-                        </Button>
-                    } />
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>Sort By</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {SORT_OPTIONS.map((option) => (
-                                <DropdownMenuItem key={option.value} onClick={() => updateFilter('sortBy', option.value)}>
-                                    {option.label}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>Order</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => updateFilter('order', 'asc')}>
-                                Ascending
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateFilter('order', 'desc')}>
-                                Descending
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                {(searchParamsState.search || searchParamsState.category !== 'all' ||
-                    searchParamsState.availability !== 'all' ||
-                    searchParamsState.minPrice || searchParamsState.maxPrice ||
-                    searchParamsState.sortBy !== 'name' || searchParamsState.order !== 'asc') && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 sm:h-9 text-xs sm:text-sm"
-                            onClick={() => {
-                                const newFilters = {
-                                    page: 1,
-                                    limit: 10,
-                                    search: '',
-                                    category: 'all',
-                                    availability: 'all',
-                                    minPrice: '',
-                                    maxPrice: '',
-                                    sortBy: 'name',
-                                    order: 'asc',
-                                };
-                                setSearchParamsState(newFilters);
-                            }}
-                        >
-                            Clear Filters
-                        </Button>
-                    )}
             </div>
 
             {/* Table */}
@@ -834,4 +870,4 @@ const MenuList = () => {
     );
 };
 
-export default MenuList;
+export default MenuList;    
