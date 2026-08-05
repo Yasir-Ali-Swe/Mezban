@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -39,10 +38,15 @@ import { cn } from '@/lib/utils';
 const productSchema = z.object({
     name: z.string().min(2, { message: 'Product name must be at least 2 characters' }),
     unit: z.string().min(1, { message: 'Unit is required' }),
-    sku: z.string().optional(),
     categoryId: z.string().min(1, { message: 'Please select a category' }),
-    quantity: z.string().optional().transform(val => val ? parseInt(val) : 0),
-    reorderThreshold: z.string().optional().transform(val => val ? parseInt(val) : 10),
+    quantity: z.string()
+        .min(1, { message: 'Quantity is required' })
+        .transform(val => parseInt(val))
+        .refine(val => val > 0, { message: 'Quantity must be greater than 0' }),
+    reorderThreshold: z.string()
+        .optional()
+        .transform(val => val ? parseInt(val) : 10)
+        .refine(val => val >= 0, { message: 'Reorder threshold cannot be negative' }),
     costPrice: z.string().min(1, { message: 'Cost price is required' }).transform(val => parseFloat(val)),
     sellingPrice: z.string().min(1, { message: 'Selling price is required' }).transform(val => parseFloat(val)),
 });
@@ -52,7 +56,6 @@ const DUMMY_PRODUCT = {
     _id: '1',
     name: 'Wireless Bluetooth Headphones',
     unit: 'pcs',
-    sku: 'WBH-001',
     imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop',
     sellingPrice: 79.99,
     costPrice: 45.50,
@@ -74,6 +77,11 @@ const DUMMY_CATEGORIES = [
     { _id: '7', name: 'Home Office', categorySlug: 'home-office' },
 ];
 
+const DUMMY_UNITS = [
+    { _id: '1', name: 'pcs' },
+    { _id: '2', name: 'kg' },
+];
+
 const ProductEdit = ({ params }) => {
     const router = useRouter();
     const { id } = params;
@@ -86,11 +94,11 @@ const ProductEdit = ({ params }) => {
     // Use dummy product data
     const product = DUMMY_PRODUCT;
     const categoriesList = DUMMY_CATEGORIES;
+    const unitsList = DUMMY_UNITS;
 
     const [originalValues, setOriginalValues] = useState({
         name: '',
         unit: '',
-        sku: '',
         categoryId: '',
         quantity: '',
         reorderThreshold: '10',
@@ -110,7 +118,6 @@ const ProductEdit = ({ params }) => {
         defaultValues: {
             name: '',
             unit: '',
-            sku: '',
             categoryId: '',
             quantity: '',
             reorderThreshold: '10',
@@ -120,14 +127,31 @@ const ProductEdit = ({ params }) => {
     });
 
     const selectedCategoryId = watch('categoryId');
+    const selectedUnit = watch('unit');
     const watchedName = watch('name');
     const watchedUnit = watch('unit');
-    const watchedSku = watch('sku');
     const watchedCategoryId = watch('categoryId');
     const watchedQuantity = watch('quantity');
     const watchedReorderThreshold = watch('reorderThreshold');
     const watchedCostPrice = watch('costPrice');
     const watchedSellingPrice = watch('sellingPrice');
+
+    // Calculate profit margin
+    const calculateProfitMargin = () => {
+        if (!watchedCostPrice || !watchedSellingPrice) return null;
+        const cost = parseFloat(watchedCostPrice);
+        const selling = parseFloat(watchedSellingPrice);
+        const profit = selling - cost;
+        const margin = (profit / cost) * 100;
+        return { profit, margin };
+    };
+
+    // Get selected category name
+    const getSelectedCategoryName = () => {
+        if (!selectedCategoryId) return '';
+        const category = categoriesList.find(c => c._id === selectedCategoryId);
+        return category ? category.name : '';
+    };
 
     // Sync input values on detail load
     useEffect(() => {
@@ -135,7 +159,6 @@ const ProductEdit = ({ params }) => {
             const vals = {
                 name: product.name || '',
                 unit: product.unit || '',
-                sku: product.sku || '',
                 categoryId: product.categoryId?._id || product.categoryId || product.category?._id || product.category || '',
                 quantity: product.quantity?.toString() || '',
                 reorderThreshold: product.reorderThreshold?.toString() || '10',
@@ -155,7 +178,6 @@ const ProductEdit = ({ params }) => {
         return (
             watchedName !== originalValues.name ||
             watchedUnit !== originalValues.unit ||
-            watchedSku !== originalValues.sku ||
             watchedCategoryId !== originalValues.categoryId ||
             watchedQuantity !== originalValues.quantity ||
             watchedReorderThreshold !== originalValues.reorderThreshold ||
@@ -203,6 +225,8 @@ const ProductEdit = ({ params }) => {
         // Navigate back to product details
         router.push(`/products`);
     };
+
+    const profitData = calculateProfitMargin();
 
     return (
         <div className="flex justify-center px-4 py-6 sm:py-8">
@@ -334,42 +358,155 @@ const ProductEdit = ({ params }) => {
                                     Unit <span className="text-destructive">*</span>
                                 </FieldLabel>
                                 <FieldContent>
+                                    <Select
+                                        value={selectedUnit}
+                                        onValueChange={(value) => setValue("unit", value)}
+                                    >
+                                        <SelectTrigger className="w-full text-sm px-3 py-4.75">
+                                            <SelectValue placeholder="Select a unit">
+                                                {selectedUnit ? unitsList.find(u => u.name === selectedUnit)?.name : ''}
+                                            </SelectValue>
+                                        </SelectTrigger>
+
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectLabel>Units</SelectLabel>
+                                                {unitsList.map((unit) => (
+                                                    <SelectItem
+                                                        key={unit._id}
+                                                        value={unit.name}
+                                                    >
+                                                        {unit.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <div className="mt-1 min-h-10">
+                                        {errors.unit && (
+                                            <FieldError errors={[errors.unit]} />
+                                        )}
+                                    </div>
+                                </FieldContent>
+                            </Field>
+                        </div>
+
+                        {/* Row 3: Quantity + Reorder Threshold */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field orientation="vertical">
+                                <FieldLabel htmlFor="quantity" className="text-sm font-medium">
+                                    Quantity <span className="text-destructive">*</span>
+                                </FieldLabel>
+                                <FieldContent>
                                     <Input
-                                        id="unit"
-                                        type="text"
-                                        placeholder="e.g., pcs, kg, m"
+                                        id="quantity"
+                                        type="number"
+                                        min="1"
+                                        placeholder="0"
                                         className="h-10 text-sm"
-                                        {...register("unit")}
-                                        aria-invalid={errors.unit ? "true" : "false"}
+                                        {...register("quantity")}
+                                        aria-invalid={errors.quantity ? "true" : "false"}
                                     />
-                                    {errors.unit && (
-                                        <FieldError errors={[errors.unit]} />
+                                    {errors.quantity && (
+                                        <FieldError errors={[errors.quantity]} />
+                                    )}
+                                </FieldContent>
+                            </Field>
+
+                            <Field orientation="vertical">
+                                <FieldLabel htmlFor="reorderThreshold" className="text-sm font-medium">
+                                    Reorder Threshold <span className="text-xs text-muted-foreground">(Optional)</span>
+                                </FieldLabel>
+                                <FieldContent>
+                                    <Input
+                                        id="reorderThreshold"
+                                        type="number"
+                                        min="0"
+                                        placeholder="10"
+                                        className="h-10 text-sm"
+                                        {...register("reorderThreshold")}
+                                        aria-invalid={errors.reorderThreshold ? "true" : "false"}
+                                    />
+                                    {errors.reorderThreshold && (
+                                        <FieldError errors={[errors.reorderThreshold]} />
                                     )}
                                 </FieldContent>
                             </Field>
                         </div>
 
-                        {/* Row 2: SKU + Category */}
+                        {/* Row 4: Cost Price + Selling Price */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* SKU */}
-                            <Field orientation="vertical" className="flex flex-col">
-                                <FieldLabel htmlFor="sku" className="text-sm font-medium">
-                                    SKU <span className="text-xs text-muted-foreground">(Optional)</span>
+                            <Field orientation="vertical">
+                                <FieldLabel htmlFor="costPrice" className="text-sm font-medium">
+                                    Cost Price ($) <span className="text-destructive">*</span>
                                 </FieldLabel>
-
-                                <FieldContent className="flex flex-col">
+                                <FieldContent>
                                     <Input
-                                        id="sku"
-                                        type="text"
-                                        placeholder="Auto-generated"
-                                        className="h-10 w-full text-sm"
-                                        {...register("sku")}
+                                        id="costPrice"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        className="h-10 text-sm"
+                                        {...register("costPrice")}
+                                        aria-invalid={errors.costPrice ? "true" : "false"}
                                     />
-
-                                    <div className="mt-1 min-h-10" />
+                                    {errors.costPrice && (
+                                        <FieldError errors={[errors.costPrice]} />
+                                    )}
                                 </FieldContent>
                             </Field>
 
+                            <Field orientation="vertical">
+                                <FieldLabel htmlFor="sellingPrice" className="text-sm font-medium">
+                                    Selling Price ($) <span className="text-destructive">*</span>
+                                </FieldLabel>
+                                <FieldContent>
+                                    <Input
+                                        id="sellingPrice"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        className="h-10 text-sm"
+                                        {...register("sellingPrice")}
+                                        aria-invalid={errors.sellingPrice ? "true" : "false"}
+                                    />
+                                    {errors.sellingPrice && (
+                                        <FieldError errors={[errors.sellingPrice]} />
+                                    )}
+                                </FieldContent>
+                            </Field>
+                        </div>
+
+                        {/* Profit Margin Display with Color Coding */}
+                        {watchedCostPrice && watchedSellingPrice && profitData && (
+                            <div className={cn(
+                                "p-3 rounded-md",
+                                profitData.profit >= 0 ? "bg-green-50 dark:bg-green-950/20" : "bg-red-50 dark:bg-red-950/20"
+                            )}>
+                                <p className="text-sm">
+                                    Profit Margin:{' '}
+                                    <span className={cn(
+                                        "font-medium",
+                                        profitData.profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                                    )}>
+                                        ${profitData.profit.toFixed(2)}
+                                    </span>
+                                    {' '}
+                                    <span className={cn(
+                                        "text-xs",
+                                        profitData.profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                                    )}>
+                                        ({profitData.margin.toFixed(1)}% {profitData.profit >= 0 ? 'markup' : 'loss'})
+                                    </span>
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Row 2: Category only */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Category */}
                             <Field orientation="vertical" className="flex flex-col">
                                 <FieldLabel htmlFor="categoryId" className="text-sm font-medium">
@@ -383,7 +520,7 @@ const ProductEdit = ({ params }) => {
                                     >
                                         <SelectTrigger className="w-full text-sm px-3 py-4.75">
                                             <SelectValue placeholder="Select a category">
-                                                {categoriesList.find(c => c._id === selectedCategoryId)?.name || product?.category?.name || product?.categoryId?.name || ''}
+                                                {getSelectedCategoryName()}
                                             </SelectValue>
                                         </SelectTrigger>
 
@@ -419,106 +556,17 @@ const ProductEdit = ({ params }) => {
                                     </div>
                                 </FieldContent>
                             </Field>
+
+                            {/* Empty div for spacing */}
+                            <div />
                         </div>
-
-                        {/* Row 3: Quantity + Reorder Threshold */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field orientation="vertical">
-                                <FieldLabel htmlFor="quantity" className="text-sm font-medium">
-                                    Quantity <span className="text-xs text-muted-foreground">(Optional)</span>
-                                </FieldLabel>
-                                <FieldContent>
-                                    <Input
-                                        id="quantity"
-                                        type="number"
-                                        placeholder="0"
-                                        className="h-10 text-sm"
-                                        {...register("quantity")}
-                                    />
-                                </FieldContent>
-                            </Field>
-
-                            <Field orientation="vertical">
-                                <FieldLabel htmlFor="reorderThreshold" className="text-sm font-medium">
-                                    Reorder Threshold <span className="text-xs text-muted-foreground">(Optional)</span>
-                                </FieldLabel>
-                                <FieldContent>
-                                    <Input
-                                        id="reorderThreshold"
-                                        type="number"
-                                        placeholder="10"
-                                        className="h-10 text-sm"
-                                        {...register("reorderThreshold")}
-                                    />
-                                </FieldContent>
-                            </Field>
-                        </div>
-
-                        {/* Row 4: Cost Price + Selling Price */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field orientation="vertical">
-                                <FieldLabel htmlFor="costPrice" className="text-sm font-medium">
-                                    Cost Price ($) <span className="text-destructive">*</span>
-                                </FieldLabel>
-                                <FieldContent>
-                                    <Input
-                                        id="costPrice"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        className="h-10 text-sm"
-                                        {...register("costPrice")}
-                                        aria-invalid={errors.costPrice ? "true" : "false"}
-                                    />
-                                    {errors.costPrice && (
-                                        <FieldError errors={[errors.costPrice]} />
-                                    )}
-                                </FieldContent>
-                            </Field>
-
-                            <Field orientation="vertical">
-                                <FieldLabel htmlFor="sellingPrice" className="text-sm font-medium">
-                                    Selling Price ($) <span className="text-destructive">*</span>
-                                </FieldLabel>
-                                <FieldContent>
-                                    <Input
-                                        id="sellingPrice"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        className="h-10 text-sm"
-                                        {...register("sellingPrice")}
-                                        aria-invalid={errors.sellingPrice ? "true" : "false"}
-                                    />
-                                    {errors.sellingPrice && (
-                                        <FieldError errors={[errors.sellingPrice]} />
-                                    )}
-                                </FieldContent>
-                            </Field>
-                        </div>
-
-                        {/* Profit Margin Display */}
-                        {watch('costPrice') && watch('sellingPrice') && (
-                            <div className="bg-muted p-3 rounded-md">
-                                <p className="text-sm">
-                                    Profit Margin:{' '}
-                                    <span className="font-medium text-green-500">
-                                        ${(parseFloat(watch('sellingPrice')) - parseFloat(watch('costPrice'))).toFixed(2)}
-                                    </span>
-                                    {' '}
-                                    <span className="text-xs text-muted-foreground">
-                                        ({((parseFloat(watch('sellingPrice')) - parseFloat(watch('costPrice'))) / parseFloat(watch('costPrice')) * 100).toFixed(1)}% markup)
-                                    </span>
-                                </p>
-                            </div>
-                        )}
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 pt-4 border-t">
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="w-auto "
+                                className="w-auto"
                                 onClick={() => router.push(`/products`)}
                             >
                                 Cancel
