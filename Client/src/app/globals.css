@@ -230,6 +230,18 @@
 html {
   scroll-behavior: smooth;
 }
+.scrollbar-hide {
+  /* Firefox */
+  scrollbar-width: none;
+
+  /* Internet Explorer and Edge */
+  -ms-overflow-style: none;
+
+  /* Chrome, Safari, Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 .scrollbar-hide::-webkit-scrollbar {
   width: 6px;
