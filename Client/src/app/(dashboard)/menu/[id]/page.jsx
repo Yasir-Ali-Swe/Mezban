@@ -41,7 +41,7 @@ import {
     Loader2,
     Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 // Zod schema for validation
@@ -182,7 +182,11 @@ const MenuEdit = () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Show success message
-        toast.success('Menu item updated successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Menu item updated successfully!",
+        });
         setIsLoading(false);
 
         // Navigate back to menu list
@@ -197,7 +201,11 @@ const MenuEdit = () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        toast.success('Menu item deleted successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Menu item deleted successfully!",
+        });
         setIsLoading(false);
         router.push('/menu');
     };
