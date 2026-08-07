@@ -26,15 +26,7 @@ import {
     TableRow,
     TableFooter,
 } from '@/components/ui/table';
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+
 import {
     Dialog,
     DialogContent,
@@ -54,7 +46,7 @@ import {
     Check,
     Package,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 // Zod schema for validation
@@ -155,7 +147,11 @@ const DealAdd = () => {
         setDealItems([...dealItems, ...newItems]);
         setDialogSearch('');
         setIsDialogOpen(false);
-        toast.success(`${newItems.length} item(s) added to deal!`);
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: `${newItems.length} item(s) added to deal!`,
+        });
     };
 
     // Handle removing item from deal
@@ -196,7 +192,11 @@ const DealAdd = () => {
     // Handle form submission
     const onSubmit = async (values) => {
         if (dealItems.length === 0) {
-            toast.error('Please add at least one menu item to the deal');
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: "Please add at least one menu item to the deal",
+            });
             return;
         }
 
@@ -205,7 +205,11 @@ const DealAdd = () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        toast.success('Deal created successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Deal created successfully!",
+        });
         setIsLoading(false);
         router.push('/deals');
     };
