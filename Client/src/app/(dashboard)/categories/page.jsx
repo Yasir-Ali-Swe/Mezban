@@ -476,7 +476,7 @@ const CategoriesList = () => {
                 {/* Status Filter Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-[140px]">
+                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-35">
                             <Filter className="h-3.5 w-3.5" />
                             Status: {getStatusLabel(searchParamsState.status)}
                             <ChevronDown className="h-3.5 w-3.5 ml-auto" />
@@ -525,16 +525,16 @@ const CategoriesList = () => {
             {/* Table - Horizontally scrollable with hidden scrollbar on large screens */}
             <div className="border rounded-xl overflow-hidden bg-card">
                 <div className="overflow-x-auto scrollbar-thin lg:scrollbar-hide">
-                    <Table className="min-w-[800px]">
+                    <Table className="min-w-200">
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="min-w-[150px]">Category Name</TableHead>
-                                <TableHead className="min-w-[120px]">Slug</TableHead>
-                                <TableHead className="min-w-[100px] text-center">Products</TableHead>
-                                <TableHead className="min-w-[100px] text-center">Status</TableHead>
-                                <TableHead className="min-w-[150px]">Created By</TableHead>
-                                <TableHead className="min-w-[130px]">Created</TableHead>
-                                <TableHead className="min-w-[100px] text-right">Actions</TableHead>
+                                <TableHead className="min-w-37.5">Category Name</TableHead>
+                                <TableHead className="min-w-30">Slug</TableHead>
+                                <TableHead className="min-w-25 text-center">Products</TableHead>
+                                <TableHead className="min-w-25 text-center">Status</TableHead>
+                                <TableHead className="min-w-37.5">Created By</TableHead>
+                                <TableHead className="min-w-32.5">Created</TableHead>
+                                <TableHead className="min-w-25 text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -675,7 +675,7 @@ const CategoriesList = () => {
 
             {/* Add/Edit Category Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-106.25">
                     <DialogHeader>
                         <DialogTitle>
                             {editingCategory ? 'Edit Category' : 'Add New Category'}
