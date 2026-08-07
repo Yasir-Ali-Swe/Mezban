@@ -556,7 +556,7 @@ const MenuEdit = () => {
 
                 {/* Delete Confirmation Dialog */}
                 <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-106.25">
                         <DialogHeader>
                             <DialogTitle>Delete Menu Item</DialogTitle>
                             <DialogDescription>
