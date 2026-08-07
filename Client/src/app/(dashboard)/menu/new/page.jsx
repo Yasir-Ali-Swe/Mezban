@@ -32,7 +32,7 @@ import {
     X,
     Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 // Zod schema for validation
@@ -134,7 +134,11 @@ const MenuAdd = () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Show success message
-        toast.success('Menu item created successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Menu item created successfully!",
+        });
         setIsLoading(false);
 
         // Navigate back to menu list
