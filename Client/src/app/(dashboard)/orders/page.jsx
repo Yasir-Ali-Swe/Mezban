@@ -64,7 +64,6 @@ import {
     Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 // Dummy Data
 const DUMMY_ORDERS = [
