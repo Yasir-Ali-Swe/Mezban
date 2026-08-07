@@ -47,7 +47,7 @@ import {
     AlertTriangle,
     Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 // Zod schema for validation
@@ -186,7 +186,11 @@ const DealEdit = () => {
         setDealItems([...dealItems, ...newItems]);
         setDialogSearch('');
         setIsDialogOpen(false);
-        toast.success(`${newItems.length} item(s) added to deal!`);
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: `${newItems.length} item(s) added to deal!`,
+        });
     };
 
     // Handle removing item from deal
@@ -227,7 +231,11 @@ const DealEdit = () => {
     // Handle form submission
     const onSubmit = async (values) => {
         if (dealItems.length === 0) {
-            toast.error('Please add at least one menu item to the deal');
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: "Please add at least one menu item to the deal",
+            });
             return;
         }
 
@@ -236,7 +244,11 @@ const DealEdit = () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        toast.success('Deal updated successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Deal updated successfully!",
+        });
         setIsLoading(false);
         router.push('/deals');
     };
@@ -249,7 +261,11 @@ const DealEdit = () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        toast.success('Deal deleted successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Deal deleted successfully!",
+        });
         setIsLoading(false);
         router.push('/deals');
     };
