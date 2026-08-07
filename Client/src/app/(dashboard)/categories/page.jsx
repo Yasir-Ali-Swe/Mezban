@@ -62,7 +62,7 @@ import {
     ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/toast';
 
 // Dummy Data
 const DUMMY_CATEGORIES = [
@@ -304,7 +304,11 @@ const CategoriesList = () => {
     // Handle save category
     const handleSaveCategory = () => {
         if (!categoryName.trim()) {
-            toast.error('Category name is required');
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: "Category name is required",
+            });
             return;
         }
 
@@ -324,7 +328,11 @@ const CategoriesList = () => {
                         categorySlug: slug,
                     };
                 }
-                toast.success(`Category "${categoryName}" updated successfully!`);
+                toast.add({
+                    type: "success",
+                    title: "Success!",
+                    description: `Category "${categoryName}" updated successfully!`,
+                });
             } else {
                 // Add new category
                 const newCategory = {
@@ -337,7 +345,11 @@ const CategoriesList = () => {
                     isActive: true,
                 };
                 DUMMY_CATEGORIES.push(newCategory);
-                toast.success(`Category "${categoryName}" created successfully!`);
+                toast.add({
+                    type: "success",
+                    title: "Success!",
+                    description: `Category "${categoryName}" created successfully!`,
+                });
             }
 
             setIsLoading(false);
@@ -353,11 +365,19 @@ const CategoriesList = () => {
     // Handle delete (deactivate) category
     const handleDelete = (category) => {
         if (category.productsCount > 0) {
-            toast.error(`Cannot delete "${category.name}". ${category.productsCount} product(s) are associated with this category.`);
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: `Cannot delete "${category.name}". ${category.productsCount} product(s) are associated with this category.`,
+            });
             return;
         }
         if (confirm(`Are you sure you want to delete category "${category.name}"?`)) {
-            toast.success(`Category "${category.name}" deleted successfully!`);
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: `Category "${category.name}" deleted successfully!`,
+            });
         }
     };
 
@@ -366,7 +386,11 @@ const CategoriesList = () => {
         const categoryIndex = DUMMY_CATEGORIES.findIndex(c => c._id === category._id);
         if (categoryIndex !== -1) {
             DUMMY_CATEGORIES[categoryIndex].isActive = !DUMMY_CATEGORIES[categoryIndex].isActive;
-            toast.success(`Category "${category.name}" ${DUMMY_CATEGORIES[categoryIndex].isActive ? 'activated' : 'deactivated'} successfully!`);
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: `Category "${category.name}" ${DUMMY_CATEGORIES[categoryIndex].isActive ? 'activated' : 'deactivated'} successfully!`,
+            });
             setSearchParamsState(prev => ({ ...prev }));
         }
     };
