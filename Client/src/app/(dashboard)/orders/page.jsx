@@ -473,7 +473,7 @@ const OrdersList = () => {
                 {/* Status Filter Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-[140px]">
+                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-35">
                             <Filter className="h-3.5 w-3.5" />
                             Status: {getStatusLabel(searchParamsState.status)}
                             <ChevronDown className="h-3.5 w-3.5 ml-auto" />
@@ -503,7 +503,7 @@ const OrdersList = () => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-[140px]"
+                                className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-35"
                             >
                                 <Calendar className="h-3.5 w-3.5" />
                                 {searchParamsState.dateFrom || searchParamsState.dateTo ? (
@@ -522,7 +522,7 @@ const OrdersList = () => {
                                 <ChevronDown className="h-3.5 w-3.5 ml-auto" />
                             </Button>
                         } />
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-106.25">
                             <DialogHeader>
                                 <DialogTitle>Date Range</DialogTitle>
                                 <DialogDescription>
@@ -589,14 +589,14 @@ const OrdersList = () => {
             {/* Table - Horizontally scrollable with hidden scrollbar on large screens */}
             <div className="border rounded-xl overflow-hidden bg-card">
                 <div className="overflow-x-auto scrollbar-thin lg:scrollbar-hide">
-                    <Table className="min-w-[900px]">
+                    <Table className="min-w-225">
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="min-w-[100px] ">Order ID</TableHead>
-                                <TableHead className="min-w-[80px] ">Customer</TableHead>
-                                <TableHead className="min-w-[100px]  text-right">Total</TableHead>
-                                <TableHead className="min-w-[160px]  text-center">Status</TableHead>
-                                <TableHead className="min-w-[100px] text-center">Created</TableHead>
+                                <TableHead className="min-w-25 ">Order ID</TableHead>
+                                <TableHead className="min-w-20 ">Customer</TableHead>
+                                <TableHead className="min-w-25  text-right">Total</TableHead>
+                                <TableHead className="min-w-40  text-center">Status</TableHead>
+                                <TableHead className="min-w-25 text-center">Created</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
