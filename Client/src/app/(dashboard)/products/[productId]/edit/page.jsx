@@ -31,7 +31,7 @@ import {
     Loader2,
     AlertTriangle,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/toast"
 import { cn } from '@/lib/utils';
 
 // Zod schema for validation
@@ -219,7 +219,11 @@ const ProductEdit = ({ params }) => {
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Show success message
-        toast.success('Product updated successfully!');
+        toast.add({
+            type: "success",
+            title: "Success!",
+            description: "Product updated successfully!",
+        });
         setIsLoading(false);
 
         // Navigate back to product details
