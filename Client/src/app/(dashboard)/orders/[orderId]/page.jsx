@@ -52,7 +52,7 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/toast"
 
 // ---------------------------------------------------------------------------
 // Status configuration
@@ -336,10 +336,18 @@ const OrderDetails = () => {
                 updatedAt: new Date().toISOString(),
             }));
 
-            toast.success(`Order marked as ${STATUS_CONFIG[newStatus].label.toLowerCase()}`);
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: `Order marked as ${STATUS_CONFIG[newStatus].label.toLowerCase()}`,
+            });
         } catch (error) {
             setSelectedStatus(previousStatus);
-            toast.error('Could not update order status. Please try again.');
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: "Could not update order status. Please try again.",
+            });
         } finally {
             setIsUpdating(false);
         }
@@ -352,7 +360,11 @@ const OrderDetails = () => {
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
         } catch {
-            toast.error('Could not copy order number.');
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: "Could not copy order number.",
+            });
         }
     };
 
