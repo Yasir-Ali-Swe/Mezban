@@ -312,3 +312,12 @@ html {
   scrollbar-width: thin;
   scrollbar-color: var(--primary) transparent;
 }
+
+.chart-scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.chart-scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+}
