@@ -1,15 +1,9 @@
-import RestaurantKnowledge from "@/components/business-knowledge/restaurant-knowledge.jsx";
-import ClinicKnowledge from "@/components/business-knowledge/clinic-knowledge";
-import EcommerceKnowledge from "@/components/business-knowledge/ecommerce-knowledge";
+import React from 'react'
 
-const BusinessType = "Restaurant"; // Replace with your actual business type logic
-
-const Knowledge = () => {
+const page = () => {
     return (
-        <div className="w-full h-full">
-            {BusinessType === "Restaurant" ? <RestaurantKnowledge /> : BusinessType === "Clinic" ? <ClinicKnowledge /> : <EcommerceKnowledge />}
-        </div>
+        <div>page</div>
     )
 }
 
-export default Knowledge
+export default page
