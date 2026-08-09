@@ -323,7 +323,7 @@ const BusinessKnowledgePage = () => {
                 title: "Success!",
                 description: 'Business knowledge saved successfully!'
             });
-            router.push('/onboarding/telegram');
+            router.push('/onboarding/telegram-connect');
         } catch (error) {
             toast.error({
                 type: "error",
