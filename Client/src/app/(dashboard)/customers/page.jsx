@@ -376,8 +376,8 @@ const CustomersList = () => {
                                 paginatedCustomers.map((customer) => (
                                     <TableRow
                                         key={customer._id}
-                                        className="hover:bg-muted/50 transition-colors"
-                                    // onClick={() => router.push(`/customers/${customer._id}`)}
+                                        className="hover:bg-muted/50 transition-colors *:cursor-pointer"
+                                        onClick={() => router.push(`/conversations/${customer._id}`)}
                                     >
                                         <TableCell className="font-medium">
                                             {customer.name}
