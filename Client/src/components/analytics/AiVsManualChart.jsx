@@ -17,7 +17,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useState, useEffect } from 'react';
 import {
     getResponsiveMargins,
-    getResponsiveGap
+    getResponsiveGap,
+    getChartMinWidth
 } from '@/lib/chartUtils';
 
 const AiVsManualChart = ({ data, timeRange = 'weekly' }) => {
@@ -49,11 +50,17 @@ const AiVsManualChart = ({ data, timeRange = 'weekly' }) => {
     const numBars = data?.length || 0;
     const margins = getResponsiveMargins(screenWidth);
     const barCategoryGap = getResponsiveGap(numBars, screenWidth);
-    const getChartMinWidth = () => {
-        if (numBars <= 7) return 600;
-        if (numBars <= 12) return 750;
-        return 900;
-    };
+
+    // Below `lg` this returns a fixed px width so many bars stay readable
+    // via horizontal scroll. At `lg` and up it returns '100%', so the
+    // chart always fits its Card exactly -- nothing to clip on the right.
+    const chartMinWidth = getChartMinWidth(numBars, screenWidth, {
+        small: 600,
+        medium: 600,
+        large: 750,
+        xlarge: 900,
+    });
+
     const getLabelInterval = () => {
         return 0;
     };
@@ -70,11 +77,11 @@ const AiVsManualChart = ({ data, timeRange = 'weekly' }) => {
                 <CardTitle className="text-sm font-medium">AI vs Manual Orders</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-56 sm:h-60 lg:h-64 w-full overflow-x-auto chart-scrollbar-hidden lg:overflow-x-visible">
+                <div className="h-56 sm:h-60 lg:h-64 w-full overflow-x-auto chart-scrollbar-hidden">
                     <div
                         className="h-full"
                         style={{
-                            minWidth: `${getChartMinWidth()}px`,
+                            minWidth: chartMinWidth,
                         }}
                     >
                         <ChartContainer config={chartConfig} className="h-full w-full">
