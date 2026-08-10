@@ -41,7 +41,8 @@ import {
     UserCog,
     Sparkles,
     Database,
-    Send
+    Send,
+    BotMessageSquare
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -75,14 +76,6 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 
-// --- Reading businessType/user from localStorage ---
-// localStorage is an external system, so per React's docs this is a job
-// for useSyncExternalStore, not useEffect+setState (which trips the
-// "no setState directly in an effect" rule and causes an extra render
-// pass). subscribe never fires locally on its own -- it only notifies on
-// the browser's native 'storage' event, which covers cross-tab updates.
-// getServerSnapshot returns the same safe default the client starts with,
-// so there's nothing to reconcile during hydration either.
 const emptySubscribe = (callback) => {
     window.addEventListener('storage', callback);
     return () => window.removeEventListener('storage', callback);
@@ -91,10 +84,6 @@ const emptySubscribe = (callback) => {
 const getBusinessTypeSnapshot = () => localStorage.getItem('businessType') || 'RESTAURANT';
 const getBusinessTypeServerSnapshot = () => 'RESTAURANT';
 
-// JSON.parse would return a new object reference on every call even when
-// the underlying string hasn't changed, which useSyncExternalStore treats
-// as "the store changed" and forces a re-render loop. Cache the parsed
-// result and only recompute it when the raw string actually differs.
 let cachedUserRaw;
 let cachedUser = null;
 const getUserSnapshot = () => {
@@ -436,10 +425,10 @@ export const Sidebar = () => {
         <SidebarContainer collapsible="icon" variant="sidebar">
             <SidebarHeader className="border-b border-sidebar-border">
                 <div className="flex items-center gap-2 px-2 py-1">
-                    <Boxes className="h-6 w-6 text-primary" />
+                    <BotMessageSquare className="h-6 w-6 text-primary" />
                     {!isCollapsed && (
                         <span className="text-lg font-semibold text-sidebar-foreground">
-                            {businessType === 'ECOMMERCE' ? 'ShopPilot' : 'StockPilot'}
+                            TeleAgent
                         </span>
                     )}
                 </div>
