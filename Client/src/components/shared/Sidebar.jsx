@@ -42,7 +42,7 @@ import {
     Sparkles,
     Database,
     Send,
-    BotMessageSquare
+    BotMessageSquare,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -177,6 +177,12 @@ const getDashboardRoutes = (businessType) => {
                 section: 'main',
             },
             {
+                path: '/orders',
+                label: 'Orders',
+                icon: 'ShoppingBag',
+                section: 'main',
+            },
+            {
                 path: '/customers',
                 label: 'Customers',
                 icon: 'Users',
@@ -239,6 +245,12 @@ const getDashboardRoutes = (businessType) => {
             path: '/products',
             label: 'Products',
             icon: 'Package',
+            section: 'main',
+        },
+        {
+            path: '/orders',
+            label: 'Orders',
+            icon: 'ShoppingBag',
             section: 'main',
         },
         {
