@@ -1,45 +1,31 @@
 "use client";
 
-import * as React from "react";
-import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+const Page = () => {
+  const router = useRouter();
 
-function ModeToggle() {
-  const { setTheme } = useTheme();
+  useEffect(() => {
+    const businessType = localStorage.getItem("businessType");
+    console.log("Business Type from localStorage:", businessType);
+
+    if (businessType === "ECOMMERCE") {
+      router.replace("/ecommerce");
+    } else if (businessType === "RESTAURANT") {
+      router.replace("/restaurant");
+    }
+  }, [router]);
 
   return (
-    <div className="flex flex-col gap-4 items-center justify-center h-screen">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button variant="outline" size="icon">
-              <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setTheme("light")}>
-            Light
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTheme("dark")}>
-            Dark
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTheme("system")}>
-            System
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="mt-4 text-sm text-muted-foreground">
+        Taking you to the dashboard...
+      </p>
     </div>
   );
-}
-export default ModeToggle;
+};
+
+export default Page;
