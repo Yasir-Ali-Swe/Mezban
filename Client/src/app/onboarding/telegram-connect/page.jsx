@@ -41,6 +41,7 @@ const TelegramConnectPage = () => {
     const [showToken, setShowToken] = useState(false);
     const [botInfo, setBotInfo] = useState(null);
 
+
     const {
         register,
         handleSubmit,
@@ -58,6 +59,7 @@ const TelegramConnectPage = () => {
     useEffect(() => {
         // Check if user has completed previous steps
         const businessType = localStorage.getItem('businessType');
+        const dashboardUrl = businessType === "ECOMMERCE" ? "/ecommerce" : "/restaurant";
         if (!businessType) {
             router.push('/onboarding/business-type');
         }
@@ -91,7 +93,9 @@ const TelegramConnectPage = () => {
     };
 
     const handleContinue = () => {
-        router.push('/dashboard');
+        const businessType = localStorage.getItem('businessType');
+        const dashboardUrl = businessType === "ECOMMERCE" ? "/ecommerce" : "/restaurant";
+        router.push(dashboardUrl);
     };
 
     if (isLoading) {
