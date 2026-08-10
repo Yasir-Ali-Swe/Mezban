@@ -69,9 +69,9 @@ const DUMMY_ALERTS = [
 
 const QUICK_ACTIONS = [
     { icon: PackagePlus, label: 'Add Product', href: '/products/new' },
-    { icon: Tag, label: 'Create Category', href: '/categories/add' },
+    { icon: Tag, label: 'Create Category', href: '/categories' },
     { icon: ShoppingBag, label: 'View Orders', href: '/orders' },
-    { icon: UserPlus, label: 'Add Customer', href: '/customers/add' },
+    { icon: UserPlus, label: 'Customers', href: '/customers' },
 ];
 
 const getStatusBadge = (status) => {
