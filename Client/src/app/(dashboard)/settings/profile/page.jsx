@@ -12,7 +12,7 @@ const ProfilePage = () => {
     const [formData, setFormData] = useState({
         name: 'Ahmed Khan',
         email: 'ahmed@example.com',
-        avatar: 'https://i.pravatar.cc/150?img=11',
+        avatar: 'https://github.com/shadcn.png',
     });
 
     const [isLoading, setIsLoading] = useState(false);
