@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/chart';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useState, useEffect } from 'react';
-import { getResponsiveMargins } from '@/lib/chartUtils';
+import { getResponsiveMargins, getChartMinWidth, formatCompactNumber } from '@/lib/chartUtils';
 
 const RevenueOrdersChart = ({ data, timeRange = 'weekly' }) => {
     const [screenWidth, setScreenWidth] = useState(1024);
@@ -45,16 +45,20 @@ const RevenueOrdersChart = ({ data, timeRange = 'weekly' }) => {
 
     const numBars = data?.length || 0;
     const margins = getResponsiveMargins(screenWidth);
-    const getChartMinWidth = () => {
-        if (numBars <= 7) return 650;
-        if (numBars <= 12) return 800;
-        return 950;
-    };
+
+    // Below `lg` this returns a fixed px width so many bars/points stay
+    // readable via horizontal scroll. At `lg` and up it returns '100%',
+    // so the chart always fits its Card exactly -- nothing to clip.
+    const chartMinWidth = getChartMinWidth(numBars, screenWidth, {
+        small: 650,
+        medium: 650,
+        large: 800,
+        xlarge: 950,
+    });
+
     const getLabelInterval = () => {
         return 0;
     };
-
-
 
     const getFontSize = () => {
         if (isMobile) return 10;
@@ -62,6 +66,11 @@ const RevenueOrdersChart = ({ data, timeRange = 'weekly' }) => {
         return 12;
     };
 
+    // Left axis (order counts) and right axis (revenue) both get compact
+    // formatting -- raw revenue numbers can run into 6+ digits, and an
+    // unformatted tick that wide is exactly what pushes past the right
+    // edge of the chart and gets clipped.
+    const axisWidth = isMobile ? 38 : 55;
 
     return (
         <Card>
@@ -69,11 +78,11 @@ const RevenueOrdersChart = ({ data, timeRange = 'weekly' }) => {
                 <CardTitle className="text-sm font-medium">Revenue vs Orders</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-72 sm:h-76 lg:h-80 w-full overflow-x-auto chart-scrollbar-hidden lg:overflow-x-visible">
+                <div className="h-72 sm:h-76 lg:h-80 w-full overflow-x-auto chart-scrollbar-hidden">
                     <div
                         className="h-full"
                         style={{
-                            minWidth: `${getChartMinWidth()}px`,
+                            minWidth: chartMinWidth,
                         }}
                     >
                         <ChartContainer config={chartConfig} className="h-full w-full">
@@ -104,8 +113,9 @@ const RevenueOrdersChart = ({ data, timeRange = 'weekly' }) => {
                                     axisLine={false}
                                     tickLine={false}
                                     tickMargin={isMobile ? 4 : 8}
+                                    tickFormatter={formatCompactNumber}
                                     fontSize={getFontSize()}
-                                    width={isMobile ? 35 : 50}
+                                    width={axisWidth}
                                 />
                                 <YAxis
                                     yAxisId="right"
@@ -113,8 +123,9 @@ const RevenueOrdersChart = ({ data, timeRange = 'weekly' }) => {
                                     axisLine={false}
                                     tickLine={false}
                                     tickMargin={isMobile ? 4 : 8}
+                                    tickFormatter={formatCompactNumber}
                                     fontSize={getFontSize()}
-                                    width={isMobile ? 35 : 50}
+                                    width={axisWidth}
                                 />
                                 <ChartTooltip
                                     content={
