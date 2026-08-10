@@ -15,7 +15,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useState, useEffect } from 'react';
 import {
     getResponsiveMargins,
-    getResponsiveGap
+    getResponsiveGap,
+    getChartMinWidth
 } from '@/lib/chartUtils';
 
 const VerticalBarChart = ({
@@ -87,12 +88,10 @@ const VerticalBarChart = ({
         return 12;
     };
 
-    const getChartMinWidth = () => {
-        if (numBars <= 5) return '500px';
-        if (numBars <= 7) return '600px';
-        if (numBars <= 12) return '750px';
-        return '900px';
-    };
+    // Below `lg` this returns a fixed px width so many bars stay readable
+    // via horizontal scroll. At `lg` and up it returns '100%', so the
+    // chart always fits its Card exactly -- nothing to clip on the right.
+    const chartMinWidth = getChartMinWidth(numBars, screenWidth);
 
     return (
         <Card>
@@ -100,11 +99,11 @@ const VerticalBarChart = ({
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-56 sm:h-60 lg:h-64 w-full overflow-x-auto chart-scrollbar-hidden lg:overflow-x-visible">
+                <div className="h-56 sm:h-60 lg:h-64 w-full overflow-x-auto chart-scrollbar-hidden">
                     <div
                         className="h-full"
                         style={{
-                            minWidth: `${getChartMinWidth()}`,
+                            minWidth: chartMinWidth,
                         }}
                     >
 
