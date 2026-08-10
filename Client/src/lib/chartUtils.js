@@ -1,6 +1,3 @@
-/**
- * Aggregate 30 daily records into 15 two-day periods
- */
 export const aggregateIntoTwoDayPeriods = (
   data,
   dateKey = "date",
@@ -155,14 +152,11 @@ export const getResponsiveBarSize = (numBars, screenWidth) => {
   return 18;
 };
 
-/**
- * Get responsive margins based on screen width
- */
 export const getResponsiveMargins = (screenWidth) => {
   if (screenWidth < 640) {
     return {
       top: 5,
-      right: 5,
+      right: 8,
       left: 0,
       bottom: 5,
     };
@@ -171,7 +165,7 @@ export const getResponsiveMargins = (screenWidth) => {
   if (screenWidth < 1024) {
     return {
       top: 5,
-      right: 10,
+      right: 16,
       left: 0,
       bottom: 5,
     };
@@ -179,11 +173,12 @@ export const getResponsiveMargins = (screenWidth) => {
 
   return {
     top: 5,
-    right: 10,
+    right: 24,
     left: 0,
     bottom: 5,
   };
 };
+
 /**
  * Get responsive bar category gap based on number of bars and screen width
  */
@@ -203,4 +198,28 @@ export const getResponsiveGap = (numBars, screenWidth) => {
   if (numBars <= 5) return "8%";
   if (numBars <= 10) return "6%";
   return "4%";
+};
+
+export const getChartMinWidth = (numBars, screenWidth, thresholds = {}) => {
+  const { small = 500, medium = 600, large = 750, xlarge = 900 } = thresholds;
+
+  if (screenWidth >= 1024) return "100%";
+
+  if (numBars <= 5) return `${small}px`;
+  if (numBars <= 7) return `${medium}px`;
+  if (numBars <= 12) return `${large}px`;
+  return `${xlarge}px`;
+};
+
+export const formatCompactNumber = (value) => {
+  if (value === null || value === undefined) return "";
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  if (Math.abs(num) >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
+  }
+  if (Math.abs(num) >= 1000) {
+    return `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}k`;
+  }
+  return num.toLocaleString();
 };
