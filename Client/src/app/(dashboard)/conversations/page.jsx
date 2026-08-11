@@ -396,7 +396,7 @@ const ConversationTable = ({ data, loading, pagination, onPageChange, currentPag
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Link href={`/conversations/${conversation.id}`}>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 cursor-pointer">
                                                 <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                             </Button>
                                         </Link>
