@@ -60,7 +60,7 @@ const DUMMY_CATEGORIES = [
     { _id: '7', name: 'Home Office' },
 ];
 
-// ─── Filter Config ────────────────────────────────────────────────────────────
+// ─── Filter Config ───────────────────────────────
 
 const FILTER_DEFAULTS = {
     page: 1,
@@ -254,7 +254,7 @@ const ProductsList = () => {
             render: (p) => (
                 <DropdownMenu>
                     <DropdownMenuTrigger render={
-                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 ">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                     } />
