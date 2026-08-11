@@ -472,7 +472,7 @@ const BusinessInfoPage = () => {
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="h-10 text-sm font-medium w-full sm:w-auto"
+                                className="h-10 text-sm font-medium"
                                 onClick={handleBack}
                             >
                                 <ArrowLeft className="h-4 w-4" />
@@ -480,7 +480,7 @@ const BusinessInfoPage = () => {
                             </Button>
                             <Button
                                 type="submit"
-                                className="h-10 text-sm font-medium w-full sm:w-auto"
+                                className="h-10 text-sm font-medium"
                                 disabled={!hasChanges() || isPending}
                             >
                                 {isPending ? (
