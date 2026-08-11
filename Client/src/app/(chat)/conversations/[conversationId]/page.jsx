@@ -169,7 +169,7 @@ const ConversationHeader = ({ conversation }) => {
                 variant="ghost"
                 size="icon"
                 onClick={() => router.back()}
-                className="shrink-0"
+                className="shrink-0 cursor-pointer"
             >
                 <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -389,7 +389,7 @@ const ConversationDetailPage = () => {
             <div className="flex flex-col items-center justify-center h-screen gap-4">
                 <p className="text-muted-foreground">Conversation not found</p>
                 <Link href="/conversations">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="cursor-pointer">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Conversations
                     </Button>
