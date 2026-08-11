@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -658,23 +659,22 @@ const getConversations = ({
 // ============================================================
 // MAIN CONVERSATIONS PAGE
 // ============================================================
+// Filter defaults for conversations
+const FILTER_DEFAULTS = {
+    page: 1,
+    limit: 10,
+    search: '',
+    status: 'all',
+    intent: 'all',
+    agent: 'all',
+    dateRange: 'all',
+};
+
 const ConversationsPage = () => {
     const router = useRouter();
-    const searchParams = useSearchParams();
 
-    const getFilterValue = useCallback((key, defaultValue) => {
-        return searchParams.get(key) || defaultValue;
-    }, [searchParams]);
-
-    const [filters, setFilters] = useState(() => ({
-        page: parseInt(getFilterValue('page', '1')),
-        limit: parseInt(getFilterValue('limit', '10')),
-        search: getFilterValue('search', ''),
-        status: getFilterValue('status', 'all'),
-        intent: getFilterValue('intent', 'all'),
-        agent: getFilterValue('agent', 'all'),
-        dateRange: getFilterValue('dateRange', 'all'),
-    }));
+    // URL-synced filter state (replaces manual getFilterValue/updateURL/updateFilter/useEffect boilerplate)
+    const { filters, updateFilter, resetFilters } = useUrlFilters(FILTER_DEFAULTS);
 
     const [loading, setLoading] = useState(true);
     const [conversations, setConversations] = useState([]);
@@ -685,36 +685,6 @@ const ConversationsPage = () => {
 
     // Use ref to prevent unnecessary effect runs
     const isInitialMount = useRef(true);
-
-    const updateURL = useCallback((newFilters) => {
-        const params = new URLSearchParams();
-        Object.entries(newFilters).forEach(([key, value]) => {
-            if (value && value !== '' && value !== 'all') {
-                params.set(key, value);
-            }
-        });
-        const queryString = params.toString();
-        const newUrl = queryString ? `?${queryString}` : window.location.pathname;
-        router.replace(newUrl, { scroll: false });
-    }, [router]);
-
-    const updateFilter = useCallback((key, value) => {
-        setFilters(prev => {
-            const newParams = { ...prev };
-            if (value && value !== '' && value !== 'all') {
-                newParams[key] = value;
-            } else {
-                newParams[key] = key === 'page' ? 1 : '';
-                if (key !== 'page') {
-                    newParams.page = 1;
-                }
-            }
-            if (key !== 'page') {
-                newParams.page = 1;
-            }
-            return newParams;
-        });
-    }, []);
 
     // ============================================================
     // LOAD DATA FUNCTION - Declared BEFORE useEffect
@@ -751,10 +721,8 @@ const ConversationsPage = () => {
     // ============================================================
     // EFFECTS
     // ============================================================
-    // Effect for updating URL
-    useEffect(() => {
-        updateURL(filters);
-    }, [filters, updateURL]);
+    // Note: URL sync is handled by useUrlFilters hook above.
+    // No separate URL-update effect needed.
 
     // Effect for loading data - using a flag to prevent initial double render
     useEffect(() => {
@@ -776,16 +744,8 @@ const ConversationsPage = () => {
         filters.agent !== 'all';
 
     const clearAllFilters = () => {
-        const newFilters = {
-            page: 1,
-            limit: 10,
-            search: '',
-            status: 'all',
-            intent: 'all',
-            agent: 'all',
-            dateRange: filters.dateRange,
-        };
-        setFilters(newFilters);
+        // Preserve dateRange when clearing other filters
+        resetFilters({ ...FILTER_DEFAULTS, dateRange: filters.dateRange });
     };
 
     // Helper function to get display label for date range
