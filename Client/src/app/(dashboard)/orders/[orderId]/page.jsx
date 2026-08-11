@@ -54,23 +54,77 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from "@/components/ui/toast"
 
-// ---------------------------------------------------------------------------
-// Status configuration
-// The four "active" states form a real sequence an order moves through, so a
-// step tracker is the honest way to show progress. Cancellation is a branch
-// off that line, not a fifth step.
-// ---------------------------------------------------------------------------
-const ACTIVE_FLOW = ['pending', 'confirmed', 'processing', 'completed'];
+const ECOMMERCE_ACTIVE_FLOW = [
+    'pending',
+    'confirmed',
+    'processing',
+    'completed',
+];
+
+const RESTAURANT_ACTIVE_FLOW = [
+    'pending',
+    'confirmed',
+    'preparing',
+    'ready',
+    'completed',
+];
 
 const STATUS_CONFIG = {
-    pending: { label: 'Pending', dot: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900' },
-    confirmed: { label: 'Confirmed', dot: 'bg-sky-500', text: 'text-sky-700 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900' },
-    processing: { label: 'Processing', dot: 'bg-violet-500', text: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900' },
-    completed: { label: 'Completed', dot: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900' },
-    cancelled: { label: 'Cancelled', dot: 'bg-red-500', text: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900' },
+    pending: {
+        label: 'Pending',
+        dot: 'bg-amber-500',
+        text: 'text-amber-700 dark:text-amber-400',
+        bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900',
+    },
+
+    confirmed: {
+        label: 'Confirmed',
+        dot: 'bg-sky-500',
+        text: 'text-sky-700 dark:text-sky-400',
+        bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900',
+    },
+
+    // E-commerce
+    processing: {
+        label: 'Processing',
+        dot: 'bg-violet-500',
+        text: 'text-violet-700 dark:text-violet-400',
+        bg: 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900',
+    },
+
+    // Restaurant
+    preparing: {
+        label: 'Preparing',
+        dot: 'bg-violet-500',
+        text: 'text-violet-700 dark:text-violet-400',
+        bg: 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900',
+    },
+
+    // Restaurant
+    ready: {
+        label: 'Ready',
+        dot: 'bg-orange-500',
+        text: 'text-orange-700 dark:text-orange-400',
+        bg: 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-900',
+    },
+
+    completed: {
+        label: 'Completed',
+        dot: 'bg-emerald-500',
+        text: 'text-emerald-700 dark:text-emerald-400',
+        bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900',
+    },
+
+    cancelled: {
+        label: 'Cancelled',
+        dot: 'bg-red-500',
+        text: 'text-red-700 dark:text-red-400',
+        bg: 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900',
+    },
 };
 
-const STATUS_OPTIONS = [
+
+const ECOMMERCE_STATUS_OPTIONS = [
     { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'processing', label: 'Processing' },
@@ -78,6 +132,14 @@ const STATUS_OPTIONS = [
     { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const RESTAURANT_STATUS_OPTIONS = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'preparing', label: 'Preparing' },
+    { value: 'ready', label: 'Ready' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+];
 // Dummy order data — replace with a real fetch against your API.
 const DUMMY_ORDER = {
     _id: 'ord_001',
@@ -166,17 +228,17 @@ function StatusPill({ status }) {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Status tracker — reads as a real progress line for the four active states;
-// collapses to a single "halted" marker when the order has been cancelled.
-// ---------------------------------------------------------------------------
-function StatusTracker({ status }) {
+function StatusTracker({ status, activeFlow }) {
     if (status === 'cancelled') {
         return (
             <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-950/40">
                 <XCircle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
+
                 <div>
-                    <p className="text-sm font-medium text-red-700 dark:text-red-400">Order cancelled</p>
+                    <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                        Order cancelled
+                    </p>
+
                     <p className="text-xs text-red-600/80 dark:text-red-400/70">
                         This order will not continue through fulfillment.
                     </p>
@@ -185,47 +247,81 @@ function StatusTracker({ status }) {
         );
     }
 
-    const currentIndex = ACTIVE_FLOW.indexOf(status);
+    const currentIndex = activeFlow.indexOf(status);
 
     return (
         <div className="flex items-start">
-            {ACTIVE_FLOW.map((step, i) => {
+            {activeFlow.map((step, i) => {
                 const config = STATUS_CONFIG[step];
+
                 const isDone = i < currentIndex;
                 const isCurrent = i === currentIndex;
-                const isLast = i === ACTIVE_FLOW.length - 1;
+                const isLast = i === activeFlow.length - 1;
 
                 return (
-                    <div key={step} className={cn('flex items-center', !isLast && 'flex-1')}>
+                    <div
+                        key={step}
+                        className={cn(
+                            'flex items-center',
+                            !isLast && 'flex-1'
+                        )}
+                    >
                         <div className="flex flex-col items-center gap-1.5">
                             <div
                                 className={cn(
                                     'flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors',
-                                    isDone && 'border-foreground bg-foreground text-background',
-                                    isCurrent && cn('border-current', config.text, config.bg),
-                                    !isDone && !isCurrent && 'border-muted-foreground/25 text-muted-foreground/40'
+
+                                    isDone &&
+                                    'border-foreground bg-foreground text-background',
+
+                                    isCurrent &&
+                                    cn(
+                                        'border-current',
+                                        config.text,
+                                        config.bg
+                                    ),
+
+                                    !isDone &&
+                                    !isCurrent &&
+                                    'border-muted-foreground/25 text-muted-foreground/40'
                                 )}
                             >
                                 {isDone ? (
                                     <Check className="h-3.5 w-3.5" />
                                 ) : (
-                                    <span className={cn('h-2 w-2 rounded-full', isCurrent ? config.dot : 'bg-current')} />
+                                    <span
+                                        className={cn(
+                                            'h-2 w-2 rounded-full',
+                                            isCurrent
+                                                ? config.dot
+                                                : 'bg-current'
+                                        )}
+                                    />
                                 )}
                             </div>
+
                             <span
                                 className={cn(
                                     'text-[11px] font-medium whitespace-nowrap',
-                                    isCurrent ? config.text : isDone ? 'text-foreground' : 'text-muted-foreground/50'
+
+                                    isCurrent
+                                        ? config.text
+                                        : isDone
+                                            ? 'text-foreground'
+                                            : 'text-muted-foreground/50'
                                 )}
                             >
                                 {config.label}
                             </span>
                         </div>
+
                         {!isLast && (
                             <div
                                 className={cn(
                                     'mx-2 mt-3.5 h-0.5 flex-1 rounded-full',
-                                    i < currentIndex ? 'bg-foreground' : 'bg-muted-foreground/15'
+                                    i < currentIndex
+                                        ? 'bg-foreground'
+                                        : 'bg-muted-foreground/15'
                                 )}
                             />
                         )}
@@ -235,7 +331,6 @@ function StatusTracker({ status }) {
         </div>
     );
 }
-
 // ---------------------------------------------------------------------------
 // Loading skeleton — mirrors the real layout so the page doesn't jump on load
 // ---------------------------------------------------------------------------
@@ -306,6 +401,19 @@ const OrderDetails = () => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState('');
     const [copied, setCopied] = useState(false);
+
+    const businessType = localStorage.getItem('businessType')
+    console.log('businessType', businessType)
+
+    const isRestaurant = businessType === 'RESTAURANT';
+
+    const ACTIVE_FLOW = isRestaurant
+        ? RESTAURANT_ACTIVE_FLOW
+        : ECOMMERCE_ACTIVE_FLOW;
+
+    const STATUS_OPTIONS = isRestaurant
+        ? RESTAURANT_STATUS_OPTIONS
+        : ECOMMERCE_STATUS_OPTIONS;
 
     // Simulate an API call to fetch the order — swap for a real fetch.
     useEffect(() => {
@@ -612,8 +720,10 @@ const OrderDetails = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <StatusTracker status={order.status} />
-
+                            <StatusTracker
+                                status={order.status}
+                                activeFlow={ACTIVE_FLOW}
+                            />
                             <Separator />
 
                             <div className="max-w-sm space-y-3">
