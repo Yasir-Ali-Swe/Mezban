@@ -176,11 +176,11 @@ const TelegramConnectPage = () => {
                             </div>
 
                             {/* Navigation Buttons */}
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border">
+                            <div className="flex  items-center justify-between gap-3 pt-4 border-t border-border">
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="h-10 text-sm font-medium w-full sm:w-auto"
+                                    className="h-10 text-sm font-medium"
                                     onClick={() => router.push('/onboarding/business-knowledge')}
                                 >
                                     <ArrowLeft className="h-4 w-4" />
@@ -188,7 +188,7 @@ const TelegramConnectPage = () => {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="h-10 text-sm font-medium w-full sm:w-auto"
+                                    className="h-10 text-sm font-medium"
                                     disabled={!botToken || isConnecting}
                                 >
                                     {isConnecting ? (
