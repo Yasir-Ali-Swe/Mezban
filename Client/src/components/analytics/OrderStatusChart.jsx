@@ -90,9 +90,9 @@ const OrderStatusChart = ({ data }) => {
                                 y="42%"
                                 textAnchor="middle"
                                 dominantBaseline="middle"
-                                className="fill-foreground text-xl font-bold"
+                                className="fill-foreground text-lg font-bold"
                             >
-                                {total}
+                                {total} Orders
                             </text>
 
                             {/* Tooltip */}
