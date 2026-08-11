@@ -1,42 +1,9 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuGroup,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Dialog,
     DialogContent,
@@ -44,364 +11,264 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuGroup,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     Tags,
     Package,
     Plus,
-    Search,
-    Eye,
     Edit,
     CircleX,
     MoreVertical,
     CheckCircle,
     XCircle,
     Loader2,
-    Filter,
-    ChevronDown,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/toast';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
+import {
+    StatsCard,
+    FilterSearchInput,
+    FilterDropdown,
+    DataTable,
+    PaginationFooter,
+} from '@/components/shared/dashboard';
 
-// Dummy Data
+// ─── Dummy Data ───────────────────────────────────────────────────────────────
+
 const DUMMY_CATEGORIES = [
-    {
-        _id: 'c1',
-        name: 'Electronics',
-        categorySlug: 'electronics',
-        createdBy: { name: 'John Doe', role: 'admin' },
-        createdAt: '2024-01-15T10:30:00Z',
-        productsCount: 45,
-        isActive: true,
-    },
-    {
-        _id: 'c2',
-        name: 'Cables',
-        categorySlug: 'cables',
-        createdBy: { name: 'Jane Smith', role: 'manager' },
-        createdAt: '2024-01-14T14:20:00Z',
-        productsCount: 23,
-        isActive: true,
-    },
-    {
-        _id: 'c3',
-        name: 'Accessories',
-        categorySlug: 'accessories',
-        createdBy: { name: 'John Doe', role: 'admin' },
-        createdAt: '2024-01-13T09:15:00Z',
-        productsCount: 12,
-        isActive: true,
-    },
-    {
-        _id: 'c4',
-        name: 'Furniture',
-        categorySlug: 'furniture',
-        createdBy: { name: 'Sarah Johnson', role: 'manager' },
-        createdAt: '2024-01-12T16:45:00Z',
-        productsCount: 0,
-        isActive: false,
-    },
-    {
-        _id: 'c5',
-        name: 'Stationery',
-        categorySlug: 'stationery',
-        createdBy: { name: 'Mike Wilson', role: 'staff' },
-        createdAt: '2024-01-11T11:00:00Z',
-        productsCount: 8,
-        isActive: true,
-    },
-    {
-        _id: 'c6',
-        name: 'Kitchenware',
-        categorySlug: 'kitchenware',
-        createdBy: { name: 'Emma Davis', role: 'admin' },
-        createdAt: '2024-01-10T08:30:00Z',
-        productsCount: 15,
-        isActive: true,
-    },
-    {
-        _id: 'c7',
-        name: 'Books',
-        categorySlug: 'books',
-        createdBy: { name: 'John Doe', role: 'admin' },
-        createdAt: '2024-01-09T13:20:00Z',
-        productsCount: 3,
-        isActive: true,
-    },
-    {
-        _id: 'c8',
-        name: 'Toys',
-        categorySlug: 'toys',
-        createdBy: { name: 'Jane Smith', role: 'manager' },
-        createdAt: '2024-01-08T10:00:00Z',
-        productsCount: 0,
-        isActive: false,
-    },
+    { _id: 'c1', name: 'Electronics', categorySlug: 'electronics', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-15T10:30:00Z', productsCount: 45, isActive: true },
+    { _id: 'c2', name: 'Cables', categorySlug: 'cables', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-14T14:20:00Z', productsCount: 23, isActive: true },
+    { _id: 'c3', name: 'Accessories', categorySlug: 'accessories', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-13T09:15:00Z', productsCount: 12, isActive: true },
+    { _id: 'c4', name: 'Furniture', categorySlug: 'furniture', createdBy: { name: 'Sarah Johnson', role: 'manager' }, createdAt: '2024-01-12T16:45:00Z', productsCount: 0, isActive: false },
+    { _id: 'c5', name: 'Stationery', categorySlug: 'stationery', createdBy: { name: 'Mike Wilson', role: 'staff' }, createdAt: '2024-01-11T11:00:00Z', productsCount: 8, isActive: true },
+    { _id: 'c6', name: 'Kitchenware', categorySlug: 'kitchenware', createdBy: { name: 'Emma Davis', role: 'admin' }, createdAt: '2024-01-10T08:30:00Z', productsCount: 15, isActive: true },
+    { _id: 'c7', name: 'Books', categorySlug: 'books', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-09T13:20:00Z', productsCount: 3, isActive: true },
+    { _id: 'c8', name: 'Toys', categorySlug: 'toys', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-08T10:00:00Z', productsCount: 0, isActive: false },
 ];
 
+// ─── Filter Config ────────────────────────────────────────────────────────────
+
+const FILTER_DEFAULTS = {
+    page: 1,
+    limit: 10,
+    search: '',
+    status: 'all',
+};
+
+const STATUS_OPTIONS = [
+    { value: 'all', label: 'All' },
+    { value: 'active', label: 'Active', icon: CheckCircle },
+    { value: 'inactive', label: 'Inactive', icon: XCircle },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const generateSlug = (name) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+const getStatusLabel = (status) => {
+    if (status === 'all') return 'All';
+    if (status === 'active') return 'Active';
+    if (status === 'inactive') return 'Inactive';
+    return 'All';
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const CategoriesList = () => {
-    const router = useRouter();
-    const searchParams = useSearchParams();
+    const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
-    // Get filter values from URL query params
-    const getFilterValue = useCallback((key, defaultValue) => {
-        return searchParams.get(key) || defaultValue;
-    }, [searchParams]);
-
-    // Initialize state from URL
-    const [searchParamsState, setSearchParamsState] = useState({
-        page: parseInt(getFilterValue('page', '1')),
-        limit: parseInt(getFilterValue('limit', '10')),
-        search: getFilterValue('search', ''),
-        status: getFilterValue('status', 'all'),
-    });
-
-    // Dialog states
+    // Dialog states (Add/Edit — NOT a ConfirmDialog, it's a form dialog)
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [categoryName, setCategoryName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Update URL when filters change
-    const updateURL = useCallback((newFilters) => {
-        const params = new URLSearchParams();
-        Object.entries(newFilters).forEach(([key, value]) => {
-            if (value && value !== '' && value !== 'all') {
-                params.set(key, value);
-            }
-        });
-        const queryString = params.toString();
-        const newUrl = queryString ? `?${queryString}` : window.location.pathname;
-        router.replace(newUrl, { scroll: false });
-    }, [router]);
-
-    // Update filter
-    const updateFilter = useCallback((key, value) => {
-        setSearchParamsState(prev => {
-            const newParams = { ...prev };
-            if (value && value !== '' && value !== 'all') {
-                newParams[key] = value;
-            } else {
-                newParams[key] = key === 'page' ? 1 : '';
-                if (key !== 'page') {
-                    newParams.page = 1;
-                }
-            }
-            if (key !== 'page') {
-                newParams.page = 1;
-            }
-            return newParams;
-        });
-    }, []);
-
-    // Effect to update URL when state changes
-    useEffect(() => {
-        updateURL(searchParamsState);
-    }, [searchParamsState, updateURL]);
-
-    // Memoized filtered categories
+    // Filtered data
     const filteredCategories = useMemo(() => {
         let filtered = [...DUMMY_CATEGORIES];
 
-        // Search filter
-        if (searchParamsState.search) {
-            const searchLower = searchParamsState.search.toLowerCase();
+        if (filters.search) {
+            const q = filters.search.toLowerCase();
             filtered = filtered.filter(cat =>
-                cat.name.toLowerCase().includes(searchLower) ||
-                cat.categorySlug.toLowerCase().includes(searchLower)
+                cat.name.toLowerCase().includes(q) || cat.categorySlug.toLowerCase().includes(q)
             );
         }
-
-        // Status filter
-        if (searchParamsState.status && searchParamsState.status !== 'all') {
-            const isActive = searchParamsState.status === 'active';
+        if (filters.status !== 'all') {
+            const isActive = filters.status === 'active';
             filtered = filtered.filter(cat => cat.isActive === isActive);
         }
 
         return filtered;
-    }, [searchParamsState]);
+    }, [filters]);
 
-    // Get stats
+    // Stats
     const totalCategories = DUMMY_CATEGORIES.length;
     const activeCategories = DUMMY_CATEGORIES.filter(c => c.isActive).length;
     const inactiveCategories = DUMMY_CATEGORIES.filter(c => !c.isActive).length;
 
     // Pagination
     const totalFiltered = filteredCategories.length;
-    const totalPages = Math.ceil(totalFiltered / searchParamsState.limit);
-    const startIndex = (searchParamsState.page - 1) * searchParamsState.limit;
-    const endIndex = startIndex + searchParamsState.limit;
+    const totalPages = Math.ceil(totalFiltered / filters.limit);
+    const startIndex = (filters.page - 1) * filters.limit;
+    const endIndex = startIndex + filters.limit;
     const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
 
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
+    const handleAddCategory = () => { setEditingCategory(null); setCategoryName(''); setIsDialogOpen(true); };
+    const handleEditCategory = (category) => { setEditingCategory(category); setCategoryName(category.name); setIsDialogOpen(true); };
 
-    const getPageNumbers = () => {
-        const total = totalPages;
-        const current = searchParamsState.page;
-        const pages = [];
-        const maxVisible = 5;
-
-        if (total <= maxVisible) {
-            for (let i = 1; i <= total; i++) {
-                pages.push(i);
-            }
-        } else {
-            pages.push(1);
-            if (current > 3) {
-                pages.push('ellipsis');
-            }
-            const start = Math.max(2, current - 1);
-            const end = Math.min(total - 1, current + 1);
-            for (let i = start; i <= end; i++) {
-                if (!pages.includes(i)) {
-                    pages.push(i);
-                }
-            }
-            if (current < total - 2) {
-                pages.push('ellipsis');
-            }
-            if (!pages.includes(total)) {
-                pages.push(total);
-            }
-        }
-        return pages;
-    };
-
-    // Generate slug from name
-    const generateSlug = (name) => {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-    };
-
-    const capitalize = (value) => {
-        if (!value) return '';
-        return value.charAt(0).toUpperCase() + value.slice(1);
-    };
-
-    // Handle add category
-    const handleAddCategory = () => {
-        setEditingCategory(null);
-        setCategoryName('');
-        setIsDialogOpen(true);
-    };
-
-    // Handle edit category
-    const handleEditCategory = (category) => {
-        setEditingCategory(category);
-        setCategoryName(category.name);
-        setIsDialogOpen(true);
-    };
-
-    // Handle save category
     const handleSaveCategory = () => {
         if (!categoryName.trim()) {
-            toast.add({
-                type: "error",
-                title: "Error!",
-                description: "Category name is required",
-            });
+            toast.add({ type: 'error', title: 'Error!', description: 'Category name is required' });
             return;
         }
-
         setIsLoading(true);
-
-        // Simulate API call
         setTimeout(() => {
             const slug = generateSlug(categoryName);
-
             if (editingCategory) {
-                // Edit existing category
-                const categoryIndex = DUMMY_CATEGORIES.findIndex(c => c._id === editingCategory._id);
-                if (categoryIndex !== -1) {
-                    DUMMY_CATEGORIES[categoryIndex] = {
-                        ...DUMMY_CATEGORIES[categoryIndex],
-                        name: categoryName,
-                        categorySlug: slug,
-                    };
-                }
-                toast.add({
-                    type: "success",
-                    title: "Success!",
-                    description: `Category "${categoryName}" updated successfully!`,
-                });
+                const idx = DUMMY_CATEGORIES.findIndex(c => c._id === editingCategory._id);
+                if (idx !== -1) { DUMMY_CATEGORIES[idx] = { ...DUMMY_CATEGORIES[idx], name: categoryName, categorySlug: slug }; }
+                toast.add({ type: 'success', title: 'Success!', description: `Category "${categoryName}" updated successfully!` });
             } else {
-                // Add new category
-                const newCategory = {
-                    _id: `c${Date.now()}`,
-                    name: categoryName,
-                    categorySlug: slug,
-                    createdBy: { name: 'Current User', role: 'admin' },
-                    createdAt: new Date().toISOString(),
-                    productsCount: 0,
-                    isActive: true,
-                };
-                DUMMY_CATEGORIES.push(newCategory);
-                toast.add({
-                    type: "success",
-                    title: "Success!",
-                    description: `Category "${categoryName}" created successfully!`,
-                });
+                DUMMY_CATEGORIES.push({ _id: `c${Date.now()}`, name: categoryName, categorySlug: slug, createdBy: { name: 'Current User', role: 'admin' }, createdAt: new Date().toISOString(), productsCount: 0, isActive: true });
+                toast.add({ type: 'success', title: 'Success!', description: `Category "${categoryName}" created successfully!` });
             }
-
             setIsLoading(false);
             setIsDialogOpen(false);
             setCategoryName('');
             setEditingCategory(null);
-
-            // Force re-render by updating state
-            setSearchParamsState(prev => ({ ...prev }));
+            // Force re-render
+            updateFilter('page', filters.page);
         }, 1000);
     };
 
-    // Handle delete (deactivate) category
     const handleDelete = (category) => {
         if (category.productsCount > 0) {
-            toast.add({
-                type: "error",
-                title: "Error!",
-                description: `Cannot delete "${category.name}". ${category.productsCount} product(s) are associated with this category.`,
-            });
+            toast.add({ type: 'error', title: 'Error!', description: `Cannot delete "${category.name}". ${category.productsCount} product(s) are associated with this category.` });
             return;
         }
         if (confirm(`Are you sure you want to delete category "${category.name}"?`)) {
-            toast.add({
-                type: "success",
-                title: "Success!",
-                description: `Category "${category.name}" deleted successfully!`,
-            });
+            toast.add({ type: 'success', title: 'Success!', description: `Category "${category.name}" deleted successfully!` });
         }
     };
 
-    // Handle deactivate category
     const handleDeactivate = (category) => {
-        const categoryIndex = DUMMY_CATEGORIES.findIndex(c => c._id === category._id);
-        if (categoryIndex !== -1) {
-            DUMMY_CATEGORIES[categoryIndex].isActive = !DUMMY_CATEGORIES[categoryIndex].isActive;
-            toast.add({
-                type: "success",
-                title: "Success!",
-                description: `Category "${category.name}" ${DUMMY_CATEGORIES[categoryIndex].isActive ? 'activated' : 'deactivated'} successfully!`,
-            });
-            setSearchParamsState(prev => ({ ...prev }));
+        const idx = DUMMY_CATEGORIES.findIndex(c => c._id === category._id);
+        if (idx !== -1) {
+            DUMMY_CATEGORIES[idx].isActive = !DUMMY_CATEGORIES[idx].isActive;
+            toast.add({ type: 'success', title: 'Success!', description: `Category "${category.name}" ${DUMMY_CATEGORIES[idx].isActive ? 'activated' : 'deactivated'} successfully!` });
+            updateFilter('page', filters.page); // trigger re-render
         }
     };
 
-    // Get status label for display
-    const getStatusLabel = (status) => {
-        if (status === 'all') return 'All';
-        if (status === 'active') return 'Active';
-        if (status === 'inactive') return 'Inactive';
-        return 'All';
-    };
+    const hasActiveFilters = filters.search || filters.status !== 'all';
+
+    // Column definitions
+    const columns = [
+        {
+            key: 'name',
+            header: 'Category Name',
+            headerClassName: 'min-w-37.5',
+            cellClassName: 'font-medium',
+            render: (cat) => (
+                <>
+                    {cat.name}
+                    <div className="sm:hidden text-[10px] text-muted-foreground">{cat.categorySlug}</div>
+                </>
+            ),
+        },
+        {
+            key: 'slug',
+            header: 'Slug',
+            headerClassName: 'min-w-30',
+            cellClassName: 'text-xs text-muted-foreground',
+            render: (cat) => cat.categorySlug,
+        },
+        {
+            key: 'products',
+            header: 'Products',
+            headerClassName: 'min-w-25 text-center',
+            cellClassName: 'text-center',
+            render: (cat) => (
+                <div className="flex items-center justify-center gap-1">
+                    <Package className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-sm font-medium">{cat.productsCount}</span>
+                </div>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            headerClassName: 'min-w-25 text-center',
+            cellClassName: 'text-center',
+            render: (cat) => (
+                <Badge variant={cat.isActive ? 'default' : 'destructive'} className="text-[10px]">
+                    {cat.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+            ),
+        },
+        {
+            key: 'createdBy',
+            header: 'Created By',
+            headerClassName: 'min-w-37.5',
+            cellClassName: 'text-xs',
+            render: (cat) => (
+                <>
+                    {cat.createdBy?.name || 'N/A'}
+                    <div className="text-[10px] text-muted-foreground">{cat.createdBy?.role || ''}</div>
+                </>
+            ),
+        },
+        {
+            key: 'createdAt',
+            header: 'Created',
+            headerClassName: 'min-w-32.5',
+            cellClassName: 'text-xs text-muted-foreground',
+            render: (cat) => formatDate(cat.createdAt),
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            headerClassName: 'min-w-25 text-right',
+            cellClassName: 'text-right',
+            render: (cat) => (
+                <DropdownMenu>
+                    <DropdownMenuTrigger render={
+                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                            <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </Button>
+                    } />
+                    <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={() => handleEditCategory(cat)}>
+                                <Edit className="mr-2 h-3.5 w-3.5" />Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() => handleDeactivate(cat)}
+                                variant={cat.isActive ? 'destructive' : 'default'}
+                            >
+                                <CircleX className="mr-2 h-3.5 w-3.5" />
+                                {cat.isActive ? 'Deactivate' : 'Activate'}
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ),
+        },
+    ];
 
     return (
         <div className="space-y-4 sm:space-y-6 pb-8">
@@ -413,10 +280,7 @@ const CategoriesList = () => {
                         Manage your product categories.
                     </p>
                 </div>
-                <Button
-                    className="w-35 flex items-center justify-center md:w-auto"
-                    onClick={handleAddCategory}
-                >
+                <Button className="w-35 flex items-center justify-center md:w-auto" onClick={handleAddCategory}>
                     <Plus className="mr-1.5 h-4 w-4" />
                     Add Category
                 </Button>
@@ -424,256 +288,72 @@ const CategoriesList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
-                        <CardTitle className="text-xs sm:text-sm font-medium">Total Categories</CardTitle>
-                        <Tags className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-lg sm:text-2xl font-bold">{totalCategories}</div>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">All categories</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
-                        <CardTitle className="text-xs sm:text-sm font-medium">Active Categories</CardTitle>
-                        <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-lg sm:text-2xl font-bold text-primary">{activeCategories}</div>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            {Math.round((activeCategories / totalCategories) * 100)}% of total
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
-                        <CardTitle className="text-xs sm:text-sm font-medium">Inactive Categories</CardTitle>
-                        <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-destructive" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-lg sm:text-2xl font-bold text-destructive">{inactiveCategories}</div>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">No products assigned</p>
-                    </CardContent>
-                </Card>
+                <StatsCard title="Total Categories" value={totalCategories} icon={Tags} caption="All categories" />
+                <StatsCard
+                    title="Active Categories"
+                    value={activeCategories}
+                    icon={CheckCircle}
+                    iconClassName="text-primary"
+                    valueClassName="text-primary"
+                    caption={`${Math.round((activeCategories / totalCategories) * 100)}% of total`}
+                />
+                <StatsCard
+                    title="Inactive Categories"
+                    value={inactiveCategories}
+                    icon={XCircle}
+                    iconClassName="text-destructive"
+                    valueClassName="text-destructive"
+                    caption="No products assigned"
+                />
             </div>
 
-            {/* Search and Filters - Side by Side */}
+            {/* Search and Filters — Side by Side (inline, no mobile scroll breakpoint) */}
             <div className="flex flex-row gap-3">
-                {/* Search Input */}
-                <div className="relative flex-1 max-w-140">
-                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder="Search categories..."
-                        value={searchParamsState.search}
-                        onChange={(e) => updateFilter('search', e.target.value)}
-                        className="pl-8 h-8 sm:h-9 text-xs sm:text-sm w-full"
-                    />
-                </div>
-
-                {/* Status Filter Dropdown */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-35">
-                            <Filter className="h-3.5 w-3.5" />
-                            Status: {getStatusLabel(searchParamsState.status)}
-                            <ChevronDown className="h-3.5 w-3.5 ml-auto" />
-                        </Button>
-                    } />
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>Status</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => updateFilter('status', 'all')}>
-                                All
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateFilter('status', 'active')}>
-                                <CheckCircle className="mr-2 h-3.5 w-3.5 text-primary" />
-                                Active
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateFilter('status', 'inactive')}>
-                                <XCircle className="mr-2 h-3.5 w-3.5 text-destructive" />
-                                Inactive
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Clear Filters Button */}
-                {(searchParamsState.search || searchParamsState.status !== 'all') && (
+                <FilterSearchInput
+                    placeholder="Search categories..."
+                    value={filters.search}
+                    onChange={updateFilter}
+                    className="relative flex-1 max-w-140"
+                />
+                <FilterDropdown
+                    label={`Status: ${getStatusLabel(filters.status)}`}
+                    options={STATUS_OPTIONS}
+                    onSelect={(v) => updateFilter('status', v)}
+                    menuLabel="Status"
+                />
+                {hasActiveFilters && (
                     <Button
                         variant="ghost"
                         size="sm"
                         className="h-8 sm:h-9 text-xs sm:text-sm"
-                        onClick={() => {
-                            const newFilters = {
-                                page: 1,
-                                limit: 10,
-                                search: '',
-                                status: 'all',
-                            };
-                            setSearchParamsState(newFilters);
-                        }}
+                        onClick={() => resetFilters(FILTER_DEFAULTS)}
                     >
                         Clear Filters
                     </Button>
                 )}
             </div>
 
-            {/* Table - Horizontally scrollable with hidden scrollbar on large screens */}
-            <div className="border rounded-xl overflow-hidden bg-card">
-                <div className="overflow-x-auto scrollbar-thin lg:scrollbar-hide">
-                    <Table className="min-w-200">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="min-w-37.5">Category Name</TableHead>
-                                <TableHead className="min-w-30">Slug</TableHead>
-                                <TableHead className="min-w-25 text-center">Products</TableHead>
-                                <TableHead className="min-w-25 text-center">Status</TableHead>
-                                <TableHead className="min-w-37.5">Created By</TableHead>
-                                <TableHead className="min-w-32.5">Created</TableHead>
-                                <TableHead className="min-w-25 text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {paginatedCategories.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
-                                        No categories found.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                paginatedCategories.map((category) => (
-                                    <TableRow key={category._id}>
-                                        <TableCell className="font-medium">
-                                            {category.name}
-                                            <div className="sm:hidden text-[10px] text-muted-foreground">
-                                                {category.categorySlug}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {category.categorySlug}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <Package className="h-3 w-3 text-muted-foreground" />
-                                                <span className="text-sm font-medium">{category.productsCount}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge
-                                                variant={category.isActive ? 'default' : 'destructive'}
-                                                className="text-[10px]"
-                                            >
-                                                {category.isActive ? 'Active' : 'Inactive'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                            {category.createdBy?.name || 'N/A'}
-                                            <div className="text-[10px] text-muted-foreground">
-                                                {category.createdBy?.role || ''}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {formatDate(category.createdAt)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger render={
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                                                        <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                                    </Button>
-                                                } />
-                                                <DropdownMenuContent align="end" className="w-40">
-                                                    <DropdownMenuGroup>
-                                                        <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                                                            <Edit className="mr-2 h-3.5 w-3.5" />
-                                                            Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="cursor-pointer"
-                                                            onClick={() => handleDeactivate(category)}
-                                                            variant={category.isActive ? 'destructive' : 'default'}
-                                                        >
-                                                            <CircleX className="mr-2 h-3.5 w-3.5" />
-                                                            {category.isActive ? 'Deactivate' : 'Activate'}
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuGroup>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-                {/* Footer */}
-                <div className="flex items-center justify-between gap-3 border-t px-3 py-3 sm:px-4">
-                    <div className="whitespace-nowrap text-xs sm:text-sm text-muted-foreground">
-                        Showing <span className="font-medium">{totalFiltered === 0 ? 0 : startIndex + 1}</span> to{' '}
-                        <span className="font-medium">{Math.min(endIndex, totalFiltered)}</span>{' '}
-                        of <span className="font-medium">{totalFiltered}</span> results
-                    </div>
+            {/* Table + Pagination */}
+            <DataTable
+                columns={columns}
+                data={paginatedCategories}
+                getRowKey={(cat) => cat._id}
+                emptyMessage="No categories found."
+                tableMinWidth="min-w-200"
+                footer={
+                    <PaginationFooter
+                        page={filters.page}
+                        totalPages={totalPages}
+                        totalFiltered={totalFiltered}
+                        startIndex={startIndex}
+                        endIndex={endIndex}
+                        onPageChange={(p) => updateFilter('page', p)}
+                        getPageNums={getPageNums}
+                    />
+                }
+            />
 
-                    <Pagination className="mx-0 w-auto">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (searchParamsState.page > 1) updateFilter('page', searchParamsState.page - 1);
-                                    }}
-                                    className={cn(
-                                        'h-8 sm:h-9 text-xs sm:text-sm',
-                                        searchParamsState.page <= 1 && 'pointer-events-none opacity-50'
-                                    )}
-                                />
-                            </PaginationItem>
-
-                            {getPageNumbers().map((p, index) => (
-                                <PaginationItem key={index}>
-                                    {p === 'ellipsis' ? (
-                                        <PaginationEllipsis className="h-8 sm:h-9" />
-                                    ) : (
-                                        <PaginationLink
-                                            href="#"
-                                            isActive={p === searchParamsState.page}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                updateFilter('page', p);
-                                            }}
-                                            className="h-8 sm:h-9 min-w-8 sm:min-w-9 text-xs sm:text-sm"
-                                        >
-                                            {p}
-                                        </PaginationLink>
-                                    )}
-                                </PaginationItem>
-                            ))}
-
-                            <PaginationItem>
-                                <PaginationNext
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (searchParamsState.page < totalPages) updateFilter('page', searchParamsState.page + 1);
-                                    }}
-                                    className={cn(
-                                        'h-8 sm:h-9 text-xs sm:text-sm',
-                                        searchParamsState.page >= totalPages && 'pointer-events-none opacity-50'
-                                    )}
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
-            </div>
-
-            {/* Add/Edit Category Dialog */}
+            {/* Add/Edit Category Dialog — kept as-is (form dialog, not ConfirmDialog) */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-106.25">
                     <DialogHeader>
@@ -700,8 +380,6 @@ const CategoriesList = () => {
                                 autoFocus
                             />
                         </div>
-
-                        {/* Slug Preview - View Mode */}
                         {categoryName && (
                             <div className="bg-muted p-3 rounded-md">
                                 <p className="text-xs text-muted-foreground">Slug Preview</p>
@@ -714,18 +392,11 @@ const CategoriesList = () => {
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            onClick={() => {
-                                setIsDialogOpen(false);
-                                setCategoryName('');
-                                setEditingCategory(null);
-                            }}
+                            onClick={() => { setIsDialogOpen(false); setCategoryName(''); setEditingCategory(null); }}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            onClick={handleSaveCategory}
-                            disabled={!categoryName.trim() || isLoading}
-                        >
+                        <Button onClick={handleSaveCategory} disabled={!categoryName.trim() || isLoading}>
                             {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
