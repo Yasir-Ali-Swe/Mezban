@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import {
     Dialog,
     DialogContent,
@@ -34,12 +34,12 @@ import {
 import { toast } from '@/components/ui/toast';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
-    StatsCard,
     FilterSearchInput,
     FilterDropdown,
     DataTable,
     PaginationFooter,
 } from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -213,9 +213,7 @@ const CategoriesList = () => {
             headerClassName: 'min-w-25 text-center',
             cellClassName: 'text-center',
             render: (cat) => (
-                <Badge variant={cat.isActive ? 'default' : 'destructive'} className="text-[10px]">
-                    {cat.isActive ? 'Active' : 'Inactive'}
-                </Badge>
+                <StatusBadge status={cat.isActive} showIcon />
             ),
         },
         {
@@ -288,8 +286,13 @@ const CategoriesList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <StatsCard title="Total Categories" value={totalCategories} icon={Tags} caption="All categories" />
-                <StatsCard
+                <StatCard
+                    title="Total Categories"
+                    value={totalCategories}
+                    icon={Tags}
+                    caption="All categories"
+                />
+                <StatCard
                     title="Active Categories"
                     value={activeCategories}
                     icon={CheckCircle}
@@ -297,7 +300,7 @@ const CategoriesList = () => {
                     valueClassName="text-primary"
                     caption={`${Math.round((activeCategories / totalCategories) * 100)}% of total`}
                 />
-                <StatsCard
+                <StatCard
                     title="Inactive Categories"
                     value={inactiveCategories}
                     icon={XCircle}
