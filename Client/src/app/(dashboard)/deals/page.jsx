@@ -35,7 +35,7 @@ import {
     DataTable,
     PaginationFooter,
     ConfirmDialog,
-} from '@/components/shared/dashboard';
+} from '@/components/dashboard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
