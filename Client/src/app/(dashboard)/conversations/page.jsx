@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { smartFormat } from '@/lib/utils';
-import StatCard from '@/components/dashboard/analytics-cards';
+import StatCard from '@/components/dashboard/AnalyticsSummaryCard';
 
 // FILTER COMPONENTS - Matching Deals Page Pattern
 // ============================================================
@@ -692,17 +692,19 @@ const ConversationsPage = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const statsData = getConversationStats(filters.dateRange, businessType);
+            // useUrlFilters normalises 'all' → '', so treat '' the same as 'all' / undefined
+            const dateRange = filters.dateRange || 'all';
+            const statsData = getConversationStats(dateRange, businessType);
             setStats(statsData);
 
             const { data, pagination: paginationData } = getConversations({
                 page: filters.page,
                 limit: filters.limit,
                 search: filters.search || undefined,
-                status: filters.status !== 'all' ? filters.status : undefined,
-                intent: filters.intent !== 'all' ? filters.intent : undefined,
-                agent: filters.agent !== 'all' ? filters.agent : undefined,
-                dateRange: filters.dateRange,
+                status: (filters.status && filters.status !== 'all') ? filters.status : undefined,
+                intent: (filters.intent && filters.intent !== 'all') ? filters.intent : undefined,
+                agent: (filters.agent && filters.agent !== 'all') ? filters.agent : undefined,
+                dateRange,
                 businessType,
             });
 
@@ -739,9 +741,9 @@ const ConversationsPage = () => {
     };
 
     const hasActiveFilters = filters.search ||
-        filters.status !== 'all' ||
-        filters.intent !== 'all' ||
-        filters.agent !== 'all';
+        (filters.status && filters.status !== 'all') ||
+        (filters.intent && filters.intent !== 'all') ||
+        (filters.agent && filters.agent !== 'all');
 
     const clearAllFilters = () => {
         // Preserve dateRange when clearing other filters
@@ -752,6 +754,7 @@ const ConversationsPage = () => {
     const getDateRangeLabel = (value) => {
         switch (value) {
             case 'all':
+            case '':
                 return 'All';
             case 'today':
                 return 'Today';
@@ -760,12 +763,12 @@ const ConversationsPage = () => {
             case 'month':
                 return 'Month';
             default:
-                return 'Week';
+                return 'All';
         }
     };
 
-    // Loading skeleton
-    if (loading && !conversations.length) {
+    // Loading skeleton — only on the very first load (before we have any data at all)
+    if (loading && conversations.length === 0 && isInitialMount.current) {
         return (
             <div className="space-y-4 sm:space-y-6 pb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
