@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import {
     Users,
     UserPlus,
@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
-    StatsCard,
     FilterSearchInput,
     DataTable,
     PaginationFooter,
 } from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -105,14 +105,11 @@ const CustomersList = () => {
             header: 'Telegram Connected',
             headerClassName: 'min-w-40 text-center',
             cellClassName: 'text-center',
-            render: (c) => c.telegramChatId ? (
-                <Badge variant="default" className="text-[10px] gap-1 bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
-                    <CheckCircle className="h-3 w-3" />Connected
-                </Badge>
-            ) : (
-                <Badge variant="secondary" className="text-[10px] gap-1">
-                    <XCircle className="h-3 w-3" />Not Connected
-                </Badge>
+            render: (c) => (
+                <StatusBadge
+                    status={c.telegramChatId ? 'connected' : 'disconnected'}
+                    showIcon
+                />
             ),
         },
         {
@@ -145,8 +142,8 @@ const CustomersList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-                <StatsCard title="Total Customers" value={totalCustomers} icon={Users} caption="All customers" />
-                <StatsCard
+                <StatCard title="Total Customers" value={totalCustomers} icon={Users} caption="All customers" />
+                <StatCard
                     title="Connected via Telegram"
                     value={telegramConnected}
                     icon={MessageCircle}
@@ -154,7 +151,7 @@ const CustomersList = () => {
                     valueClassName="text-primary"
                     caption={`${telegramConnected} of ${totalCustomers} customers`}
                 />
-                <StatsCard
+                <StatCard
                     title="New This Month"
                     value={newThisMonth}
                     icon={TrendingUp}
