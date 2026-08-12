@@ -149,7 +149,7 @@ export const Navbar = () => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/sign-in';
     };
 
     // Check if current path is onboarding
