@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -27,13 +27,13 @@ import {
 import { cn } from '@/lib/utils';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
-    StatsCard,
     FilterSearchInput,
     FilterDropdown,
     FilterPriceRange,
     DataTable,
     PaginationFooter,
 } from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -203,9 +203,7 @@ const ProductsList = () => {
             header: 'Category',
             headerClassName: 'min-w-[120px]',
             render: (p) => (
-                <Badge variant="outline" className="text-[10px]">
-                    {p.category?.name || 'N/A'}
-                </Badge>
+                <StatusBadge status="intent" label={p.category?.name || 'N/A'} />
             ),
         },
         {
@@ -241,9 +239,7 @@ const ProductsList = () => {
             header: 'Status',
             headerClassName: 'min-w-[100px]',
             render: (p) => (
-                <Badge variant={p.isActive ? 'default' : 'destructive'} className="text-[10px]">
-                    {p.isActive ? 'Active' : 'Inactive'}
-                </Badge>
+                <StatusBadge status={p.isActive} />
             ),
         },
         {
@@ -301,15 +297,15 @@ const ProductsList = () => {
                 </Button>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - Using StatCard */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                <StatsCard
+                <StatCard
                     title="Total Products"
                     value={totalProducts}
                     icon={Package}
                     caption="All products"
                 />
-                <StatsCard
+                <StatCard
                     title="Active Products"
                     value={activeProducts}
                     icon={PackageOpen}
@@ -317,7 +313,7 @@ const ProductsList = () => {
                     valueClassName="text-primary"
                     caption={`${Math.round((activeProducts / totalProducts) * 100)}% of total`}
                 />
-                <StatsCard
+                <StatCard
                     title="Low Stock Products"
                     value={lowStockProducts}
                     icon={AlertTriangle}
