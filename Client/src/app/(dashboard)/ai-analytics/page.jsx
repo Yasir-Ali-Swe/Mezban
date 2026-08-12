@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Bot } from 'lucide-react';
-import StatCard from '@/components/analytics/StatCard';
+import StatCard from '@/components/shared/StatCard';
 import ConversationVolumeChart from '@/components/analytics/ConversationVolumeChart';
 import IntentDistributionChart from '@/components/analytics/IntentDistributionChart';
 import VerticalBarChart from '@/components/analytics/VerticalBarChart';
