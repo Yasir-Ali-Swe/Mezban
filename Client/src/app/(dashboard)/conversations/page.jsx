@@ -1,29 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useUrlFilters } from '@/hooks/useUrlFilters';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,208 +14,20 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-    Search,
-    Filter,
-    ChevronDown,
     Eye,
     MessageSquare,
-    X,
+    ChevronDown,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { smartFormat } from '@/lib/utils';
-import StatCard from '@/components/dashboard/AnalyticsSummaryCard';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
+import {
+    FilterSearchInput,
+    FilterDropdown,
+    DataTable,
+    PaginationFooter,
+} from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
-// FILTER COMPONENTS - Matching Deals Page Pattern
-// ============================================================
-const SearchInput = ({ value, onChange }) => (
-    <div className="relative flex-1 min-w-37.5 sm:min-w-50">
-        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-            placeholder="Search conversations..."
-            value={value}
-            onChange={(e) => onChange('search', e.target.value)}
-            className="pl-8 h-8 sm:h-9 text-xs sm:text-sm"
-        />
-    </div>
-);
-
-const StatusFilter = ({ value, onChange, className = "" }) => {
-    const statusOptions = [
-        { value: 'all', label: 'All Status' },
-        { value: 'ACTIVE', label: 'Active' },
-        { value: 'RESOLVED', label: 'Resolved' },
-        { value: 'ESCALATED', label: 'Escalated' },
-        { value: 'ABANDONED', label: 'Abandoned' },
-    ];
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm" className={cn("h-8 sm:h-9 text-xs sm:text-sm gap-1", className)}>
-                    <Filter className="h-3.5 w-3.5" />
-                    Status: {statusOptions.find(s => s.value === value)?.label || 'All Status'}
-                    <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-            } />
-            <DropdownMenuContent align="start" className="w-40">
-                <DropdownMenuGroup>
-                    <DropdownMenuLabel>Status</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {statusOptions.map((option) => (
-                        <DropdownMenuItem key={option.value} onClick={() => onChange('status', option.value)}>
-                            {option.label}
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-};
-
-const IntentFilter = ({ value, onChange, businessType = 'ecommerce', className = "" }) => {
-    const getIntentOptions = (type) => {
-        if (type === 'restaurant') {
-            return [
-                { value: 'all', label: 'All Intents' },
-                { value: 'MENU_SEARCH', label: 'Menu Search' },
-                { value: 'MENU_INFO', label: 'Menu Information' },
-                { value: 'PLACE_ORDER', label: 'Place Order' },
-                { value: 'ORDER_STATUS', label: 'Order Status' },
-                { value: 'DEAL_INFO', label: 'Deal Information' },
-                { value: 'SUPPORT', label: 'Support' },
-            ];
-        }
-        return [
-            { value: 'all', label: 'All Intents' },
-            { value: 'PRODUCT_SEARCH', label: 'Product Search' },
-            { value: 'PRODUCT_INFO', label: 'Product Information' },
-            { value: 'PLACE_ORDER', label: 'Place Order' },
-            { value: 'ORDER_STATUS', label: 'Order Status' },
-            { value: 'SUPPORT', label: 'Support' },
-        ];
-    };
-
-    const intentOptions = getIntentOptions(businessType);
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm" className={cn("h-8 sm:h-9 text-xs sm:text-sm gap-1", className)}>
-                    <Filter className="h-3.5 w-3.5" />
-                    Intent: {intentOptions.find(s => s.value === value)?.label || 'All Intents'}
-                    <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-            } />
-            <DropdownMenuContent align="start" className="w-44">
-                <DropdownMenuGroup>
-                    <DropdownMenuLabel>Intent</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {intentOptions.map((option) => (
-                        <DropdownMenuItem key={option.value} onClick={() => onChange('intent', option.value)}>
-                            {option.label}
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-};
-
-const AgentFilter = ({ value, onChange, businessType = 'ecommerce', className = "" }) => {
-    const getAgentOptions = (type) => {
-        if (type === 'restaurant') {
-            return [
-                { value: 'all', label: 'All Agents' },
-                { value: 'MENU_AGENT', label: 'Menu Agent' },
-                { value: 'ORDER_AGENT', label: 'Order Agent' },
-                { value: 'DEAL_AGENT', label: 'Deal Agent' },
-                { value: 'SUPPORT_AGENT', label: 'Support Agent' },
-            ];
-        }
-        return [
-            { value: 'all', label: 'All Agents' },
-            { value: 'PRODUCT_AGENT', label: 'Product Agent' },
-            { value: 'ORDER_AGENT', label: 'Order Agent' },
-            { value: 'SUPPORT_AGENT', label: 'Support Agent' },
-        ];
-    };
-
-    const agentOptions = getAgentOptions(businessType);
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger render={
-                <Button variant="outline" size="sm" className={cn("h-8 sm:h-9 text-xs sm:text-sm gap-1", className)}>
-                    <Filter className="h-3.5 w-3.5" />
-                    Agent: {agentOptions.find(s => s.value === value)?.label || 'All Agents'}
-                    <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-            } />
-            <DropdownMenuContent align="start" className="w-44">
-                <DropdownMenuGroup>
-                    <DropdownMenuLabel>Agent</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {agentOptions.map((option) => (
-                        <DropdownMenuItem key={option.value} onClick={() => onChange('agent', option.value)}>
-                            {option.label}
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuGroup>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-};
-
-const ClearFiltersButton = ({
-    hasActiveFilters,
-    onClear,
-    className = ""
-}) => {
-    if (!hasActiveFilters) return null;
-
-    return (
-        <Button
-            variant="destructive"
-            size="sm"
-            className={cn("h-8 sm:h-9 text-xs sm:text-sm gap-1", className)}
-            onClick={onClear}
-        >
-            <X className="h-3.5 w-3.5" />
-            Clear Filters
-        </Button>
-    );
-};
-
-// ============================================================
-// CONVERSATION TABLE COMPONENT
-// ============================================================
-const getStatusBadge = (status) => {
-    const statusConfig = {
-        RESOLVED: {
-            variant: 'default',
-            className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100/80 dark:hover:bg-green-900/40'
-        },
-        ACTIVE: {
-            variant: 'default',
-            className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100/80 dark:hover:bg-blue-900/40'
-        },
-        ESCALATED: {
-            variant: 'destructive',
-            className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-100/80 dark:hover:bg-red-900/40'
-        },
-        ABANDONED: {
-            variant: 'outline',
-            className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-gray-900/40'
-        }
-    };
-
-    const config = statusConfig[status] || statusConfig.ACTIVE;
-    return (
-        <Badge variant={config.variant} className={cn("text-[10px] sm:text-xs", config.className)}>
-            {status.charAt(0) + status.slice(1).toLowerCase()}
-        </Badge>
-    );
-};
+// ─── Helper Functions ─────────────────────────────────────────────────────────
 
 const getIntentBadge = (intent) => {
     const intentMap = {
@@ -270,210 +62,58 @@ const truncateMessage = (message, maxLength = 30) => {
     return message.substring(0, maxLength) + '...';
 };
 
-const ConversationTable = ({ data, loading, pagination, onPageChange, currentPage }) => {
-    if (loading) {
-        return (
-            <div className="rounded-xl border overflow-hidden bg-card">
-                <div className="overflow-x-auto">
-                    <Table className="min-w-[900px]">
-                        <TableHeader>
-                            <TableRow>
-                                {['Customer', 'Intent', 'Agent', 'Status', 'Last Message', 'Last Activity', 'Actions'].map((header) => (
-                                    <TableHead key={header}>{header}</TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                                <TableRow key={i}>
-                                    {[1, 2, 3, 4, 5, 6, 7].map((j) => (
-                                        <TableCell key={j}>
-                                            <div className={`h-4 bg-muted animate-pulse rounded ${j === 1 ? 'w-24' : j === 7 ? 'w-6' : 'w-16'}`}></div>
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-        );
+// ─── Filter Option Configs ──────────────────────────────────────────────────
+
+const STATUS_OPTIONS = [
+    { value: 'all', label: 'All Status' },
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'RESOLVED', label: 'Resolved' },
+    { value: 'ESCALATED', label: 'Escalated' },
+    { value: 'ABANDONED', label: 'Abandoned' },
+];
+
+const getIntentOptions = (type) => {
+    if (type === 'restaurant') {
+        return [
+            { value: 'all', label: 'All Intents' },
+            { value: 'MENU_SEARCH', label: 'Menu Search' },
+            { value: 'MENU_INFO', label: 'Menu Information' },
+            { value: 'PLACE_ORDER', label: 'Place Order' },
+            { value: 'ORDER_STATUS', label: 'Order Status' },
+            { value: 'DEAL_INFO', label: 'Deal Information' },
+            { value: 'SUPPORT', label: 'Support' },
+        ];
     }
-
-    if (!data || data.length === 0) {
-        return (
-            <div className="rounded-xl border py-12 sm:py-16 text-center bg-card">
-                <div className="flex flex-col items-center gap-2">
-                    <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-muted flex items-center justify-center">
-                        <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-base sm:text-lg font-semibold">No conversations found</h3>
-                    <p className="text-sm text-muted-foreground max-w-md px-4">
-                        Try adjusting your filters or search criteria.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    const { total, totalPages, limit } = pagination || { total: 0, totalPages: 1, limit: 10 };
-    const startIndex = (currentPage - 1) * limit + 1;
-    const endIndex = Math.min(currentPage * limit, total);
-
-    const getPageNumbers = () => {
-        const pages = [];
-        const total = totalPages;
-        const current = currentPage;
-        const maxVisible = 5;
-
-        if (total <= maxVisible) {
-            for (let i = 1; i <= total; i++) pages.push(i);
-        } else {
-            pages.push(1);
-            if (current > 3) pages.push('ellipsis');
-            const start = Math.max(2, current - 1);
-            const end = Math.min(total - 1, current + 1);
-            for (let i = start; i <= end; i++) {
-                if (!pages.includes(i)) pages.push(i);
-            }
-            if (current < total - 2) pages.push('ellipsis');
-            if (!pages.includes(total)) pages.push(total);
-        }
-        return pages;
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="rounded-xl border overflow-hidden bg-card">
-                <div className="overflow-x-auto scrollbar-thin lg:scrollbar-hide">
-                    <Table className="min-w-[900px]">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="min-w-[140px]">Customer</TableHead>
-                                <TableHead className="min-w-[120px]">Intent</TableHead>
-                                <TableHead className="min-w-[120px]">Agent</TableHead>
-                                <TableHead className="min-w-[100px]">Status</TableHead>
-                                <TableHead className="min-w-[150px]">Last Message</TableHead>
-                                <TableHead className="min-w-[100px]">Last Activity</TableHead>
-                                <TableHead className="w-[60px] text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {data.map((conversation) => (
-                                <TableRow key={conversation.id}>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-sm">
-                                                {conversation.customer.name}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                @{conversation.customer.username || conversation.customer.telegramId}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className="text-[10px] sm:text-xs">
-                                            {getIntentBadge(conversation.intent)}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm">
-                                            {conversation.agent.replace(/_/g, ' ')}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        {getStatusBadge(conversation.status)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm text-muted-foreground">
-                                            {truncateMessage(conversation.lastMessage)}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                            {timeAgo(conversation.lastActivity)}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Link href={`/conversations/${conversation.id}`}>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 cursor-pointer">
-                                                <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                            </Button>
-                                        </Link>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-                {/* Footer */}
-                <div className="flex items-center justify-between gap-3 border-t px-3 py-3 sm:px-4">
-                    <div className="whitespace-nowrap text-[10px] sm:text-sm text-muted-foreground">
-                        Showing <span className="font-medium">{total === 0 ? 0 : startIndex}</span> to{' '}
-                        <span className="font-medium">{Math.min(endIndex, total)}</span>{' '}
-                        of <span className="font-medium">{total}</span> results
-                    </div>
-
-                    <Pagination className="mx-0 w-auto">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (currentPage > 1) onPageChange(currentPage - 1);
-                                    }}
-                                    className={cn(
-                                        'h-7 sm:h-9 text-xs sm:text-sm',
-                                        currentPage <= 1 && 'pointer-events-none opacity-50'
-                                    )}
-                                />
-                            </PaginationItem>
-
-                            {getPageNumbers().map((p, index) => (
-                                <PaginationItem key={index}>
-                                    {p === 'ellipsis' ? (
-                                        <PaginationEllipsis className="h-7 sm:h-9" />
-                                    ) : (
-                                        <PaginationLink
-                                            href="#"
-                                            isActive={p === currentPage}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                onPageChange(p);
-                                            }}
-                                            className="h-7 sm:h-9 min-w-7 sm:min-w-9 text-xs sm:text-sm"
-                                        >
-                                            {p}
-                                        </PaginationLink>
-                                    )}
-                                </PaginationItem>
-                            ))}
-
-                            <PaginationItem>
-                                <PaginationNext
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (currentPage < totalPages) onPageChange(currentPage + 1);
-                                    }}
-                                    className={cn(
-                                        'h-7 sm:h-9 text-xs sm:text-sm',
-                                        currentPage >= totalPages && 'pointer-events-none opacity-50'
-                                    )}
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
-            </div>
-        </div>
-    );
+    return [
+        { value: 'all', label: 'All Intents' },
+        { value: 'PRODUCT_SEARCH', label: 'Product Search' },
+        { value: 'PRODUCT_INFO', label: 'Product Information' },
+        { value: 'PLACE_ORDER', label: 'Place Order' },
+        { value: 'ORDER_STATUS', label: 'Order Status' },
+        { value: 'SUPPORT', label: 'Support' },
+    ];
 };
 
-// ============================================================
-// DATA UTILITIES (Mock Data Generation)
-// ============================================================
+const getAgentOptions = (type) => {
+    if (type === 'restaurant') {
+        return [
+            { value: 'all', label: 'All Agents' },
+            { value: 'MENU_AGENT', label: 'Menu Agent' },
+            { value: 'ORDER_AGENT', label: 'Order Agent' },
+            { value: 'DEAL_AGENT', label: 'Deal Agent' },
+            { value: 'SUPPORT_AGENT', label: 'Support Agent' },
+        ];
+    }
+    return [
+        { value: 'all', label: 'All Agents' },
+        { value: 'PRODUCT_AGENT', label: 'Product Agent' },
+        { value: 'ORDER_AGENT', label: 'Order Agent' },
+        { value: 'SUPPORT_AGENT', label: 'Support Agent' },
+    ];
+};
+
+// ─── DATA UTILITIES (Mock Data Generation) ──────────────────────────────────
+
 const generateMockCustomers = () => {
     const firstNames = ['Ahmed', 'Ali', 'Sara', 'Fatima', 'Mohammed', 'Zainab', 'Hassan', 'Layla', 'Omar', 'Aisha'];
     const lastNames = ['Khan', 'Ahmed', 'Ali', 'Hassan', 'Qureshi', 'Malik', 'Siddiqui', 'Rashid', 'Farooq', 'Noor'];
@@ -656,10 +296,8 @@ const getConversations = ({
     };
 };
 
-// ============================================================
-// MAIN CONVERSATIONS PAGE
-// ============================================================
-// Filter defaults for conversations
+// ─── Filter Defaults ─────────────────────────────────────────────────────────
+
 const FILTER_DEFAULTS = {
     page: 1,
     limit: 10,
@@ -670,71 +308,66 @@ const FILTER_DEFAULTS = {
     dateRange: 'all',
 };
 
-const ConversationsPage = () => {
-    const router = useRouter();
+// ─── Main Component ──────────────────────────────────────────────────────────
 
-    // URL-synced filter state (replaces manual getFilterValue/updateURL/updateFilter/useEffect boilerplate)
-    const { filters, updateFilter, resetFilters } = useUrlFilters(FILTER_DEFAULTS);
+const ConversationsPage = () => {
+    const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
     const [loading, setLoading] = useState(true);
     const [conversations, setConversations] = useState([]);
     const [stats, setStats] = useState(null);
     const [pagination, setPagination] = useState(null);
+    const [isFirstLoad, setIsFirstLoad] = useState(true);
 
     const businessType = 'ecommerce'; // Change to 'restaurant' for restaurant business
 
-    // Use ref to prevent unnecessary effect runs
-    const isInitialMount = useRef(true);
+    // ─── Load Data ────────────────────────────────────────────────────────────
 
-    // ============================================================
-    // LOAD DATA FUNCTION - Declared BEFORE useEffect
-    // ============================================================
-    const loadData = useCallback(async () => {
-        setLoading(true);
-        try {
-            // useUrlFilters normalises 'all' → '', so treat '' the same as 'all' / undefined
-            const dateRange = filters.dateRange || 'all';
-            const statsData = getConversationStats(dateRange, businessType);
-            setStats(statsData);
-
-            const { data, pagination: paginationData } = getConversations({
-                page: filters.page,
-                limit: filters.limit,
-                search: filters.search || undefined,
-                status: (filters.status && filters.status !== 'all') ? filters.status : undefined,
-                intent: (filters.intent && filters.intent !== 'all') ? filters.intent : undefined,
-                agent: (filters.agent && filters.agent !== 'all') ? filters.agent : undefined,
-                dateRange,
-                businessType,
-            });
-
-            setConversations(data);
-            setPagination(paginationData);
-        } catch (error) {
-            console.error('Error loading conversations:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, [filters, businessType]);
-    // ============================================================
-    // END OF LOAD DATA FUNCTION
-    // ============================================================
-
-    // ============================================================
-    // EFFECTS
-    // ============================================================
-    // Note: URL sync is handled by useUrlFilters hook above.
-    // No separate URL-update effect needed.
-
-    // Effect for loading data - using a flag to prevent initial double render
     useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            loadData();
-        } else {
-            loadData();
-        }
-    }, [loadData]);
+        let isMounted = true;
+
+        const fetchData = async () => {
+            if (!isMounted) return;
+
+            setLoading(true);
+            try {
+                const dateRange = filters.dateRange || 'all';
+                const statsData = getConversationStats(dateRange, businessType);
+                if (isMounted) setStats(statsData);
+
+                const { data, pagination: paginationData } = getConversations({
+                    page: filters.page,
+                    limit: filters.limit,
+                    search: filters.search || undefined,
+                    status: (filters.status && filters.status !== 'all') ? filters.status : undefined,
+                    intent: (filters.intent && filters.intent !== 'all') ? filters.intent : undefined,
+                    agent: (filters.agent && filters.agent !== 'all') ? filters.agent : undefined,
+                    dateRange,
+                    businessType,
+                });
+
+                if (isMounted) {
+                    setConversations(data);
+                    setPagination(paginationData);
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                    setIsFirstLoad(false);
+                }
+            }
+        };
+
+        fetchData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [filters, businessType]);
+
+    // ─── Handlers ────────────────────────────────────────────────────────────
 
     const handlePageChange = (page) => {
         updateFilter('page', page);
@@ -746,11 +379,9 @@ const ConversationsPage = () => {
         (filters.agent && filters.agent !== 'all');
 
     const clearAllFilters = () => {
-        // Preserve dateRange when clearing other filters
         resetFilters({ ...FILTER_DEFAULTS, dateRange: filters.dateRange });
     };
 
-    // Helper function to get display label for date range
     const getDateRangeLabel = (value) => {
         switch (value) {
             case 'all':
@@ -767,8 +398,91 @@ const ConversationsPage = () => {
         }
     };
 
-    // Loading skeleton — only on the very first load (before we have any data at all)
-    if (loading && conversations.length === 0 && isInitialMount.current) {
+    // ─── Column Definitions ─────────────────────────────────────────────────
+
+    const columns = [
+        {
+            key: 'customer',
+            header: 'Customer',
+            headerClassName: 'min-w-[140px]',
+            render: (conversation) => (
+                <div className="flex flex-col">
+                    <span className="font-medium text-sm">
+                        {conversation.customer.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        @{conversation.customer.username || conversation.customer.telegramId}
+                    </span>
+                </div>
+            ),
+        },
+        {
+            key: 'intent',
+            header: 'Intent',
+            headerClassName: 'min-w-[120px]',
+            render: (conversation) => (
+                <StatusBadge
+                    status="intent"
+                    label={getIntentBadge(conversation.intent)}
+                />
+            ),
+        },
+        {
+            key: 'agent',
+            header: 'Agent',
+            headerClassName: 'min-w-[120px]',
+            render: (conversation) => (
+                <span className="text-sm">
+                    {conversation.agent.replace(/_/g, ' ')}
+                </span>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            headerClassName: 'min-w-[100px]',
+            render: (conversation) => (
+                <StatusBadge status={conversation.status} />
+            ),
+        },
+        {
+            key: 'lastMessage',
+            header: 'Last Message',
+            headerClassName: 'min-w-[150px]',
+            render: (conversation) => (
+                <span className="text-sm text-muted-foreground">
+                    {truncateMessage(conversation.lastMessage)}
+                </span>
+            ),
+        },
+        {
+            key: 'lastActivity',
+            header: 'Last Activity',
+            headerClassName: 'min-w-[100px]',
+            render: (conversation) => (
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {timeAgo(conversation.lastActivity)}
+                </span>
+            ),
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            headerClassName: 'w-[60px] text-right',
+            cellClassName: 'text-right',
+            render: (conversation) => (
+                <Link href={`/conversations/${conversation.id}`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </Button>
+                </Link>
+            ),
+        },
+    ];
+
+    // ─── Loading State ──────────────────────────────────────────────────────
+
+    if (loading && conversations.length === 0 && isFirstLoad) {
         return (
             <div className="space-y-4 sm:space-y-6 pb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -798,6 +512,8 @@ const ConversationsPage = () => {
             </div>
         );
     }
+
+    // ─── Render ─────────────────────────────────────────────────────────────
 
     return (
         <div className="space-y-4 sm:space-y-6 pb-8">
@@ -847,33 +563,26 @@ const ConversationsPage = () => {
                         title="Total Conversations"
                         value={stats.total}
                         change={stats.totalChange}
-                        icon={MessageSquare}
                         trend={stats.totalChange > 0 ? 'up' : 'down'}
-                        type="number"
+                        icon={MessageSquare}
                     />
                     <StatCard
                         title="Active"
                         value={stats.active}
-                        change={0}
                         icon={MessageSquare}
-                        trend="up"
-                        type="number"
+                        caption="Currently active"
                     />
                     <StatCard
                         title="Resolved"
                         value={stats.resolved}
-                        change={stats.resolutionRate}
                         icon={MessageSquare}
-                        trend="up"
-                        type="number"
+                        caption={`${stats.resolutionRate}% resolution rate`}
                     />
                     <StatCard
                         title="Escalated"
                         value={stats.escalated}
-                        change={stats.escalationRate}
                         icon={MessageSquare}
-                        trend="down"
-                        type="number"
+                        caption={`${stats.escalationRate}% escalated`}
                     />
                 </div>
             )}
@@ -882,60 +591,107 @@ const ConversationsPage = () => {
             <div className="md:hidden relative">
                 <div className="overflow-x-auto scrollbar-thin pt-1 pb-2.5">
                     <div className="flex items-center gap-2 min-w-max">
-                        <div className="relative min-w-[160px] w-[160px]">
-                            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search conversations..."
-                                value={filters.search}
-                                onChange={(e) => updateFilter('search', e.target.value)}
-                                className="pl-8 h-8 text-xs"
-                            />
-                        </div>
-                        <StatusFilter
-                            value={filters.status}
+                        <FilterSearchInput
+                            placeholder="Search conversations..."
+                            value={filters.search}
                             onChange={updateFilter}
+                            className="relative min-w-[160px] w-[160px]"
+                            inputClassName="h-8 text-xs"
+                        />
+                        <FilterDropdown
+                            label="Status"
+                            options={STATUS_OPTIONS}
+                            onSelect={(v) => updateFilter('status', v)}
+                            menuLabel="Status"
                             className="h-8 text-xs"
+                            contentWidth="w-40"
                         />
-                        <IntentFilter
-                            value={filters.intent}
-                            onChange={updateFilter}
-                            businessType={businessType}
+                        <FilterDropdown
+                            label="Intent"
+                            options={getIntentOptions(businessType)}
+                            onSelect={(v) => updateFilter('intent', v)}
+                            menuLabel="Intent"
                             className="h-8 text-xs"
+                            contentWidth="w-44"
                         />
-                        <AgentFilter
-                            value={filters.agent}
-                            onChange={updateFilter}
-                            businessType={businessType}
+                        <FilterDropdown
+                            label="Agent"
+                            options={getAgentOptions(businessType)}
+                            onSelect={(v) => updateFilter('agent', v)}
+                            menuLabel="Agent"
                             className="h-8 text-xs"
+                            contentWidth="w-44"
                         />
-                        <ClearFiltersButton
-                            hasActiveFilters={hasActiveFilters}
-                            onClear={clearAllFilters}
-                            className="h-8 text-xs whitespace-nowrap"
-                        />
+                        {hasActiveFilters && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 text-xs whitespace-nowrap shrink-0"
+                                onClick={clearAllFilters}
+                            >
+                                Clear Filters
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Desktop: original UI with flex wrap */}
+            {/* Desktop: flex wrap filters */}
             <div className="hidden md:flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-                <SearchInput value={filters.search} onChange={updateFilter} />
-                <StatusFilter value={filters.status} onChange={updateFilter} />
-                <IntentFilter value={filters.intent} onChange={updateFilter} businessType={businessType} />
-                <AgentFilter value={filters.agent} onChange={updateFilter} businessType={businessType} />
-                <ClearFiltersButton
-                    hasActiveFilters={hasActiveFilters}
-                    onClear={clearAllFilters}
+                <FilterSearchInput
+                    placeholder="Search conversations..."
+                    value={filters.search}
+                    onChange={updateFilter}
+                    className="flex-1 min-w-37.5 sm:min-w-50"
                 />
+                <FilterDropdown
+                    label={`Status: ${STATUS_OPTIONS.find(s => s.value === filters.status)?.label || 'All'}`}
+                    options={STATUS_OPTIONS}
+                    onSelect={(v) => updateFilter('status', v)}
+                    menuLabel="Status"
+                />
+                <FilterDropdown
+                    label={`Intent: ${getIntentOptions(businessType).find(s => s.value === filters.intent)?.label || 'All'}`}
+                    options={getIntentOptions(businessType)}
+                    onSelect={(v) => updateFilter('intent', v)}
+                    menuLabel="Intent"
+                />
+                <FilterDropdown
+                    label={`Agent: ${getAgentOptions(businessType).find(s => s.value === filters.agent)?.label || 'All'}`}
+                    options={getAgentOptions(businessType)}
+                    onSelect={(v) => updateFilter('agent', v)}
+                    menuLabel="Agent"
+                />
+                {hasActiveFilters && (
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 sm:h-9 text-xs sm:text-sm"
+                        onClick={clearAllFilters}
+                    >
+                        Clear Filters
+                    </Button>
+                )}
             </div>
 
-            {/* Table */}
-            <ConversationTable
+            {/* Table + Pagination */}
+            <DataTable
+                columns={columns}
                 data={conversations}
-                loading={loading}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-                currentPage={filters.page}
+                getRowKey={(conv) => conv.id}
+                emptyMessage="No conversations found."
+                tableMinWidth="min-w-[900px]"
+                footer={
+                    <PaginationFooter
+                        page={filters.page}
+                        totalPages={pagination?.totalPages || 1}
+                        totalFiltered={pagination?.total || 0}
+                        startIndex={(filters.page - 1) * (pagination?.limit || 10)}
+                        endIndex={Math.min(filters.page * (pagination?.limit || 10), pagination?.total || 0)}
+                        onPageChange={handlePageChange}
+                        getPageNums={getPageNums}
+                    />
+                }
             />
         </div>
     );
