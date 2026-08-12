@@ -33,7 +33,7 @@ import {
     FilterPriceRange,
     DataTable,
     PaginationFooter,
-} from '@/components/shared/dashboard';
+} from '@/components/dashboard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
