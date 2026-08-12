@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -29,13 +29,13 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
-    StatsCard,
     FilterSearchInput,
     FilterDropdown,
     DataTable,
     PaginationFooter,
     ConfirmDialog,
 } from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -203,14 +203,8 @@ const DealsList = () => {
             header: 'Status',
             headerClassName: 'min-w-[100px] text-center',
             cellClassName: 'text-center',
-            render: (deal) => deal.isActive ? (
-                <Badge variant="default" className="text-[10px] gap-1 bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
-                    <CheckCircle className="h-3 w-3" />Active
-                </Badge>
-            ) : (
-                <Badge variant="secondary" className="text-[10px] gap-1">
-                    <XCircle className="h-3 w-3" />Inactive
-                </Badge>
+            render: (deal) => (
+                <StatusBadge status={deal.isActive} showIcon />
             ),
         },
         {
@@ -279,8 +273,8 @@ const DealsList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title="Total Deals" value={totalDeals} icon={Gift} caption="All deals" />
-                <StatsCard
+                <StatCard title="Total Deals" value={totalDeals} icon={Gift} caption="All deals" />
+                <StatCard
                     title="Active Deals"
                     value={activeDeals}
                     icon={CheckCircle}
@@ -288,7 +282,7 @@ const DealsList = () => {
                     valueClassName="text-primary"
                     caption={`${Math.round((activeDeals / totalDeals) * 100)}% of total`}
                 />
-                <StatsCard
+                <StatCard
                     title="Inactive Deals"
                     value={inactiveDeals}
                     icon={XCircle}
@@ -296,7 +290,7 @@ const DealsList = () => {
                     valueClassName="text-destructive"
                     caption="Currently hidden"
                 />
-                <StatsCard title="Total Orders" value={fmtNum(totalOrders)} icon={ShoppingBag} caption="From deals" />
+                <StatCard title="Total Orders" value={fmtNum(totalOrders)} icon={ShoppingBag} caption="From deals" />
             </div>
 
             {/* Mobile: horizontally scrollable filters */}
