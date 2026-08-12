@@ -1,47 +1,26 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuGroup,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
     ShoppingBag,
     CheckCircle,
     XCircle,
-    Filter,
-    ChevronDown,
-    Calendar,
     Clock,
     Check,
     Package,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
-    StatsCard,
     FilterSearchInput,
+    FilterDateRange,
     DataTable,
     PaginationFooter,
+    FilterDropdown,
 } from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -63,11 +42,11 @@ const DUMMY_ORDERS = [
 // ─── Status Config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-    pending:    { label: 'Pending',    icon: Clock,        colorClass: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400' },
-    confirmed:  { label: 'Confirmed',  icon: Check,        colorClass: 'bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' },
-    processing: { label: 'Processing', icon: Package,      colorClass: 'bg-purple-100 text-purple-800 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400' },
-    completed:  { label: 'Completed',  icon: CheckCircle,  colorClass: 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400' },
-    cancelled:  { label: 'Cancelled',  icon: XCircle,      colorClass: 'bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400' },
+    pending: { label: 'Pending', icon: Clock },
+    confirmed: { label: 'Confirmed', icon: Check },
+    processing: { label: 'Processing', icon: Package },
+    completed: { label: 'Completed', icon: CheckCircle },
+    cancelled: { label: 'Cancelled', icon: XCircle },
 };
 
 // ─── Filter Config ────────────────────────────────────────────────────────────
@@ -92,27 +71,11 @@ const formatOrderId = (id) => id.split('-').pop().toUpperCase();
 
 const getStatusLabel = (status) => STATUS_CONFIG[status]?.label || 'All';
 
-const getStatusBadge = (status) => {
-    const config = STATUS_CONFIG[status];
-    if (!config) return null;
-    const Icon = config.icon;
-    return (
-        <Badge variant="default" className={cn('text-[10px] font-medium gap-1', config.colorClass)}>
-            <Icon className="h-3 w-3" />
-            {config.label}
-        </Badge>
-    );
-};
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const OrdersList = () => {
     const router = useRouter();
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
-
-    const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
-    const [tempDateFrom, setTempDateFrom] = useState(filters.dateFrom);
-    const [tempDateTo, setTempDateTo] = useState(filters.dateTo);
 
     const filteredOrders = useMemo(() => {
         let filtered = [...DUMMY_ORDERS];
@@ -152,20 +115,17 @@ const OrdersList = () => {
     const endIndex = startIndex + filters.limit;
     const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
 
-    const handleDateRangeApply = () => {
-        updateFilter('dateFrom', tempDateFrom);
-        updateFilter('dateTo', tempDateTo);
-        setIsDateDialogOpen(false);
-    };
-
-    const handleDateRangeClear = () => {
-        setTempDateFrom(''); setTempDateTo('');
-        updateFilter('dateFrom', '');
-        updateFilter('dateTo', '');
-        setIsDateDialogOpen(false);
-    };
-
     const hasActiveFilters = filters.search || filters.status !== 'all' || filters.dateFrom || filters.dateTo;
+
+    // Status options for FilterDropdown
+    const statusOptions = [
+        { value: 'all', label: 'All' },
+        ...Object.entries(STATUS_CONFIG).map(([key, config]) => ({
+            value: key,
+            label: config.label,
+            icon: config.icon,
+        })),
+    ];
 
     // Column definitions
     const columns = [
@@ -199,7 +159,9 @@ const OrdersList = () => {
             header: 'Status',
             headerClassName: 'min-w-40 text-center',
             cellClassName: 'text-center',
-            render: (order) => getStatusBadge(order.status),
+            render: (order) => (
+                <StatusBadge status={order.status} />
+            ),
         },
         {
             key: 'createdAt',
@@ -224,8 +186,13 @@ const OrdersList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-                <StatsCard title="Total Orders" value={totalOrders} icon={ShoppingBag} caption="All orders" />
-                <StatsCard
+                <StatCard
+                    title="Total Orders"
+                    value={totalOrders}
+                    icon={ShoppingBag}
+                    caption="All orders"
+                />
+                <StatCard
                     title="Completed Orders"
                     value={completedOrders}
                     icon={CheckCircle}
@@ -233,7 +200,7 @@ const OrdersList = () => {
                     valueClassName="text-green-500"
                     caption={`${Math.round((completedOrders / totalOrders) * 100)}% of total`}
                 />
-                <StatsCard
+                <StatCard
                     title="Cancelled Orders"
                     value={cancelledOrders}
                     icon={XCircle}
@@ -243,79 +210,38 @@ const OrdersList = () => {
                 />
             </div>
 
-            {/* Filters — Side by Side (original layout) */}
-            <div className="flex flex-row gap-3">
+            {/* Filters — Side by Side */}
+            <div className="flex flex-row flex-wrap gap-3">
                 {/* Search */}
                 <FilterSearchInput
                     placeholder="Search by customer name, phone or order ID..."
                     value={filters.search}
                     onChange={updateFilter}
-                    className="relative flex-1 max-w-140"
+                    className="relative flex-1 min-w-[160px] max-w-140"
                 />
 
-                {/* Status Dropdown */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger render={
-                        <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-35">
-                            <Filter className="h-3.5 w-3.5" />
-                            Status: {filters.status === 'all' ? 'All' : getStatusLabel(filters.status)}
-                            <ChevronDown className="h-3.5 w-3.5 ml-auto" />
-                        </Button>
-                    } />
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel>Status</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => updateFilter('status', 'all')}>All</DropdownMenuItem>
-                            {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                                <DropdownMenuItem key={key} onClick={() => updateFilter('status', key)}>
-                                    <config.icon className="mr-2 h-3.5 w-3.5" />{config.label}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Status Dropdown - using FilterDropdown */}
+                <FilterDropdown
+                    label={`Status: ${getStatusLabel(filters.status)}`}
+                    options={statusOptions}
+                    onSelect={(v) => updateFilter('status', v)}
+                    menuLabel="Status"
+                    className="min-w-[120px]"
+                />
 
-                {/* Date Range Filter — md+ only, kept as-is */}
-                <div className="hidden md:flex">
-                    <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-                        <DialogTrigger render={
-                            <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm gap-1 min-w-35">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {filters.dateFrom || filters.dateTo ? (
-                                    <span className="text-primary">
-                                        {filters.dateFrom && filters.dateTo
-                                            ? `${new Date(filters.dateFrom).toLocaleDateString()} - ${new Date(filters.dateTo).toLocaleDateString()}`
-                                            : filters.dateFrom
-                                                ? `From ${new Date(filters.dateFrom).toLocaleDateString()}`
-                                                : `To ${new Date(filters.dateTo).toLocaleDateString()}`}
-                                    </span>
-                                ) : 'Date Range'}
-                                <ChevronDown className="h-3.5 w-3.5 ml-auto" />
-                            </Button>
-                        } />
-                        <DialogContent className="sm:max-w-106.25">
-                            <DialogHeader>
-                                <DialogTitle>Date Range</DialogTitle>
-                                <DialogDescription>Select a date range to filter orders.</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">From</label>
-                                    <Input type="date" value={tempDateFrom} onChange={(e) => setTempDateFrom(e.target.value)} className="h-10 text-sm" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">To</label>
-                                    <Input type="date" value={tempDateTo} onChange={(e) => setTempDateTo(e.target.value)} className="h-10 text-sm" />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={handleDateRangeClear}>Clear</Button>
-                                <Button onClick={handleDateRangeApply}>Apply</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
+                {/* Date Range Filter - using FilterDateRange */}
+                <FilterDateRange
+                    dateFrom={filters.dateFrom}
+                    dateTo={filters.dateTo}
+                    onApply={(from, to) => {
+                        updateFilter('dateFrom', from);
+                        updateFilter('dateTo', to);
+                    }}
+                    onClear={() => {
+                        updateFilter('dateFrom', '');
+                        updateFilter('dateTo', '');
+                    }}
+                />
 
                 {/* Clear Filters Button */}
                 {hasActiveFilters && (
@@ -323,11 +249,7 @@ const OrdersList = () => {
                         variant="ghost"
                         size="sm"
                         className="h-8 sm:h-9 text-xs sm:text-sm"
-                        onClick={() => {
-                            resetFilters(FILTER_DEFAULTS);
-                            setTempDateFrom('');
-                            setTempDateTo('');
-                        }}
+                        onClick={() => resetFilters(FILTER_DEFAULTS)}
                     >
                         Clear Filters
                     </Button>
