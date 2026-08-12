@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { BarChart3 } from 'lucide-react';
-import StatCard from '@/components/analytics/StatCard';
+import StatCard from '@/components/shared/StatCard';
 import RevenueOrdersChart from '@/components/analytics/RevenueOrdersChart';
 import OrderStatusChart from '@/components/analytics/OrderStatusChart';
 import VerticalBarChart from '@/components/analytics/VerticalBarChart';
