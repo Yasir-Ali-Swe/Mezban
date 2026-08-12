@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
     Card,
@@ -9,7 +8,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import {
     Table,
     TableBody,
@@ -23,18 +22,16 @@ import {
     DollarSign,
     Clock,
     Utensils,
-    Plus,
     Gift,
     Users,
     Eye,
     AlertTriangle,
     PackagePlus,
-    Tag,
     ShoppingBag,
     UserPlus,
-    TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import StatCard from '@/components/shared/StatCard';
 
 // Dummy data
 const DUMMY_STATS = {
@@ -75,25 +72,6 @@ const QUICK_ACTIONS = [
     { icon: Users, label: 'View Customers', href: '/customers' },
 ];
 
-const getStatusBadge = (status) => {
-    const variants = {
-        pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-        completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    };
-    return variants[status] || 'bg-gray-100 text-gray-800';
-};
-
-const getAlertPriority = (priority) => {
-    const variants = {
-        high: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-        medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    };
-    return variants[priority] || 'bg-gray-100 text-gray-800';
-};
-
 const RestaurantDashboard = () => {
     return (
         <div className="space-y-6 pb-8">
@@ -105,51 +83,38 @@ const RestaurantDashboard = () => {
                 </p>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - Using StatCard */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today&apos;s Orders</CardTitle>
-                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{DUMMY_STATS.todayOrders}</div>
-                        <p className="text-xs text-muted-foreground">+15% from yesterday</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today&apos;s Revenue</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">Rs. {DUMMY_STATS.todayRevenue.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">+10% from yesterday</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
-                        <Gift className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-primary">{DUMMY_STATS.activeDeals}</div>
-                        <p className="text-xs text-muted-foreground">Marketing overview</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-                        <Utensils className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{DUMMY_STATS.lowStockItems}</div>
-                        <p className="text-xs text-muted-foreground">Need restocking</p>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    title="Today's Orders"
+                    value={DUMMY_STATS.todayOrders}
+                    change={15}
+                    icon={ShoppingCart}
+                    trend="up"
+                />
+                <StatCard
+                    title="Today's Revenue"
+                    value={DUMMY_STATS.todayRevenue}
+                    change={10}
+                    icon={DollarSign}
+                    trend="up"
+                    type="currency"
+                />
+                <StatCard
+                    title="Active Deals"
+                    value={DUMMY_STATS.activeDeals}
+                    icon={Gift}
+                    valueClassName="text-primary"
+                    caption="Marketing overview"
+                />
+                <StatCard
+                    title="Low Stock Items"
+                    value={DUMMY_STATS.lowStockItems}
+                    change={8}
+                    icon={Utensils}
+                    trend="up"
+                    valueClassName="text-red-600"
+                />
             </div>
 
             {/* Recent Orders & Quick Actions - Side by Side */}
@@ -187,9 +152,7 @@ const RestaurantDashboard = () => {
                                                 Rs. {order.total.toLocaleString()}
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                <Badge className={cn("text-[10px]", getStatusBadge(order.status))}>
-                                                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                                                </Badge>
+                                                <StatusBadge status={order.status} />
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -260,9 +223,7 @@ const RestaurantDashboard = () => {
                                                 {conv.lastMessage}
                                             </TableCell>
                                             <TableCell className="text-sm">
-                                                <Badge variant="outline" className="text-[10px]">
-                                                    {conv.agent}
-                                                </Badge>
+                                                <StatusBadge status="intent" label={conv.agent} />
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground">
                                                 {conv.time}
@@ -295,9 +256,7 @@ const RestaurantDashboard = () => {
                                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
                             >
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <Badge className={cn("text-[10px] shrink-0", getAlertPriority(alert.priority))}>
-                                        {alert.priority}
-                                    </Badge>
+                                    <StatusBadge status={alert.priority} />
                                     <span className="text-sm truncate">{alert.message}</span>
                                 </div>
                                 <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 ml-2">
