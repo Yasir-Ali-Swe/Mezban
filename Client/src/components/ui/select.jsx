@@ -48,10 +48,9 @@ function SelectTrigger({
       )}
       {...props}>
       {children}
-      <SelectPrimitive.Icon
-        render={
-          <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
-        } />
+      <SelectPrimitive.Icon className="pointer-events-none flex shrink-0 items-center justify-center">
+        <ChevronDownIcon className="size-4 text-muted-foreground" />
+      </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
 }
