@@ -9,7 +9,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import {
     Table,
     TableBody,
@@ -34,6 +34,7 @@ import {
     UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import StatCard from '@/components/shared/StatCard';
 
 // Dummy data
 const DUMMY_STATS = {
@@ -74,25 +75,6 @@ const QUICK_ACTIONS = [
     { icon: UserPlus, label: 'Customers', href: '/customers' },
 ];
 
-const getStatusBadge = (status) => {
-    const variants = {
-        pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-        completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    };
-    return variants[status] || 'bg-gray-100 text-gray-800';
-};
-
-const getAlertPriority = (priority) => {
-    const variants = {
-        high: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-        medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    };
-    return variants[priority] || 'bg-gray-100 text-gray-800';
-};
-
 const EcommerceDashboard = () => {
     return (
         <div className="space-y-6 pb-8">
@@ -104,51 +86,39 @@ const EcommerceDashboard = () => {
                 </p>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - Using StatCard with change and trend */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today&apos;s Orders</CardTitle>
-                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{DUMMY_STATS.todayOrders}</div>
-                        <p className="text-xs text-muted-foreground">+12% from yesterday</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today&apos;s Revenue</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">Rs. {DUMMY_STATS.todayRevenue.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">+8% from yesterday</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">{DUMMY_STATS.pendingOrders}</div>
-                        <p className="text-xs text-muted-foreground">Requires attention</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Low Stock Products</CardTitle>
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{DUMMY_STATS.lowStockProducts}</div>
-                        <p className="text-xs text-muted-foreground">Need restocking</p>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    title="Today's Orders"
+                    value={DUMMY_STATS.todayOrders}
+                    change={12}
+                    icon={ShoppingCart}
+                    trend="up"
+                />
+                <StatCard
+                    title="Today's Revenue"
+                    value={DUMMY_STATS.todayRevenue}
+                    change={8}
+                    icon={DollarSign}
+                    trend="up"
+                    type="currency"
+                />
+                <StatCard
+                    title="Pending Orders"
+                    value={DUMMY_STATS.pendingOrders}
+                    change={-3}
+                    icon={Clock}
+                    trend="down"
+                    valueClassName="text-yellow-600"
+                />
+                <StatCard
+                    title="Low Stock Products"
+                    value={DUMMY_STATS.lowStockProducts}
+                    change={5}
+                    icon={Package}
+                    trend="up"
+                    valueClassName="text-red-600"
+                />
             </div>
 
             {/* Recent Orders & Quick Actions - Side by Side */}
@@ -186,9 +156,7 @@ const EcommerceDashboard = () => {
                                                 Rs. {order.total.toLocaleString()}
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                <Badge className={cn("text-[10px]", getStatusBadge(order.status))}>
-                                                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                                                </Badge>
+                                                <StatusBadge status={order.status} />
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -259,9 +227,7 @@ const EcommerceDashboard = () => {
                                                 {conv.lastMessage}
                                             </TableCell>
                                             <TableCell className="text-sm">
-                                                <Badge variant="outline" className="text-[10px]">
-                                                    {conv.agent}
-                                                </Badge>
+                                                <StatusBadge status="intent" label={conv.agent} />
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground">
                                                 {conv.time}
@@ -294,9 +260,7 @@ const EcommerceDashboard = () => {
                                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
                             >
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <Badge className={cn("text-[10px] shrink-0", getAlertPriority(alert.priority))}>
-                                        {alert.priority}
-                                    </Badge>
+                                    <StatusBadge status={alert.priority} />
                                     <span className="text-sm truncate">{alert.message}</span>
                                 </div>
                                 <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 ml-2">
