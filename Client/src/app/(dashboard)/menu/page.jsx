@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -30,7 +30,6 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
-    StatsCard,
     FilterSearchInput,
     FilterDropdown,
     FilterPriceRange,
@@ -38,6 +37,7 @@ import {
     PaginationFooter,
     ConfirmDialog,
 } from '@/components/dashboard';
+import StatCard from '@/components/shared/StatCard';
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -263,7 +263,7 @@ const MenuList = () => {
             header: 'Category',
             headerClassName: 'min-w-30',
             render: (item) => (
-                <Badge variant="outline" className="text-[10px]">{item.category}</Badge>
+                <StatusBadge status="intent" label={item.category} />
             ),
         },
         {
@@ -278,16 +278,11 @@ const MenuList = () => {
             header: 'Status',
             headerClassName: 'min-w-25 text-center',
             cellClassName: 'text-center',
-            render: (item) => item.isAvailable ? (
-                <Badge variant="default" className="text-[10px] gap-1 bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
-                    <CheckCircle className="h-3 w-3" />
-                    Available
-                </Badge>
-            ) : (
-                <Badge variant="secondary" className="text-[10px] gap-1">
-                    <XCircle className="h-3 w-3" />
-                    Unavailable
-                </Badge>
+            render: (item) => (
+                <StatusBadge
+                    status={item.isAvailable ? 'available' : 'unavailable'}
+                    showIcon
+                />
             ),
         },
         {
@@ -369,8 +364,8 @@ const MenuList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-                <StatsCard title="Total Menu Items" value={totalItems} icon={Utensils} caption="All items" />
-                <StatsCard
+                <StatCard title="Total Menu Items" value={totalItems} icon={Utensils} caption="All items" />
+                <StatCard
                     title="Available Items"
                     value={availableItems}
                     icon={PackageOpen}
@@ -378,7 +373,7 @@ const MenuList = () => {
                     valueClassName="text-primary"
                     caption={`${Math.round((availableItems / totalItems) * 100)}% of total`}
                 />
-                <StatsCard
+                <StatCard
                     title="Unavailable Items"
                     value={unavailableItems}
                     icon={AlertTriangle}
@@ -386,7 +381,7 @@ const MenuList = () => {
                     valueClassName="text-destructive"
                     caption="Not available"
                 />
-                <StatsCard title="Categories" value={categoriesCount} icon={Layers} caption="Total categories" />
+                <StatCard title="Categories" value={categoriesCount} icon={Layers} caption="Total categories" />
             </div>
 
             {/* Filters */}
