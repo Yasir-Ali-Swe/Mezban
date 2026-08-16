@@ -161,7 +161,7 @@ const EcommerceDashboard = () => {
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" className="h-7 w-7">
                                                     <Link href={`/orders/${order.id}`}>
-                                                        <Eye className="h-3.5 w-3.5" />
+                                                        <Eye className="h-3.5 w-3.5 cursor-pointer" />
                                                     </Link>
                                                 </Button>
                                             </TableCell>
@@ -203,7 +203,7 @@ const EcommerceDashboard = () => {
                 <Card className="flex flex-col">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm font-medium">Recent Conversations</CardTitle>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="cursor-pointer">
                             View All
                         </Button>
                     </CardHeader>
@@ -233,7 +233,7 @@ const EcommerceDashboard = () => {
                                                 {conv.time}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer">
                                                     <Eye className="h-3.5 w-3.5" />
                                                 </Button>
                                             </TableCell>
@@ -263,9 +263,13 @@ const EcommerceDashboard = () => {
                                     <StatusBadge status={alert.priority} />
                                     <span className="text-sm truncate">{alert.message}</span>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 ml-2">
-                                    <Link href="/products">View</Link>
-                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    nativeButton={false}
+                                    className="h-7 text-xs shrink-0 ml-2 cursor-pointer"
+                                    render={<Link href="/products">View</Link>}
+                                />
                             </div>
                         ))}
                     </CardContent>
