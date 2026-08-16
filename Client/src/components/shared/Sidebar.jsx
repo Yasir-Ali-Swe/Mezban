@@ -292,12 +292,6 @@ export const Sidebar = () => {
     const pathname = usePathname();
     const { state } = useSidebar();
     const isCollapsed = state === 'collapsed';
-
-    // IMPORTANT: do NOT read localStorage in a useState initializer or sync
-    // it via useEffect+setState -- see the useSyncExternalStore helpers
-    // above for why. getServerSnapshot ('RESTAURANT' / null) is what the
-    // server renders and what the client's first paint reads too, so
-    // there's no hydration mismatch, and no extra render pass afterward.
     const businessType = useSyncExternalStore(
         emptySubscribe,
         getBusinessTypeSnapshot,
@@ -334,12 +328,6 @@ export const Sidebar = () => {
     }, [routes, isPathActive]);
 
     const [openDropdown, setOpenDropdown] = useState(initialOpenDropdown);
-
-    // Track the pathname we last synced against. When pathname changes,
-    // adjust openDropdown during render (React's recommended pattern for
-    // "adjusting state when a prop changes") instead of in a useEffect.
-    // This only re-syncs on navigation, so it no longer stomps on a
-    // manual submenu toggle (which happens via onOpenChange, not here).
     const [prevPathname, setPrevPathname] = useState(pathname);
 
     if (pathname !== prevPathname) {
@@ -446,7 +434,7 @@ export const Sidebar = () => {
                 </div>
             </SidebarHeader>
 
-            <SidebarContent className="hide-scrollbar">
+            <SidebarContent className="scrollbarHide">
                 <SidebarGroup>
                     {!isCollapsed && (
                         <SidebarGroupLabel className="text-muted-foreground uppercase tracking-wider text-xs">
