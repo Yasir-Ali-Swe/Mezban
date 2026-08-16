@@ -329,3 +329,11 @@ html {
 .chart-scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+.scrollbarHide {
+    scrollbar-width: none;
+}
+
+.scrollbarHide::-webkit-scrollbar {
+    display: none;
+}
