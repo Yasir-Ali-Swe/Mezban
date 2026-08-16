@@ -33,13 +33,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// --- Reading businessType/user from localStorage ---
-// Same reasoning as Sidebar.jsx: localStorage is an external system, so
-// useSyncExternalStore is the correct tool here, not useEffect+setState
-// (which trips the "no setState directly in an effect" rule). subscribe
-// only notifies on the browser's native 'storage' event (cross-tab
-// updates); getServerSnapshot matches what the client starts with, so
-// there's nothing to reconcile during hydration.
 const emptySubscribe = (callback) => {
     window.addEventListener('storage', callback);
     return () => window.removeEventListener('storage', callback);
@@ -48,9 +41,6 @@ const emptySubscribe = (callback) => {
 const getBusinessTypeSnapshot = () => localStorage.getItem('businessType') || 'RESTAURANT';
 const getBusinessTypeServerSnapshot = () => 'RESTAURANT';
 
-// Cache the parsed user so we don't hand useSyncExternalStore a new object
-// reference on every call (that would look like "the store changed" on
-// every render and force a loop) unless the raw string actually changed.
 let cachedUserRaw;
 let cachedUser = null;
 const getUserSnapshot = () => {
@@ -81,16 +71,20 @@ const breadcrumbConfig = {
     '/customers': 'Customers',
     '/products': 'Products',
     '/products/new': 'New Product',
+    '/products/[productId]/edit': 'Edit Product',
     '/menu': 'Menu',
     '/menu/new': 'New Menu Item',
+    '/menu/[id]': 'Edit Menu Item',
     '/deals': 'Deals',
     '/deals/new': 'New Deal',
+    "/deals/[id]": 'Edit Deal',
     '/settings': 'Settings',
     '/settings/info': 'Business Info',
     '/settings/knowledge': 'Business Knowledge',
     '/settings/profile': 'My Profile',
     '/settings/telegram': 'Telegram',
     '/orders': 'Orders',
+    '/orders/[orderId]': 'Order Details',
     '/onboarding/business-type': 'Business Type',
     '/onboarding/business-info': 'Business Info',
     '/onboarding/business-knowledge': 'Business Knowledge',
@@ -102,8 +96,10 @@ const getBreadcrumbs = (pathname) => {
     const breadcrumbs = [];
     let currentPath = '';
 
-    for (const segment of segments) {
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
         currentPath += `/${segment}`;
+
         // Handle dynamic routes
         const matchingKey = Object.keys(breadcrumbConfig).find(key => {
             if (key.includes('[')) {
@@ -111,6 +107,7 @@ const getBreadcrumbs = (pathname) => {
                 const regex = new RegExp(`^${pattern}$`);
                 return regex.test(currentPath);
             }
+
             return key === currentPath;
         });
 
@@ -119,14 +116,38 @@ const getBreadcrumbs = (pathname) => {
                 path: currentPath,
                 label: breadcrumbConfig[matchingKey],
             });
-        } else {
-            // For dynamic segments not in config
-            const label = segment.charAt(0).toUpperCase() + segment.slice(1);
-            breadcrumbs.push({
-                path: currentPath,
-                label: label,
-            });
+
+            continue;
         }
+
+        // Check whether this segment is a dynamic parameter
+        const isDynamicSegment = Object.keys(breadcrumbConfig).some(key => {
+            const configSegments = key.split('/').filter(Boolean);
+
+            if (configSegments.length <= i) {
+                return false;
+            }
+
+            const configSegment = configSegments[i];
+
+            return (
+                configSegment.startsWith('[') &&
+                configSegment.endsWith(']')
+            );
+        });
+
+        // Don't add dynamic IDs to breadcrumbs
+        if (isDynamicSegment) {
+            continue;
+        }
+
+        const label =
+            segment.charAt(0).toUpperCase() + segment.slice(1);
+
+        breadcrumbs.push({
+            path: currentPath,
+            label,
+        });
     }
 
     return breadcrumbs;
