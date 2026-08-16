@@ -289,12 +289,13 @@ const ProductsList = () => {
                         Manage your product catalog.
                     </p>
                 </div>
-                <Button className="w-35 flex items-center justify-center md:w-auto">
-                    <Link href="/products/new" className="flex items-center">
-                        <Plus className="mr-1.5 h-4 w-4" />
+                <Link href="/products/new" className="flex items-center">
+                    <Button className="w-35 flex items-center justify-center md:w-auto cursor-pointer">
+                        <Plus className="h-4 w-4" />
                         Add Product
-                    </Link>
-                </Button>
+                    </Button>
+                </Link>
+
             </div>
 
             {/* Stats Cards - Using StatCard */}
