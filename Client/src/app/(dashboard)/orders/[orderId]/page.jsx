@@ -460,22 +460,6 @@ const OrderDetails = () => {
             setIsUpdating(false);
         }
     };
-
-    const handleCopyOrderNumber = async () => {
-        if (!order) return;
-        try {
-            await navigator.clipboard.writeText(order.orderNumber);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-        } catch {
-            toast.add({
-                type: "error",
-                title: "Error!",
-                description: "Could not copy order number.",
-            });
-        }
-    };
-
     if (isLoading) {
         return <OrderDetailsSkeleton />;
     }
@@ -521,13 +505,6 @@ const OrderDetails = () => {
                             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                                 {order.orderNumber}
                             </h1>
-                            <button
-                                onClick={handleCopyOrderNumber}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                aria-label="Copy order number"
-                            >
-                                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
                             <StatusPill status={order.status} />
                         </div>
                         <p className="text-sm text-muted-foreground">
