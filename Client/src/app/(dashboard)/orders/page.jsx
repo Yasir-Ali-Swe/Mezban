@@ -25,18 +25,18 @@ import StatCard from '@/components/shared/StatCard';
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
 const DUMMY_ORDERS = [
-    { _id: 'ord_001', orderNumber: 'ORD-2024-001', customer: { name: 'John Doe', phone: '+1 (555) 123-4567' }, total: 157.99, status: 'completed', createdAt: '2024-01-15T10:30:00Z', items: 3 },
-    { _id: 'ord_002', orderNumber: 'ORD-2024-002', customer: { name: 'Jane Smith', phone: '+1 (555) 234-5678' }, total: 89.50, status: 'pending', createdAt: '2024-01-15T11:45:00Z', items: 2 },
-    { _id: 'ord_003', orderNumber: 'ORD-2024-003', customer: { name: 'Bob Johnson', phone: '+1 (555) 345-6789' }, total: 234.99, status: 'confirmed', createdAt: '2024-01-14T14:20:00Z', items: 5 },
-    { _id: 'ord_004', orderNumber: 'ORD-2024-004', customer: { name: 'Sarah Williams', phone: '+1 (555) 456-7890' }, total: 45.00, status: 'cancelled', createdAt: '2024-01-14T09:15:00Z', items: 1 },
-    { _id: 'ord_005', orderNumber: 'ORD-2024-005', customer: { name: 'Mike Brown', phone: '+1 (555) 567-8901' }, total: 312.50, status: 'processing', createdAt: '2024-01-13T16:45:00Z', items: 4 },
-    { _id: 'ord_006', orderNumber: 'ORD-2024-006', customer: { name: 'Emily Davis', phone: '+1 (555) 678-9012' }, total: 76.99, status: 'completed', createdAt: '2024-01-13T11:00:00Z', items: 2 },
-    { _id: 'ord_007', orderNumber: 'ORD-2024-007', customer: { name: 'David Wilson', phone: '+1 (555) 789-0123' }, total: 189.99, status: 'pending', createdAt: '2024-01-12T13:20:00Z', items: 3 },
-    { _id: 'ord_008', orderNumber: 'ORD-2024-008', customer: { name: 'Lisa Anderson', phone: '+1 (555) 890-1234' }, total: 54.50, status: 'confirmed', createdAt: '2024-01-12T10:00:00Z', items: 1 },
-    { _id: 'ord_009', orderNumber: 'ORD-2024-009', customer: { name: 'Tom Martinez', phone: '+1 (555) 901-2345' }, total: 423.99, status: 'processing', createdAt: '2024-01-11T15:30:00Z', items: 6 },
-    { _id: 'ord_010', orderNumber: 'ORD-2024-010', customer: { name: 'Rachel Taylor', phone: '+1 (555) 012-3456' }, total: 67.50, status: 'cancelled', createdAt: '2024-01-11T08:45:00Z', items: 2 },
-    { _id: 'ord_011', orderNumber: 'ORD-2024-011', customer: { name: 'Chris Lee', phone: '+1 (555) 123-7890' }, total: 145.00, status: 'completed', createdAt: '2024-01-10T14:10:00Z', items: 3 },
-    { _id: 'ord_012', orderNumber: 'ORD-2024-012', customer: { name: 'Amanda White', phone: '+1 (555) 234-8901' }, total: 98.99, status: 'pending', createdAt: '2024-01-10T09:30:00Z', items: 2 },
+    { _id: 'ord_001', orderNumber: 'ORD-2024-001', customer: { name: 'Muhammad Ali', phone: '+92 300 1234567' }, total: 2450, status: 'completed', createdAt: '2024-01-15T10:30:00Z', items: 3 },
+    { _id: 'ord_002', orderNumber: 'ORD-2024-002', customer: { name: 'Usman Khan', phone: '+92 321 2345678' }, total: 1850, status: 'preparing', createdAt: '2024-01-15T11:45:00Z', items: 2 },
+    { _id: 'ord_003', orderNumber: 'ORD-2024-003', customer: { name: 'Fatima Zahra', phone: '+92 333 3456789' }, total: 3200, status: 'confirmed', createdAt: '2024-01-14T14:20:00Z', items: 5 },
+    { _id: 'ord_004', orderNumber: 'ORD-2024-004', customer: { name: 'Ayesha Malik', phone: '+92 345 4567890' }, total: 650, status: 'cancelled', createdAt: '2024-01-14T09:15:00Z', items: 1 },
+    { _id: 'ord_005', orderNumber: 'ORD-2024-005', customer: { name: 'Bilal Ahmed', phone: '+92 312 5678901' }, total: 4150, status: 'ready', createdAt: '2024-01-13T16:45:00Z', items: 4 },
+    { _id: 'ord_006', orderNumber: 'ORD-2024-006', customer: { name: 'Zainab Hussain', phone: '+92 301 6789012' }, total: 1250, status: 'completed', createdAt: '2024-01-13T11:00:00Z', items: 2 },
+    { _id: 'ord_007', orderNumber: 'ORD-2024-007', customer: { name: 'Hamza Tariq', phone: '+92 322 7890123' }, total: 2900, status: 'pending', createdAt: '2024-01-12T13:20:00Z', items: 3 },
+    { _id: 'ord_008', orderNumber: 'ORD-2024-008', customer: { name: 'Sana Rehman', phone: '+92 334 8901234' }, total: 950, status: 'confirmed', createdAt: '2024-01-12T10:00:00Z', items: 1 },
+    { _id: 'ord_009', orderNumber: 'ORD-2024-009', customer: { name: 'Omar Farooq', phone: '+92 346 9012345' }, total: 5800, status: 'preparing', createdAt: '2024-01-11T15:30:00Z', items: 6 },
+    { _id: 'ord_010', orderNumber: 'ORD-2024-010', customer: { name: 'Hira Shah', phone: '+92 302 0123456' }, total: 1100, status: 'cancelled', createdAt: '2024-01-11T08:45:00Z', items: 2 },
+    { _id: 'ord_011', orderNumber: 'ORD-2024-011', customer: { name: 'Hassan Raza', phone: '+92 323 1237890' }, total: 2150, status: 'completed', createdAt: '2024-01-10T14:10:00Z', items: 3 },
+    { _id: 'ord_012', orderNumber: 'ORD-2024-012', customer: { name: 'Mariam Siddiqui', phone: '+92 335 2348901' }, total: 1650, status: 'pending', createdAt: '2024-01-10T09:30:00Z', items: 2 },
 ];
 
 // ─── Status Config ────────────────────────────────────────────────────────────
@@ -44,7 +44,8 @@ const DUMMY_ORDERS = [
 const STATUS_CONFIG = {
     pending: { label: 'Pending', icon: Clock },
     confirmed: { label: 'Confirmed', icon: Check },
-    processing: { label: 'Processing', icon: Package },
+    preparing: { label: 'Preparing', icon: Clock },
+    ready: { label: 'Ready', icon: CheckCircle },
     completed: { label: 'Completed', icon: CheckCircle },
     cancelled: { label: 'Cancelled', icon: XCircle },
 };
@@ -152,7 +153,7 @@ const OrdersList = () => {
             header: 'Total',
             headerClassName: 'min-w-25 text-right',
             cellClassName: 'text-right font-medium',
-            render: (order) => `$${order.total.toFixed(2)}`,
+            render: (order) => `Rs. ${order.total.toLocaleString()}`,
         },
         {
             key: 'status',
