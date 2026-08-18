@@ -127,7 +127,8 @@ const yearlyAIVsManual = generateYearlyData(0, 0).map((item, index) => ({
 // Categorical Data
 const orderStatusCategories = [
   "Completed",
-  "Processing",
+  "Ready",
+  "Preparing",
   "Confirmed",
   "Pending",
   "Cancelled",
@@ -136,15 +137,15 @@ const orderStatusCategories = [
 const generateOrderStatus = (total, distribution) => {
   return orderStatusCategories.map((name, index) => ({
     name,
-    value: Math.round(total * distribution[index]),
+    value: Math.round(total * (distribution[index] || 0.1)),
   }));
 };
 
 const intentCategories = [
-  "Product Search",
+  "Menu Search",
   "Place Order",
   "Order Status",
-  "Product Info",
+  "Menu Info",
   "Support",
 ];
 
@@ -156,7 +157,7 @@ const generateIntentDistribution = (total, distribution) => {
   }));
 };
 
-const agentCategories = ["Product Agent", "Order Agent", "Support Agent"];
+const agentCategories = ["Menu Agent", "Order Agent", "Support Agent"];
 
 const generateAgentUsage = (total, distribution) => {
   return agentCategories.map((name, index) => ({
@@ -166,11 +167,11 @@ const generateAgentUsage = (total, distribution) => {
 };
 
 const productCategories = [
-  "Wireless Headphones",
-  "Smart Watch",
-  "Keyboard",
-  "Power Bank",
-  "USB Cable",
+  "Chicken Karahi",
+  "Mutton Karahi",
+  "Chicken Biryani",
+  "Garlic Naan",
+  "Mango Lassi",
 ];
 
 const generateTopProducts = (total, distribution) => {
@@ -181,11 +182,11 @@ const generateTopProducts = (total, distribution) => {
 };
 
 const categoryCategories = [
-  "Electronics",
-  "Accessories",
-  "Fashion",
-  "Home",
-  "Sports",
+  "Main Course",
+  "BBQ",
+  "Rice",
+  "Breads",
+  "Beverages",
 ];
 
 const generateCategoryPerformance = (total, distribution) => {
@@ -211,7 +212,7 @@ const generateDealPerformance = (total, distribution) => {
 
 // Agent Performance Data
 const agentPerformanceCategories = [
-  "Product Agent",
+  "Menu Agent",
   "Order Agent",
   "Support Agent",
 ];
@@ -279,11 +280,11 @@ export const ANALYTICS_DATA = {
       lowStock: 8,
       outOfStock: 3,
       items: [
-        { name: "Wireless Mouse", stock: 4, status: "Low" },
-        { name: "Keyboard", stock: 2, status: "Low" },
-        { name: "USB Cable", stock: 0, status: "Out of Stock" },
-        { name: "Power Bank", stock: 1, status: "Low" },
-        { name: "HDMI Cable", stock: 0, status: "Out of Stock" },
+        { name: "Chicken Karahi (Half)", stock: 4, status: "Low" },
+        { name: "Garlic Naan", stock: 2, status: "Low" },
+        { name: "Mutton Karahi (Full)", stock: 0, status: "Out of Stock" },
+        { name: "Mango Lassi", stock: 1, status: "Low" },
+        { name: "Fresh Lime", stock: 0, status: "Out of Stock" },
       ],
     },
   },
@@ -335,11 +336,11 @@ export const ANALYTICS_DATA = {
       lowStock: 8,
       outOfStock: 3,
       items: [
-        { name: "Wireless Mouse", stock: 4, status: "Low" },
-        { name: "Keyboard", stock: 2, status: "Low" },
-        { name: "USB Cable", stock: 0, status: "Out of Stock" },
-        { name: "Power Bank", stock: 1, status: "Low" },
-        { name: "HDMI Cable", stock: 0, status: "Out of Stock" },
+        { name: "Chicken Karahi (Half)", stock: 4, status: "Low" },
+        { name: "Garlic Naan", stock: 2, status: "Low" },
+        { name: "Mutton Karahi (Full)", stock: 0, status: "Out of Stock" },
+        { name: "Mango Lassi", stock: 1, status: "Low" },
+        { name: "Fresh Lime", stock: 0, status: "Out of Stock" },
       ],
     },
   },
@@ -391,11 +392,11 @@ export const ANALYTICS_DATA = {
       lowStock: 8,
       outOfStock: 3,
       items: [
-        { name: "Wireless Mouse", stock: 4, status: "Low" },
-        { name: "Keyboard", stock: 2, status: "Low" },
-        { name: "USB Cable", stock: 0, status: "Out of Stock" },
-        { name: "Power Bank", stock: 1, status: "Low" },
-        { name: "HDMI Cable", stock: 0, status: "Out of Stock" },
+        { name: "Chicken Karahi (Half)", stock: 4, status: "Low" },
+        { name: "Garlic Naan", stock: 2, status: "Low" },
+        { name: "Mutton Karahi (Full)", stock: 0, status: "Out of Stock" },
+        { name: "Mango Lassi", stock: 1, status: "Low" },
+        { name: "Fresh Lime", stock: 0, status: "Out of Stock" },
       ],
     },
   },
