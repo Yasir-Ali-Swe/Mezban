@@ -81,8 +81,7 @@ const emptySubscribe = (callback) => {
     return () => window.removeEventListener('storage', callback);
 };
 
-const getBusinessTypeSnapshot = () => localStorage.getItem('businessType') || 'RESTAURANT';
-const getBusinessTypeServerSnapshot = () => 'RESTAURANT';
+
 
 let cachedUserRaw;
 let cachedUser = null;
@@ -136,91 +135,10 @@ const ICONS = {
     Send
 };
 
-const getDashboardRoutes = (businessType) => {
-    const isEcommerce = businessType === 'ECOMMERCE';
-
-    // --- Restaurant: explicit order, only Analytics / Settings / Profile collapse ---
-    if (!isEcommerce) {
-        return [
-            {
-                path: '/restaurant',
-                label: 'Dashboard',
-                icon: 'LayoutDashboard',
-                section: 'main',
-            },
-            {
-                path: '/analytics',
-                label: 'Analytics',
-                icon: 'TrendingUp',
-                section: 'main',
-                children: [
-                    { path: '/business-analytics', label: 'Business Analytics' },
-                    { path: '/ai-analytics', label: 'AI Analytics' },
-                ]
-            },
-            {
-                path: '/menu',
-                label: 'Menu',
-                icon: 'Utensils',
-                section: 'main',
-            },
-            {
-                path: '/deals',
-                label: 'Deals',
-                icon: 'Tags',
-                section: 'main',
-            },
-            {
-                path: '/categories',
-                label: 'Categories',
-                icon: 'Layers',
-                section: 'main',
-            },
-            {
-                path: '/orders',
-                label: 'Orders',
-                icon: 'ShoppingBag',
-                section: 'main',
-            },
-            {
-                path: '/customers',
-                label: 'Customers',
-                icon: 'Users',
-                section: 'main',
-            },
-            {
-                path: '/conversations',
-                label: 'Conversations',
-                icon: 'MessageSquare',
-                section: 'main',
-            },
-            {
-                path: '/settings-group',
-                label: 'Settings',
-                icon: 'Settings',
-                section: 'account',
-                children: [
-                    { path: '/settings/knowledge', label: 'Business Knowledge' },
-                    { path: '/settings/telegram', label: 'Telegram' },
-                ]
-            },
-            {
-                path: '/profile-group',
-                label: 'Profile',
-                icon: 'User',
-                section: 'account',
-                children: [
-                    { path: '/settings/profile', label: 'My Profile' },
-                    { path: '/settings/info', label: 'Business Profile' },
-                ]
-            },
-        ];
-    }
-
-    // --- Ecommerce: explicit order, only Analytics / Settings / Profile collapse ---
+const getDashboardRoutes = () => {
     return [
         {
-            path: '/ecommerce',
+            path: '/restaurant',
             label: 'Dashboard',
             icon: 'LayoutDashboard',
             section: 'main',
@@ -236,15 +154,21 @@ const getDashboardRoutes = (businessType) => {
             ]
         },
         {
-            path: '/categories',
-            label: 'Categories',
-            icon: 'Layers',
+            path: '/menu',
+            label: 'Menu',
+            icon: 'Utensils',
             section: 'main',
         },
         {
-            path: '/products',
-            label: 'Products',
-            icon: 'Package',
+            path: '/deals',
+            label: 'Deals',
+            icon: 'Tags',
+            section: 'main',
+        },
+        {
+            path: '/categories',
+            label: 'Categories',
+            icon: 'Layers',
             section: 'main',
         },
         {
@@ -281,8 +205,8 @@ const getDashboardRoutes = (businessType) => {
             icon: 'User',
             section: 'account',
             children: [
-                { path: '/settings/info', label: 'Business Profile' },
                 { path: '/settings/profile', label: 'My Profile' },
+                { path: '/settings/info', label: 'Business Profile' },
             ]
         },
     ];
@@ -292,19 +216,14 @@ export const Sidebar = () => {
     const pathname = usePathname();
     const { state } = useSidebar();
     const isCollapsed = state === 'collapsed';
-    const businessType = useSyncExternalStore(
-        emptySubscribe,
-        getBusinessTypeSnapshot,
-        getBusinessTypeServerSnapshot
-    );
     const user = useSyncExternalStore(
         emptySubscribe,
         getUserSnapshot,
         getUserServerSnapshot
     );
 
-    // Memoize routes based on businessType
-    const routes = useMemo(() => getDashboardRoutes(businessType), [businessType]);
+    // Memoize routes
+    const routes = useMemo(() => getDashboardRoutes(), []);
 
     const mainRoutes = useMemo(() => routes.filter(route => route.section === 'main'), [routes]);
     const accountRoutes = useMemo(() => routes.filter(route => route.section === 'account'), [routes]);
