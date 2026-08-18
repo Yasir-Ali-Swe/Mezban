@@ -41,10 +41,6 @@ const menuItemSchema = z.object({
     category: z.string().min(1, { message: 'Please select a category' }),
     costPrice: z.string().min(1, { message: 'Cost price is required' }).transform(val => parseFloat(val)),
     sellingPrice: z.string().min(1, { message: 'Selling price is required' }).transform(val => parseFloat(val)),
-    stock: z.string()
-        .min(1, { message: 'Stock is required' })
-        .transform(val => parseInt(val))
-        .refine(val => val >= 0, { message: 'Stock cannot be negative' }),
     status: z.enum(['available', 'unavailable']),
 });
 
@@ -82,7 +78,6 @@ const MenuAdd = () => {
             category: '',
             costPrice: '',
             sellingPrice: '',
-            stock: '',
             status: 'available',
         },
     });
@@ -381,31 +376,10 @@ const MenuAdd = () => {
                             </div>
                         )}
 
-                        {/* Stock Section */}
+                        {/* Status Section */}
                         <div className="space-y-4">
-                            <h2 className="text-sm font-semibold text-muted-foreground">Stock</h2>
+                            <h2 className="text-sm font-semibold text-muted-foreground">Status</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Available Stock */}
-                                <Field orientation="vertical">
-                                    <FieldLabel htmlFor="stock" className="text-sm font-medium">
-                                        Available Stock <span className="text-destructive">*</span>
-                                    </FieldLabel>
-                                    <FieldContent>
-                                        <Input
-                                            id="stock"
-                                            type="number"
-                                            placeholder="0"
-                                            min="0"
-                                            className="h-10 text-sm"
-                                            {...register("stock")}
-                                            aria-invalid={errors.stock ? "true" : "false"}
-                                        />
-                                        {errors.stock && (
-                                            <FieldError errors={[errors.stock]} />
-                                        )}
-                                    </FieldContent>
-                                </Field>
-
                                 {/* Status */}
                                 <Field orientation="vertical">
                                     <FieldLabel className="text-sm font-medium">
