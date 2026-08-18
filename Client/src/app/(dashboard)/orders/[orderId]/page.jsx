@@ -54,14 +54,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from "@/components/ui/toast"
 
-const ECOMMERCE_ACTIVE_FLOW = [
-    'pending',
-    'confirmed',
-    'processing',
-    'completed',
-];
-
-const RESTAURANT_ACTIVE_FLOW = [
+const ACTIVE_FLOW = [
     'pending',
     'confirmed',
     'preparing',
@@ -84,15 +77,6 @@ const STATUS_CONFIG = {
         bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900',
     },
 
-    // E-commerce
-    processing: {
-        label: 'Processing',
-        dot: 'bg-violet-500',
-        text: 'text-violet-700 dark:text-violet-400',
-        bg: 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900',
-    },
-
-    // Restaurant
     preparing: {
         label: 'Preparing',
         dot: 'bg-violet-500',
@@ -100,7 +84,6 @@ const STATUS_CONFIG = {
         bg: 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900',
     },
 
-    // Restaurant
     ready: {
         label: 'Ready',
         dot: 'bg-orange-500',
@@ -123,16 +106,7 @@ const STATUS_CONFIG = {
     },
 };
 
-
-const ECOMMERCE_STATUS_OPTIONS = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
-];
-
-const RESTAURANT_STATUS_OPTIONS = [
+const STATUS_OPTIONS = [
     { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'preparing', label: 'Preparing' },
@@ -140,64 +114,65 @@ const RESTAURANT_STATUS_OPTIONS = [
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
 ];
-// Dummy order data — replace with a real fetch against your API.
+
+// Dummy order data
 const DUMMY_ORDER = {
     _id: 'ord_001',
     orderNumber: 'ORD-2024-001',
     customer: {
-        name: 'John Doe',
-        phone: '+1 (555) 123-4567',
+        name: 'Muhammad Ali',
+        phone: '+92 300 1234567',
         telegramChatId: '123456789',
-        email: 'john.doe@example.com',
+        email: 'ali.muhammad@example.com',
     },
-    status: 'processing',
+    status: 'preparing',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-15T14:20:00Z',
     items: [
         {
             _id: 'item_001',
             productId: 'prod_001',
-            productName: 'Wireless Bluetooth Headphones',
-            productImage: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop',
+            productName: 'Chicken Karahi (Half)',
+            productImage: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=100&h=100&fit=crop',
             quantity: 2,
-            unitPrice: 79.99,
-            subtotal: 159.98,
+            unitPrice: 1250,
+            subtotal: 2500,
         },
         {
             _id: 'item_002',
             productId: 'prod_002',
-            productName: 'Premium Cotton T-Shirt',
-            productImage: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100&h=100&fit=crop',
-            quantity: 1,
-            unitPrice: 29.99,
-            subtotal: 29.99,
+            productName: 'Garlic Naan',
+            productImage: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?w=100&h=100&fit=crop',
+            quantity: 4,
+            unitPrice: 120,
+            subtotal: 480,
         },
         {
             _id: 'item_003',
             productId: 'prod_003',
-            productName: 'Stainless Steel Water Bottle',
-            productImage: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100&h=100&fit=crop',
+            productName: 'Mango Lassi',
+            productImage: 'https://images.unsplash.com/photo-1571006682858-a458b8d62688?w=100&h=100&fit=crop',
             quantity: 3,
-            unitPrice: 24.99,
-            subtotal: 74.97,
+            unitPrice: 250,
+            subtotal: 750,
         },
     ],
-    subtotal: 264.94,
-    tax: 21.20,
-    shipping: 5.99,
-    total: 292.13,
+    subtotal: 3730,
+    tax: 150,
+    shipping: 150,
+    total: 4030,
     shippingAddress: {
-        street: '123 Main Street',
-        city: 'New York',
-        state: 'NY',
-        zipCode: '10001',
-        country: 'USA',
+        street: '123 Main Boulevard',
+        city: 'Lahore',
+        state: 'Punjab',
+        zipCode: '54000',
+        country: 'Pakistan',
     },
-    notes: 'Please deliver between 2-5 PM',
+    notes: 'Please send extra mint chutney and spicy raita.',
 };
 
 const currency = (value) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value ?? 0);
+    `Rs. ${Number(value || 0).toLocaleString()}`;
 
 const formatDate = (dateString, opts = {}) =>
     new Date(dateString).toLocaleDateString('en-US', {
@@ -401,20 +376,6 @@ const OrderDetails = () => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState('');
     const [copied, setCopied] = useState(false);
-
-    const businessType = localStorage.getItem('businessType')
-    console.log('businessType', businessType)
-
-    const isRestaurant = businessType === 'RESTAURANT';
-
-    const ACTIVE_FLOW = isRestaurant
-        ? RESTAURANT_ACTIVE_FLOW
-        : ECOMMERCE_ACTIVE_FLOW;
-
-    const STATUS_OPTIONS = isRestaurant
-        ? RESTAURANT_STATUS_OPTIONS
-        : ECOMMERCE_STATUS_OPTIONS;
-
     // Simulate an API call to fetch the order — swap for a real fetch.
     useEffect(() => {
         // Use a timeout to avoid synchronous setState in effect
