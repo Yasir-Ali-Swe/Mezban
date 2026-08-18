@@ -40,22 +40,6 @@ const businessHoursSchema = z
         }
     });
 
-const ecommerceKnowledgeSchema = z.object({
-    businessIdentity: z.string().min(10, 'Business identity is required').max(1500),
-    returnRefundCancellation: z.string().min(10, 'Return & refund policy is required').max(2000),
-    shippingDelivery: z.string().min(10, 'Shipping & delivery information is required').max(1000),
-    paymentMethods: z.string().min(10, 'Payment methods are required').max(300),
-    businessHours: z.object({
-        monday: businessHoursSchema,
-        tuesday: businessHoursSchema,
-        wednesday: businessHoursSchema,
-        thursday: businessHoursSchema,
-        friday: businessHoursSchema,
-        saturday: businessHoursSchema,
-        sunday: businessHoursSchema,
-    }),
-});
-
 const restaurantKnowledgeSchema = z.object({
     businessIdentity: z.string().min(10, 'Business identity is required').max(2000),
     foodVariety: z.string().min(10, 'Food variety information is required').max(4000),
@@ -185,16 +169,9 @@ const KnowledgeTextarea = ({
 // ============================================================
 const BusinessKnowledgePage = () => {
     const router = useRouter();
-    const [businessType] = useState(() => {
-        if (typeof window === 'undefined') return null;
-        return localStorage.getItem('businessType');
-    });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Derived, not stored — avoids a second setState call that isn't needed.
-    const isLoading = !businessType;
-
-    const getDefaultValues = (type) => {
+    const getDefaultValues = () => {
         const hours = {
             monday: { isOpen: true, open: '09:00', close: '18:00' },
             tuesday: { isOpen: true, open: '09:00', close: '18:00' },
@@ -205,48 +182,24 @@ const BusinessKnowledgePage = () => {
             sunday: { isOpen: false, open: '09:00', close: '18:00' },
         };
 
-        if (type === 'ECOMMERCE') {
-            return {
-                businessType: 'ECOMMERCE',
-                data: {
-                    businessIdentity: '',
-                    returnRefundCancellation: '',
-                    shippingDelivery: '',
-                    paymentMethods: '',
-                    businessHours: hours,
-                }
-            };
-        } else {
-            return {
-                businessType: 'RESTAURANT',
-                data: {
-                    businessIdentity: '',
-                    foodVariety: '',
-                    deliveryInformation: '',
-                    paymentInformation: '',
-                    reservationInformation: '',
-                    businessHours: hours,
-                }
-            };
-        }
+        return {
+            data: {
+                businessIdentity: '',
+                foodVariety: '',
+                deliveryInformation: '',
+                paymentInformation: '',
+                reservationInformation: '',
+                businessHours: hours,
+            }
+        };
     };
 
-    const getSchema = (type) => {
-        if (type === 'ECOMMERCE') {
-            return zodResolver(
-                z.object({
-                    businessType: z.literal('ECOMMERCE'),
-                    data: ecommerceKnowledgeSchema
-                })
-            );
-        } else {
-            return zodResolver(
-                z.object({
-                    businessType: z.literal('RESTAURANT'),
-                    data: restaurantKnowledgeSchema
-                })
-            );
-        }
+    const getSchema = () => {
+        return zodResolver(
+            z.object({
+                data: restaurantKnowledgeSchema
+            })
+        );
     };
 
     const {
@@ -256,49 +209,27 @@ const BusinessKnowledgePage = () => {
         setValue,
         formState: { errors },
     } = useForm({
-        resolver: getSchema(businessType),
-        defaultValues: getDefaultValues(businessType),
+        resolver: getSchema(),
+        defaultValues: getDefaultValues(),
     });
 
-    useEffect(() => {
-        if (!businessType) {
-            router.push('/onboarding/business-type');
-        }
-    }, [businessType, router]);
-
-    useEffect(() => {
-        if (businessType) {
-            setValue('businessType', businessType);
-
-            const defaultValues = getDefaultValues(businessType);
-            Object.keys(defaultValues.data).forEach((key) => {
-                if (key !== 'businessHours') {
-                    setValue(`data.${key}`, defaultValues.data[key]);
-                }
-            });
-            Object.keys(defaultValues.data.businessHours).forEach((day) => {
-                setValue(`data.businessHours.${day}.isOpen`, defaultValues.data.businessHours[day].isOpen);
-                setValue(`data.businessHours.${day}.open`, defaultValues.data.businessHours[day].open);
-                setValue(`data.businessHours.${day}.close`, defaultValues.data.businessHours[day].close);
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [businessType, setValue]);
-
-    const onSubmit = async (data) => {
+    const onSubmit = async (values) => {
         setIsSubmitting(true);
         try {
-            // Simulate API call
+            // Attach businessType: 'RESTAURANT' directly to payload for backend API compatibility
+            const payload = {
+                businessType: 'RESTAURANT',
+                ...values,
+            };
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            // Correct way to use your custom toast
             toast.add({
                 type: "success",
                 title: "Success!",
                 description: 'Business knowledge saved successfully!'
             });
 
-            console.log('Submitted Data:', data);
+            console.log('Submitted Data:', payload);
             router.push('/onboarding/telegram-connect');
         } catch (error) {
             toast.add({
@@ -320,15 +251,6 @@ const BusinessKnowledgePage = () => {
         });
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex h-[60vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    const isEcommerce = businessType === 'ECOMMERCE';
     const dataErrors = errors.data || {};
 
     return (
@@ -343,148 +265,80 @@ const BusinessKnowledgePage = () => {
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
-                    {isEcommerce ? (
-                        // ============================================
-                        // E-COMMERCE KNOWLEDGE
-                        // ============================================
-                        <div className="space-y-6">
-                            {/* Business Identity */}
-                            <KnowledgeTextarea
-                                label="Business Identity"
-                                description="Tell your AI agent what you sell and what makes your store stand out."
-                                placeholder="For example, we are StyleHub, an online clothing store in Faisalabad selling men's, women's, and kids' fashion — shirts, jeans, dresses, and accessories. We're known for affordable prices, good quality fabric, and fast delivery across Pakistan."
-                                register={register}
-                                name="data.businessIdentity"
-                                maxLength={1500}
-                                error={dataErrors.businessIdentity}
-                            />
+                    {/* RESTAURANT KNOWLEDGE */}
+                    <div className="space-y-6">
+                        {/* Business Identity */}
+                        <KnowledgeTextarea
+                            label="Business Identity"
+                            description="Tell your AI agent about your restaurant and what makes it special."
+                            placeholder="For example, we are Spice House, a family restaurant in Faisalabad serving Pakistani, Chinese, and fast food for dine-in and delivery. We're known for our BBQ, generous portions, and quick service."
+                            register={register}
+                            name="data.businessIdentity"
+                            maxLength={2000}
+                            error={dataErrors.businessIdentity}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Return, Refund & Cancellation Policy */}
-                            <KnowledgeTextarea
-                                label="Return, Refund & Cancellation Policy"
-                                description="Explain how you handle returns, refunds, and order cancellations."
-                                placeholder="For example, returns are accepted within 7 days if the item is unused, unwashed, and has original tags attached. Once we inspect and approve the return, refunds are processed within 3-5 business days to the original payment method. Orders can be cancelled free of charge any time before they are shipped; after that, cancellation is not possible."
-                                register={register}
-                                name="data.returnRefundCancellation"
-                                maxLength={2000}
-                                error={dataErrors.returnRefundCancellation}
-                            />
+                        {/* Food Variety / Menu Information */}
+                        <KnowledgeTextarea
+                            label="Food Variety / Menu Information"
+                            description="List your cuisines, popular dishes, and any specialties or must-try items."
+                            placeholder="For example, we serve Pakistani BBQ (Seekh Kebab, Chicken Tikka), curries (Chicken Karahi, Chicken Handi, Daal), Chinese (Chicken Chow Mein, Chicken Manchurian), and fast food (Zinger Burger, Loaded Fries, Pizza). We also serve juices, milkshakes, and desserts. Our specialty is Chicken Karahi."
+                            register={register}
+                            name="data.foodVariety"
+                            maxLength={4000}
+                            error={dataErrors.foodVariety}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Delivery Information */}
-                            <KnowledgeTextarea
-                                label="Delivery Information"
-                                description="List where you deliver, what you charge, and how long delivery takes."
-                                placeholder="For example, we deliver nationwide across Pakistan. Standard delivery costs Rs. 200 and takes 3-5 business days. Orders above Rs. 5,000 get free delivery. Remote or far-off areas may take 1-2 extra days. Customers get a tracking update once their order ships."
-                                register={register}
-                                name="data.shippingDelivery"
-                                maxLength={1000}
-                                error={dataErrors.shippingDelivery}
-                            />
+                        {/* Delivery Information */}
+                        <KnowledgeTextarea
+                            label="Delivery Information"
+                            description="Share your delivery area, minimum order, charges, and typical delivery time."
+                            placeholder="For example, we deliver within 10km of D Ground, Faisalabad. Minimum order is Rs. 500, delivery charge is Rs. 150, and orders usually arrive in 30-45 minutes. Free delivery on orders above Rs. 2,000. Delivery may take longer during peak hours or bad weather."
+                            register={register}
+                            name="data.deliveryInformation"
+                            maxLength={2000}
+                            error={dataErrors.deliveryInformation}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Payment Methods */}
-                            <KnowledgeTextarea
-                                label="Payment Methods"
-                                description="List every payment method customers can use, with account details where relevant."
-                                placeholder="For example, Cash on Delivery, Bank Transfer (Meezan Bank - 01234567890), Easypaisa (0300-1234567), and credit/debit card at checkout."
-                                register={register}
-                                name="data.paymentMethods"
-                                maxLength={300}
-                                error={dataErrors.paymentMethods}
-                            />
+                        {/* Payment Information */}
+                        <KnowledgeTextarea
+                            label="Payment Information"
+                            description="List accepted payment methods for both delivery and dine-in orders."
+                            placeholder="For example, for delivery: Cash on Delivery, Easypaisa (0300-1234567), or card on delivery. For dine-in: Cash, credit card, or debit card at the counter."
+                            register={register}
+                            name="data.paymentInformation"
+                            maxLength={1000}
+                            error={dataErrors.paymentInformation}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Weekly Schedule */}
-                            <BusinessHoursSection
-                                register={register}
-                                watch={watch}
-                                setValue={setValue}
-                            />
-                        </div>
-                    ) : (
-                        // ============================================
-                        // RESTAURANT KNOWLEDGE
-                        // ============================================
-                        <div className="space-y-6">
-                            {/* Business Identity */}
-                            <KnowledgeTextarea
-                                label="Business Identity"
-                                description="Tell your AI agent about your restaurant and what makes it special."
-                                placeholder="For example, we are Spice House, a family restaurant in Faisalabad serving Pakistani, Chinese, and fast food for dine-in and delivery. We're known for our BBQ, generous portions, and quick service."
-                                register={register}
-                                name="data.businessIdentity"
-                                maxLength={2000}
-                                error={dataErrors.businessIdentity}
-                            />
+                        {/* Reservation Information */}
+                        <KnowledgeTextarea
+                            label="Reservation Information"
+                            description="Tell the AI how to handle table reservation requests, or say if you don't accept them."
+                            placeholder="For example, we accept reservations for up to 10 guests, at least 2 hours in advance. Before confirming, collect the customer's name, phone number, date, time, and number of guests. For larger groups, ask them to call the restaurant directly."
+                            register={register}
+                            name="data.reservationInformation"
+                            maxLength={1000}
+                            error={dataErrors.reservationInformation}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Food Variety / Menu Information */}
-                            <KnowledgeTextarea
-                                label="Food Variety / Menu Information"
-                                description="List your cuisines, popular dishes, and any specialties or must-try items."
-                                placeholder="For example, we serve Pakistani BBQ (Seekh Kebab, Chicken Tikka), curries (Chicken Karahi, Chicken Handi, Daal), Chinese (Chicken Chow Mein, Chicken Manchurian), and fast food (Zinger Burger, Loaded Fries, Pizza). We also serve juices, milkshakes, and desserts. Our specialty is Chicken Karahi."
-                                register={register}
-                                name="data.foodVariety"
-                                maxLength={4000}
-                                error={dataErrors.foodVariety}
-                            />
-
-                            <Separator />
-
-                            {/* Delivery Information */}
-                            <KnowledgeTextarea
-                                label="Delivery Information"
-                                description="Share your delivery area, minimum order, charges, and typical delivery time."
-                                placeholder="For example, we deliver within 10km of D Ground, Faisalabad. Minimum order is Rs. 500, delivery charge is Rs. 150, and orders usually arrive in 30-45 minutes. Free delivery on orders above Rs. 2,000. Delivery may take longer during peak hours or bad weather."
-                                register={register}
-                                name="data.deliveryInformation"
-                                maxLength={2000}
-                                error={dataErrors.deliveryInformation}
-                            />
-
-                            <Separator />
-
-                            {/* Payment Information */}
-                            <KnowledgeTextarea
-                                label="Payment Information"
-                                description="List accepted payment methods for both delivery and dine-in orders."
-                                placeholder="For example, for delivery: Cash on Delivery, Easypaisa (0300-1234567), or card on delivery. For dine-in: Cash, credit card, or debit card at the counter."
-                                register={register}
-                                name="data.paymentInformation"
-                                maxLength={1000}
-                                error={dataErrors.paymentInformation}
-                            />
-
-                            <Separator />
-
-                            {/* Reservation Information */}
-                            <KnowledgeTextarea
-                                label="Reservation Information"
-                                description="Tell the AI how to handle table reservation requests, or say if you don't accept them."
-                                placeholder="For example, we accept reservations for up to 10 guests, at least 2 hours in advance. Before confirming, collect the customer's name, phone number, date, time, and number of guests. For larger groups, ask them to call the restaurant directly."
-                                register={register}
-                                name="data.reservationInformation"
-                                maxLength={1000}
-                                error={dataErrors.reservationInformation}
-                            />
-
-                            <Separator />
-
-                            {/* Weekly Schedule */}
-                            <BusinessHoursSection
-                                register={register}
-                                watch={watch}
-                                setValue={setValue}
-                            />
-                        </div>
-                    )}
+                        {/* Weekly Schedule */}
+                        <BusinessHoursSection
+                            register={register}
+                            watch={watch}
+                            setValue={setValue}
+                        />
+                    </div>
 
                     {/* ============================================ */}
                     {/* NAVIGATION */}
