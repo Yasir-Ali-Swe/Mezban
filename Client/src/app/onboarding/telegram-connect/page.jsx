@@ -57,14 +57,8 @@ const TelegramConnectPage = () => {
     const botToken = watch('botToken');
 
     useEffect(() => {
-        // Check if user has completed previous steps
-        const businessType = localStorage.getItem('businessType');
-        const dashboardUrl = businessType === "ECOMMERCE" ? "/ecommerce" : "/restaurant";
-        if (!businessType) {
-            router.push('/onboarding/business-type');
-        }
         setIsLoading(false);
-    }, [router]);
+    }, []);
 
     const handleConnect = async (data) => {
         setIsConnecting(true);
@@ -75,8 +69,8 @@ const TelegramConnectPage = () => {
             // Mock successful response from Telegram getMe
             const mockBotInfo = {
                 id: 123456789,
-                name: 'StyleHub Assistant',
-                username: 'StyleHubBot',
+                name: 'SpiceHouse Assistant',
+                username: 'SpiceHouseBot',
                 isBot: true,
                 avatar: 'https://github.com/shadcn.png',
             };
@@ -93,9 +87,7 @@ const TelegramConnectPage = () => {
     };
 
     const handleContinue = () => {
-        const businessType = localStorage.getItem('businessType');
-        const dashboardUrl = businessType === "ECOMMERCE" ? "/ecommerce" : "/restaurant";
-        router.push(dashboardUrl);
+        router.push('/restaurant');
     };
 
     if (isLoading) {
