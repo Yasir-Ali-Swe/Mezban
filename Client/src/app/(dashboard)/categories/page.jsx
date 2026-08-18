@@ -44,14 +44,14 @@ import StatCard from '@/components/shared/StatCard';
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
 const DUMMY_CATEGORIES = [
-    { _id: 'c1', name: 'Electronics', categorySlug: 'electronics', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-15T10:30:00Z', productsCount: 45, isActive: true },
-    { _id: 'c2', name: 'Cables', categorySlug: 'cables', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-14T14:20:00Z', productsCount: 23, isActive: true },
-    { _id: 'c3', name: 'Accessories', categorySlug: 'accessories', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-13T09:15:00Z', productsCount: 12, isActive: true },
-    { _id: 'c4', name: 'Furniture', categorySlug: 'furniture', createdBy: { name: 'Sarah Johnson', role: 'manager' }, createdAt: '2024-01-12T16:45:00Z', productsCount: 0, isActive: false },
-    { _id: 'c5', name: 'Stationery', categorySlug: 'stationery', createdBy: { name: 'Mike Wilson', role: 'staff' }, createdAt: '2024-01-11T11:00:00Z', productsCount: 8, isActive: true },
-    { _id: 'c6', name: 'Kitchenware', categorySlug: 'kitchenware', createdBy: { name: 'Emma Davis', role: 'admin' }, createdAt: '2024-01-10T08:30:00Z', productsCount: 15, isActive: true },
-    { _id: 'c7', name: 'Books', categorySlug: 'books', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-09T13:20:00Z', productsCount: 3, isActive: true },
-    { _id: 'c8', name: 'Toys', categorySlug: 'toys', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-08T10:00:00Z', productsCount: 0, isActive: false },
+    { _id: 'c1', name: 'Starters', categorySlug: 'starters', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-15T10:30:00Z', productsCount: 12, isActive: true },
+    { _id: 'c2', name: 'BBQ', categorySlug: 'bbq', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-14T14:20:00Z', productsCount: 18, isActive: true },
+    { _id: 'c3', name: 'Main Course', categorySlug: 'main-course', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-13T09:15:00Z', productsCount: 24, isActive: true },
+    { _id: 'c4', name: 'Rice', categorySlug: 'rice', createdBy: { name: 'Sarah Johnson', role: 'manager' }, createdAt: '2024-01-12T16:45:00Z', productsCount: 8, isActive: true },
+    { _id: 'c5', name: 'Breads', categorySlug: 'breads', createdBy: { name: 'Mike Wilson', role: 'staff' }, createdAt: '2024-01-11T11:00:00Z', productsCount: 6, isActive: true },
+    { _id: 'c6', name: 'Salads', categorySlug: 'salads', createdBy: { name: 'Emma Davis', role: 'admin' }, createdAt: '2024-01-10T08:30:00Z', productsCount: 5, isActive: true },
+    { _id: 'c7', name: 'Beverages', categorySlug: 'beverages', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-09T13:20:00Z', productsCount: 10, isActive: true },
+    { _id: 'c8', name: 'Desserts', categorySlug: 'desserts', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-08T10:00:00Z', productsCount: 7, isActive: true },
 ];
 
 // ─── Filter Config ────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ const CategoriesList = () => {
 
     const handleDelete = (category) => {
         if (category.productsCount > 0) {
-            toast.add({ type: 'error', title: 'Error!', description: `Cannot delete "${category.name}". ${category.productsCount} product(s) are associated with this category.` });
+            toast.add({ type: 'error', title: 'Error!', description: `Cannot delete "${category.name}". ${category.productsCount} item(s) are associated with this category.` });
             return;
         }
         if (confirm(`Are you sure you want to delete category "${category.name}"?`)) {
@@ -197,7 +197,7 @@ const CategoriesList = () => {
         },
         {
             key: 'products',
-            header: 'Products',
+            header: 'Items',
             headerClassName: 'min-w-25 text-center',
             cellClassName: 'text-center',
             render: (cat) => (
@@ -306,7 +306,7 @@ const CategoriesList = () => {
                     icon={XCircle}
                     iconClassName="text-destructive"
                     valueClassName="text-destructive"
-                    caption="No products assigned"
+                    caption="No items assigned"
                 />
             </div>
 
