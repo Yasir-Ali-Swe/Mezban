@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -11,3 +6,410 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum BusinessType {
+  ECOMMERCE
+  RESTAURANT
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ESCALATED
+  CLOSED
+}
+
+enum MessageSender {
+  CUSTOMER
+  AI_AGENT
+  HUMAN_AGENT
+  SYSTEM
+}
+
+enum AgentType {
+  ORDER_AGENT       
+  SUPPORT_AGENT     
+  RESERVATION_AGENT 
+  GENERAL_AGENT     
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING // ecommerce flow only
+  PREPARING  // restaurant flow only
+  READY      // restaurant flow only
+  COMPLETED
+  CANCELLED  // both flows — terminal state, not part of the active flow
+}
+
+enum OrderType {
+  DELIVERY
+  PICKUP
+  DINE_IN
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+
+model User {
+  id        String   @id // Clerk user id
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business?
+
+  @@map("users")
+}
+
+// ============================================================
+// BUSINESS CORE
+// ============================================================
+
+model Business {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  businessType BusinessType
+
+  // Onboarding tracking
+  onboardingCompleted Boolean @default(false)
+  onboardingStep      Int     @default(1)
+
+  // Business info (Step 2)
+  name          String
+  logoUrl       String?
+  email         String
+  contactNumber String
+  website       String?
+  city          String
+  country       String
+  address       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledge BusinessKnowledge?
+  hours     BusinessHours[]
+  telegram  TelegramConfig?
+
+  categories    Category[]
+  products      Product[]
+  menuItems     MenuItem[]
+  deals         Deal[]
+  customers     Customer[]
+  conversations Conversation[]
+  orders        Order[]
+
+  businessAnalytics BusinessAnalytics[]
+  aiAnalytics       AIAnalytics[]
+
+  @@map("businesses")
+}
+
+// ============================================================
+// BUSINESS KNOWLEDGE (Step 3)
+// ============================================================
+// One row per business. Fields are nullable because only the
+// subset relevant to businessType gets filled in.
+
+model BusinessKnowledge {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+
+  businessIdentity String @db.Text // both types
+
+  // ECOMMERCE only
+  returnRefundCancellation String? @db.Text
+  shippingDelivery         String? @db.Text
+  paymentMethods           String? @db.Text
+
+  // RESTAURANT only
+  foodVariety            String? @db.Text
+  deliveryInformation    String? @db.Text
+  paymentInformation     String? @db.Text
+  reservationInformation String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("business_knowledge")
+}
+
+model BusinessHours {
+  id         String    @id @default(cuid())
+  businessId String
+  dayOfWeek  DayOfWeek
+  isOpen     Boolean   @default(true)
+  openTime   String? // stored as "HH:mm"
+  closeTime  String? // stored as "HH:mm"
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, dayOfWeek])
+  @@map("business_hours")
+}
+
+// ============================================================
+// TELEGRAM (Step 4)
+// ============================================================
+
+model TelegramConfig {
+  id           String    @id @default(cuid())
+  businessId   String    @unique
+  botToken     String
+  botUsername  String?
+  webhookUrl   String?
+  adminChatId  String? // where escalation/notifications get sent
+  isConnected  Boolean   @default(false)
+  connectedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_configs")
+}
+
+// ============================================================
+// CATALOG — Category / Product / MenuItem / Deal
+// ============================================================
+
+model Category {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products  Product[]
+  menuItems MenuItem[]
+
+  @@map("categories")
+}
+
+// ECOMMERCE
+model Product {
+  id             String   @id @default(cuid())
+  businessId     String
+  categoryId     String?
+  name           String
+  description    String?  @db.Text
+  price          Decimal  @db.Decimal(10, 2)
+  discountPrice  Decimal? @db.Decimal(10, 2)
+  sku            String?
+  stock          Int?
+  imageUrl       String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+// RESTAURANT
+model MenuItem {
+  id          String   @id @default(cuid())
+  businessId  String
+  categoryId  String?
+  name        String
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orderItems OrderItem[]
+
+  @@map("menu_items")
+}
+
+// RESTAURANT
+model Deal {
+  id            String    @id @default(cuid())
+  businessId    String
+  name          String
+  description   String?   @db.Text
+  price         Decimal   @db.Decimal(10, 2)
+  originalPrice Decimal?  @db.Decimal(10, 2)
+  imageUrl      String?
+  isActive      Boolean   @default(true)
+  validFrom     DateTime?
+  validUntil    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@map("deals")
+}
+
+// ============================================================
+// CUSTOMERS & CONVERSATIONS
+// ============================================================
+
+model Customer {
+  id              String   @id @default(cuid())
+  businessId      String
+  telegramUserId  String // Telegram's numeric user id, stored as string
+  telegramUsername String?
+  firstName       String?
+  lastName        String?
+  phoneNumber     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  orders        Order[]
+
+  @@unique([businessId, telegramUserId])
+  @@map("customers")
+}
+
+model Conversation {
+  id            String             @id @default(cuid())
+  businessId    String
+  customerId    String
+  status        ConversationStatus @default(ACTIVE)
+  lastMessageAt DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  messages Message[]
+  orders   Order[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id                String        @id @default(cuid())
+  conversationId    String
+  sender            MessageSender
+  agentType         AgentType?    // only set when sender = AI_AGENT
+  content           String        @db.Text
+  telegramMessageId String?
+  createdAt         DateTime      @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+model Order {
+  id              String      @id @default(cuid())
+  businessId      String
+  customerId      String
+  conversationId  String? // conversation that generated this order
+  orderNumber     String      @unique
+  status          OrderStatus @default(PENDING)
+  orderType       OrderType?
+  subtotal        Decimal     @db.Decimal(10, 2)
+  deliveryFee     Decimal?    @db.Decimal(10, 2)
+  discount        Decimal?    @db.Decimal(10, 2)
+  total           Decimal     @db.Decimal(10, 2)
+  paymentMethod   String?
+  deliveryAddress String?
+  notes           String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String? // ecommerce
+  menuItemId String? // restaurant
+  dealId     String? // restaurant
+
+  name     String // snapshot of item name at time of order
+  price    Decimal @db.Decimal(10, 2) // snapshot of unit price at time of order
+  quantity Int
+  subtotal Decimal @db.Decimal(10, 2)
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  deal     Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+// ============================================================
+// ANALYTICS — PLACEHOLDER
+// ============================================================
+// Deliberately minimal. Both pages (Business Analytics / AI
+// Analytics) can be built two ways once requirements are clear:
+//   1. Compute on the fly from Order/Conversation/Message tables, or
+//   2. Log discrete events here and aggregate/roll them up.
+// Add real columns (metric name, value, date bucket, etc.) once
+// you've decided what each dashboard actually needs to show.
+
+model BusinessAnalytics {
+  id         String   @id @default(cuid())
+  businessId String
+  // TODO: add fields — e.g. revenue, orders count, top products,
+  // new vs returning customers, date range/bucket, etc.
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("business_analytics")
+}
+
+model AIAnalytics {
+  id         String   @id @default(cuid())
+  businessId String
+  // TODO: add fields — e.g. total conversations, resolution rate,
+  // escalation rate, avg response time, messages handled, etc.
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("ai_analytics")
+}
+
