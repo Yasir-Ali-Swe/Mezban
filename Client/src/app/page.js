@@ -8,14 +8,7 @@ const Page = () => {
   const router = useRouter();
 
   useEffect(() => {
-    const businessType = localStorage.getItem("businessType");
-    console.log("Business Type from localStorage:", businessType);
-
-    if (businessType === "ECOMMERCE") {
-      router.replace("/ecommerce");
-    } else if (businessType === "RESTAURANT") {
-      router.replace("/restaurant");
-    }
+    router.replace("/restaurant");
   }, [router]);
 
   return (
