@@ -42,18 +42,18 @@ import StatCard from '@/components/shared/StatCard';
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
 const DUMMY_MENU_ITEMS = [
-    { _id: 'm1', name: 'Zinger Burger', category: 'Burgers', price: 650, imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop', isAvailable: true, stock: 45, orders: 1245, createdAt: '2024-01-15T10:30:00Z' },
-    { _id: 'm2', name: 'Chicken Pizza', category: 'Pizza', price: 1450, imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&h=100&fit=crop', isAvailable: true, stock: 18, orders: 845, createdAt: '2024-01-14T14:20:00Z' },
-    { _id: 'm3', name: 'Pepsi 500ml', category: 'Drinks', price: 120, imageUrl: 'https://images.unsplash.com/photo-1581010148125-6a8be79e9790?w=100&h=100&fit=crop', isAvailable: false, stock: 0, orders: 2410, createdAt: '2024-01-13T09:15:00Z' },
-    { _id: 'm4', name: 'French Fries', category: 'Sides', price: 280, imageUrl: 'https://images.unsplash.com/photo-1585109406040-9d52f21a03d1?w=100&h=100&fit=crop', isAvailable: true, stock: 35, orders: 1032, createdAt: '2024-01-12T16:45:00Z' },
-    { _id: 'm5', name: 'Chicken Wings', category: 'Appetizers', price: 780, imageUrl: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=100&h=100&fit=crop', isAvailable: true, stock: 20, orders: 620, createdAt: '2024-01-11T11:00:00Z' },
-    { _id: 'm6', name: 'Chicken Tikka', category: 'Main Course', price: 890, imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop', isAvailable: true, stock: 25, orders: 450, createdAt: '2024-01-10T08:30:00Z' },
-    { _id: 'm7', name: 'Beef Burger', category: 'Burgers', price: 720, imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=100&h=100&fit=crop', isAvailable: false, stock: 0, orders: 890, createdAt: '2024-01-09T13:20:00Z' },
-    { _id: 'm8', name: 'Cola 500ml', category: 'Drinks', price: 110, imageUrl: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=100&h=100&fit=crop', isAvailable: true, stock: 30, orders: 1800, createdAt: '2024-01-08T10:00:00Z' },
-    { _id: 'm9', name: 'Garlic Bread', category: 'Sides', price: 200, imageUrl: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=100&h=100&fit=crop', isAvailable: true, stock: 12, orders: 560, createdAt: '2024-01-07T15:30:00Z' },
-    { _id: 'm10', name: 'Chicken Shawarma', category: 'Main Course', price: 550, imageUrl: 'https://images.unsplash.com/photo-1551326844-4df70f78d0e9?w=100&h=100&fit=crop', isAvailable: false, stock: 0, orders: 740, createdAt: '2024-01-06T08:45:00Z' },
-    { _id: 'm11', name: 'Mushroom Pizza', category: 'Pizza', price: 1200, imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cd2a5e5e6a6?w=100&h=100&fit=crop', isAvailable: true, stock: 15, orders: 320, createdAt: '2024-01-05T14:10:00Z' },
-    { _id: 'm12', name: 'Mango Juice', category: 'Drinks', price: 180, imageUrl: 'https://images.unsplash.com/photo-1546173159-3152d6d3c0d3?w=100&h=100&fit=crop', isAvailable: true, stock: 8, orders: 410, createdAt: '2024-01-04T09:30:00Z' },
+    { _id: 'm1', name: 'Zinger Burger', category: 'Burgers', price: 650, imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop', isAvailable: true, orders: 1245, createdAt: '2024-01-15T10:30:00Z' },
+    { _id: 'm2', name: 'Chicken Pizza', category: 'Pizza', price: 1450, imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&h=100&fit=crop', isAvailable: true, orders: 845, createdAt: '2024-01-14T14:20:00Z' },
+    { _id: 'm3', name: 'Pepsi 500ml', category: 'Drinks', price: 120, imageUrl: 'https://images.unsplash.com/photo-1581010148125-6a8be79e9790?w=100&h=100&fit=crop', isAvailable: false, orders: 2410, createdAt: '2024-01-13T09:15:00Z' },
+    { _id: 'm4', name: 'French Fries', category: 'Sides', price: 280, imageUrl: 'https://images.unsplash.com/photo-1585109406040-9d52f21a03d1?w=100&h=100&fit=crop', isAvailable: true, orders: 1032, createdAt: '2024-01-12T16:45:00Z' },
+    { _id: 'm5', name: 'Chicken Wings', category: 'Appetizers', price: 780, imageUrl: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=100&h=100&fit=crop', isAvailable: true, orders: 620, createdAt: '2024-01-11T11:00:00Z' },
+    { _id: 'm6', name: 'Chicken Tikka', category: 'Main Course', price: 890, imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop', isAvailable: true, orders: 450, createdAt: '2024-01-10T08:30:00Z' },
+    { _id: 'm7', name: 'Beef Burger', category: 'Burgers', price: 720, imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=100&h=100&fit=crop', isAvailable: false, orders: 890, createdAt: '2024-01-09T13:20:00Z' },
+    { _id: 'm8', name: 'Cola 500ml', category: 'Drinks', price: 110, imageUrl: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=100&h=100&fit=crop', isAvailable: true, orders: 1800, createdAt: '2024-01-08T10:00:00Z' },
+    { _id: 'm9', name: 'Garlic Bread', category: 'Sides', price: 200, imageUrl: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=100&h=100&fit=crop', isAvailable: true, orders: 560, createdAt: '2024-01-07T15:30:00Z' },
+    { _id: 'm10', name: 'Chicken Shawarma', category: 'Main Course', price: 550, imageUrl: 'https://images.unsplash.com/photo-1551326844-4df70f78d0e9?w=100&h=100&fit=crop', isAvailable: false, orders: 740, createdAt: '2024-01-06T08:45:00Z' },
+    { _id: 'm11', name: 'Mushroom Pizza', category: 'Pizza', price: 1200, imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cd2a5e5e6a6?w=100&h=100&fit=crop', isAvailable: true, orders: 320, createdAt: '2024-01-05T14:10:00Z' },
+    { _id: 'm12', name: 'Mango Juice', category: 'Drinks', price: 180, imageUrl: 'https://images.unsplash.com/photo-1546173159-3152d6d3c0d3?w=100&h=100&fit=crop', isAvailable: true, orders: 410, createdAt: '2024-01-04T09:30:00Z' },
 ];
 
 const DUMMY_CATEGORIES = ['Burgers', 'Pizza', 'Drinks', 'Sides', 'Appetizers', 'Main Course'];
@@ -292,17 +292,17 @@ const MenuList = () => {
             cellClassName: 'text-center text-sm text-muted-foreground',
             render: (item) => fmtOrders(item.orders),
         },
-        {
-            key: 'stock',
-            header: 'Stock',
-            headerClassName: 'min-w-20 text-center',
-            cellClassName: 'text-center',
-            render: (item) => (
-                <span className={cn('text-sm font-medium', item.stock === 0 && 'text-destructive')}>
-                    {item.stock}
-                </span>
-            ),
-        },
+        // {
+        //     key: 'stock',
+        //     header: 'Stock',
+        //     headerClassName: 'min-w-20 text-center',
+        //     cellClassName: 'text-center',
+        //     render: (item) => (
+        //         <span className={cn('text-sm font-medium', item.stock === 0 && 'text-destructive')}>
+        //             {item.stock}
+        //         </span>
+        //     ),
+        // },
         {
             key: 'actions',
             header: 'Actions',
