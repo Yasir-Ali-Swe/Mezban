@@ -95,7 +95,27 @@ const BusinessInfoPage = () => {
         website: '',
     });
 
-    // Simulate API call to fetch business profile
+    const {
+        register,
+        handleSubmit,
+        watch,
+        reset,
+        setValue,
+        formState: { errors },
+    } = useForm({
+        resolver: zodResolver(businessProfileSchema),
+        defaultValues: {
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            city: '',
+            country: '',
+            website: '',
+        },
+    });
+
+    // Fetch business profile
     useEffect(() => {
         const timer = setTimeout(() => {
             const profile = DUMMY_BUSINESS_PROFILE;
@@ -129,27 +149,7 @@ const BusinessInfoPage = () => {
         }, 800);
 
         return () => clearTimeout(timer);
-    }, []);
-
-    const {
-        register,
-        handleSubmit,
-        watch,
-        reset,
-        setValue,
-        formState: { errors },
-    } = useForm({
-        resolver: zodResolver(businessProfileSchema),
-        defaultValues: {
-            name: '',
-            email: '',
-            phone: '',
-            address: '',
-            city: '',
-            country: '',
-            website: '',
-        },
-    });
+    }, [reset]);
 
     const watchedName = watch('name');
     const watchedEmail = watch('email');
@@ -468,16 +468,7 @@ const BusinessInfoPage = () => {
                         </Field>
 
                         {/* Buttons */}
-                        <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="h-10 text-sm font-medium"
-                                onClick={handleBack}
-                            >
-                                <ArrowLeft className="h-4 w-4" />
-                                Back
-                            </Button>
+                        <div className="flex items-center justify-end gap-3 border-t border-border pt-2">
                             <Button
                                 type="submit"
                                 className="h-10 text-sm font-medium"
