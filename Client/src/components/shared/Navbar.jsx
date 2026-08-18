@@ -38,8 +38,7 @@ const emptySubscribe = (callback) => {
     return () => window.removeEventListener('storage', callback);
 };
 
-const getBusinessTypeSnapshot = () => localStorage.getItem('businessType') || 'RESTAURANT';
-const getBusinessTypeServerSnapshot = () => 'RESTAURANT';
+
 
 let cachedUserRaw;
 let cachedUser = null;
@@ -62,16 +61,12 @@ const getUserServerSnapshot = () => null;
 
 // Breadcrumb configuration
 const breadcrumbConfig = {
-    '/ecommerce': 'Dashboard',
     '/restaurant': 'Dashboard',
     '/ai-analytics': 'AI Analytics',
     '/business-analytics': 'Business Analytics',
     '/categories': 'Categories',
     '/conversations': 'Conversations',
     '/customers': 'Customers',
-    '/products': 'Products',
-    '/products/new': 'New Product',
-    '/products/[productId]/edit': 'Edit Product',
     '/menu': 'Menu',
     '/menu/new': 'New Menu Item',
     '/menu/[id]': 'Edit Menu Item',
@@ -85,7 +80,6 @@ const breadcrumbConfig = {
     '/settings/telegram': 'Telegram',
     '/orders': 'Orders',
     '/orders/[orderId]': 'Order Details',
-    '/onboarding/business-type': 'Business Type',
     '/onboarding/business-info': 'Business Info',
     '/onboarding/business-knowledge': 'Business Knowledge',
     '/onboarding/telegram-connect': 'Connect Telegram',
@@ -156,14 +150,7 @@ const getBreadcrumbs = (pathname) => {
 export const Navbar = () => {
     const pathname = usePathname();
 
-    // See the useSyncExternalStore helpers above for why this isn't a
-    // useState + useEffect pair.
     const user = useSyncExternalStore(emptySubscribe, getUserSnapshot, getUserServerSnapshot);
-    const businessType = useSyncExternalStore(
-        emptySubscribe,
-        getBusinessTypeSnapshot,
-        getBusinessTypeServerSnapshot
-    );
     const breadcrumbs = getBreadcrumbs(pathname);
     const pageTitle = breadcrumbs[breadcrumbs.length - 1]?.label || 'Dashboard';
 
