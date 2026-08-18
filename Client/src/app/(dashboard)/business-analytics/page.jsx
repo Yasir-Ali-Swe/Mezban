@@ -59,7 +59,7 @@ const BusinessAnalyticsPage = () => {
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Business Analytics</h1>
                     <p className="text-sm text-muted-foreground">
-                        Track sales, orders, products, and inventory.
+                        Track sales, orders, menu items, and kitchen status.
                     </p>
                 </div>
 
@@ -128,7 +128,7 @@ const BusinessAnalyticsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <OrderStatusChart data={currentData.orderStatus} />
                 <VerticalBarChart
-                    title="Top Products"
+                    title="Top Menu Items"
                     data={currentData.topProducts}
                     color="var(--chart-3)"
                     isTimeSeries={false}
