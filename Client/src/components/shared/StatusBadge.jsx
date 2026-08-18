@@ -69,6 +69,20 @@ const STATUS_CONFIG = {
         iconClassName: 'h-3 w-3',
         label: 'Confirmed',
     },
+    preparing: {
+        variant: 'default',
+        className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+        icon: Clock,
+        iconClassName: 'h-3 w-3',
+        label: 'Preparing',
+    },
+    ready: {
+        variant: 'default',
+        className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+        icon: CheckCircle,
+        iconClassName: 'h-3 w-3',
+        label: 'Ready',
+    },
     processing: {
         variant: 'default',
         className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
@@ -165,6 +179,8 @@ const getConfigKey = (status) => {
         // Order status
         if (lowerStatus === 'pending') return 'pending';
         if (lowerStatus === 'confirmed') return 'confirmed';
+        if (lowerStatus === 'preparing') return 'preparing';
+        if (lowerStatus === 'ready') return 'ready';
         if (lowerStatus === 'processing') return 'processing';
         if (lowerStatus === 'completed') return 'completed';
         if (lowerStatus === 'cancelled') return 'cancelled';
