@@ -72,45 +72,23 @@ const STATUS_OPTIONS = [
     { value: 'ABANDONED', label: 'Abandoned' },
 ];
 
-const getIntentOptions = (type) => {
-    if (type === 'restaurant') {
-        return [
-            { value: 'all', label: 'All Intents' },
-            { value: 'MENU_SEARCH', label: 'Menu Search' },
-            { value: 'MENU_INFO', label: 'Menu Information' },
-            { value: 'PLACE_ORDER', label: 'Place Order' },
-            { value: 'ORDER_STATUS', label: 'Order Status' },
-            { value: 'DEAL_INFO', label: 'Deal Information' },
-            { value: 'SUPPORT', label: 'Support' },
-        ];
-    }
-    return [
-        { value: 'all', label: 'All Intents' },
-        { value: 'PRODUCT_SEARCH', label: 'Product Search' },
-        { value: 'PRODUCT_INFO', label: 'Product Information' },
-        { value: 'PLACE_ORDER', label: 'Place Order' },
-        { value: 'ORDER_STATUS', label: 'Order Status' },
-        { value: 'SUPPORT', label: 'Support' },
-    ];
-};
+const INTENT_OPTIONS = [
+    { value: 'all', label: 'All Intents' },
+    { value: 'MENU_SEARCH', label: 'Menu Search' },
+    { value: 'MENU_INFO', label: 'Menu Information' },
+    { value: 'PLACE_ORDER', label: 'Place Order' },
+    { value: 'ORDER_STATUS', label: 'Order Status' },
+    { value: 'DEAL_INFO', label: 'Deal Information' },
+    { value: 'SUPPORT', label: 'Support' },
+];
 
-const getAgentOptions = (type) => {
-    if (type === 'restaurant') {
-        return [
-            { value: 'all', label: 'All Agents' },
-            { value: 'MENU_AGENT', label: 'Menu Agent' },
-            { value: 'ORDER_AGENT', label: 'Order Agent' },
-            { value: 'DEAL_AGENT', label: 'Deal Agent' },
-            { value: 'SUPPORT_AGENT', label: 'Support Agent' },
-        ];
-    }
-    return [
-        { value: 'all', label: 'All Agents' },
-        { value: 'PRODUCT_AGENT', label: 'Product Agent' },
-        { value: 'ORDER_AGENT', label: 'Order Agent' },
-        { value: 'SUPPORT_AGENT', label: 'Support Agent' },
-    ];
-};
+const AGENT_OPTIONS = [
+    { value: 'all', label: 'All Agents' },
+    { value: 'MENU_AGENT', label: 'Menu Agent' },
+    { value: 'ORDER_AGENT', label: 'Order Agent' },
+    { value: 'DEAL_AGENT', label: 'Deal Agent' },
+    { value: 'SUPPORT_AGENT', label: 'Support Agent' },
+];
 
 // ─── DATA UTILITIES (Mock Data Generation) ──────────────────────────────────
 
@@ -127,23 +105,17 @@ const generateMockCustomers = () => {
     }));
 };
 
-const generateMockConversations = (count, businessType = 'ecommerce') => {
+const generateMockConversations = (count) => {
     const customers = generateMockCustomers();
     const statuses = ['RESOLVED', 'ACTIVE', 'ESCALATED', 'ABANDONED'];
     const statusWeights = [0.55, 0.15, 0.20, 0.10];
 
-    const ecommerceIntents = ['PRODUCT_SEARCH', 'PRODUCT_INFO', 'PLACE_ORDER', 'ORDER_STATUS', 'SUPPORT'];
-    const restaurantIntents = ['MENU_SEARCH', 'MENU_INFO', 'PLACE_ORDER', 'ORDER_STATUS', 'DEAL_INFO', 'SUPPORT'];
-
-    const ecommerceAgents = ['PRODUCT_AGENT', 'ORDER_AGENT', 'SUPPORT_AGENT'];
-    const restaurantAgents = ['MENU_AGENT', 'ORDER_AGENT', 'DEAL_AGENT', 'SUPPORT_AGENT'];
-
-    const intents = businessType === 'restaurant' ? restaurantIntents : ecommerceIntents;
-    const agents = businessType === 'restaurant' ? restaurantAgents : ecommerceAgents;
+    const intents = ['MENU_SEARCH', 'MENU_INFO', 'PLACE_ORDER', 'ORDER_STATUS', 'DEAL_INFO', 'SUPPORT'];
+    const agents = ['MENU_AGENT', 'ORDER_AGENT', 'DEAL_AGENT', 'SUPPORT_AGENT'];
 
     const messages = [
         "I want to order 2 Zinger burgers",
-        "Show me the latest products",
+        "Show me the menu",
         "I have a problem with my order",
         "Is there any discount available?",
         "What's the status of my delivery?",
@@ -228,14 +200,14 @@ const generateStats = (conversations, dateRange) => {
     };
 };
 
-const getConversationStats = (dateRange = 'week', businessType = 'ecommerce') => {
+const getConversationStats = (dateRange = 'week') => {
     let count = 100;
     if (dateRange === 'today') count = 20;
     else if (dateRange === 'week') count = 100;
     else if (dateRange === 'month') count = 300;
     else if (dateRange === 'all') count = 500;
 
-    const allConversations = generateMockConversations(count, businessType);
+    const allConversations = generateMockConversations(count);
     return generateStats(allConversations, dateRange);
 };
 
@@ -246,8 +218,7 @@ const getConversations = ({
     status = null,
     intent = null,
     agent = null,
-    dateRange = 'week',
-    businessType = 'ecommerce'
+    dateRange = 'week'
 }) => {
     let count = 200;
     if (dateRange === 'today') count = 50;
@@ -255,7 +226,7 @@ const getConversations = ({
     else if (dateRange === 'month') count = 500;
     else if (dateRange === 'all') count = 1000;
 
-    const allConversations = generateMockConversations(count, businessType);
+    const allConversations = generateMockConversations(count);
 
     let filtered = allConversations;
     if (status && status !== 'all') {
@@ -319,8 +290,6 @@ const ConversationsPage = () => {
     const [pagination, setPagination] = useState(null);
     const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-    const businessType = 'ecommerce'; // Change to 'restaurant' for restaurant business
-
     // ─── Load Data ────────────────────────────────────────────────────────────
 
     useEffect(() => {
@@ -332,7 +301,7 @@ const ConversationsPage = () => {
             setLoading(true);
             try {
                 const dateRange = filters.dateRange || 'all';
-                const statsData = getConversationStats(dateRange, businessType);
+                const statsData = getConversationStats(dateRange);
                 if (isMounted) setStats(statsData);
 
                 const { data, pagination: paginationData } = getConversations({
@@ -343,7 +312,6 @@ const ConversationsPage = () => {
                     intent: (filters.intent && filters.intent !== 'all') ? filters.intent : undefined,
                     agent: (filters.agent && filters.agent !== 'all') ? filters.agent : undefined,
                     dateRange,
-                    businessType,
                 });
 
                 if (isMounted) {
@@ -365,7 +333,7 @@ const ConversationsPage = () => {
         return () => {
             isMounted = false;
         };
-    }, [filters, businessType]);
+    }, [filters]);
 
     // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -608,7 +576,7 @@ const ConversationsPage = () => {
                         />
                         <FilterDropdown
                             label="Intent"
-                            options={getIntentOptions(businessType)}
+                            options={INTENT_OPTIONS}
                             onSelect={(v) => updateFilter('intent', v)}
                             menuLabel="Intent"
                             className="h-8 text-xs"
@@ -616,7 +584,7 @@ const ConversationsPage = () => {
                         />
                         <FilterDropdown
                             label="Agent"
-                            options={getAgentOptions(businessType)}
+                            options={AGENT_OPTIONS}
                             onSelect={(v) => updateFilter('agent', v)}
                             menuLabel="Agent"
                             className="h-8 text-xs"
@@ -651,14 +619,14 @@ const ConversationsPage = () => {
                     menuLabel="Status"
                 />
                 <FilterDropdown
-                    label={`Intent: ${getIntentOptions(businessType).find(s => s.value === filters.intent)?.label || 'All'}`}
-                    options={getIntentOptions(businessType)}
+                    label={`Intent: ${INTENT_OPTIONS.find(s => s.value === filters.intent)?.label || 'All'}`}
+                    options={INTENT_OPTIONS}
                     onSelect={(v) => updateFilter('intent', v)}
                     menuLabel="Intent"
                 />
                 <FilterDropdown
-                    label={`Agent: ${getAgentOptions(businessType).find(s => s.value === filters.agent)?.label || 'All'}`}
-                    options={getAgentOptions(businessType)}
+                    label={`Agent: ${AGENT_OPTIONS.find(s => s.value === filters.agent)?.label || 'All'}`}
+                    options={AGENT_OPTIONS}
                     onSelect={(v) => updateFilter('agent', v)}
                     menuLabel="Agent"
                 />
