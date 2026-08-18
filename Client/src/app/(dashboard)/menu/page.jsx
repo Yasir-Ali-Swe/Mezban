@@ -292,17 +292,6 @@ const MenuList = () => {
             cellClassName: 'text-center text-sm text-muted-foreground',
             render: (item) => fmtOrders(item.orders),
         },
-        // {
-        //     key: 'stock',
-        //     header: 'Stock',
-        //     headerClassName: 'min-w-20 text-center',
-        //     cellClassName: 'text-center',
-        //     render: (item) => (
-        //         <span className={cn('text-sm font-medium', item.stock === 0 && 'text-destructive')}>
-        //             {item.stock}
-        //         </span>
-        //     ),
-        // },
         {
             key: 'actions',
             header: 'Actions',
