@@ -26,23 +26,6 @@ const businessHoursSchema = z.object({
     close: z.string().optional(),
 });
 
-const ecommerceKnowledgeSchema = z.object({
-    businessIdentity: z.string().min(10, 'Business identity is required').max(1500),
-    returnRefundCancellation: z.string().min(10, 'Return & refund policy is required').max(2000),
-    shippingDelivery: z.string().min(10, 'Shipping & delivery information is required').max(1000),
-    paymentMethods: z.string().min(1, 'Payment methods are required').max(100),
-    languages: z.array(z.string()).min(1, 'Select at least one language'),
-    businessHours: z.object({
-        monday: businessHoursSchema,
-        tuesday: businessHoursSchema,
-        wednesday: businessHoursSchema,
-        thursday: businessHoursSchema,
-        friday: businessHoursSchema,
-        saturday: businessHoursSchema,
-        sunday: businessHoursSchema,
-    }),
-});
-
 const restaurantKnowledgeSchema = z.object({
     businessIdentity: z.string().min(10, 'Business identity is required').max(2000),
     foodVariety: z.string().min(10, 'Food variety information is required').max(4000),
@@ -59,11 +42,6 @@ const restaurantKnowledgeSchema = z.object({
         sunday: businessHoursSchema,
     }),
 });
-
-const businessKnowledgeSchema = z.discriminatedUnion('businessType', [
-    z.object({ businessType: z.literal('ECOMMERCE'), data: ecommerceKnowledgeSchema }),
-    z.object({ businessType: z.literal('RESTAURANT'), data: restaurantKnowledgeSchema }),
-]);
 
 // ============================================================
 // DAYS OF WEEK
@@ -216,11 +194,10 @@ const CheckboxGroup = ({ options, selected, onChange, label }) => {
 // ============================================================
 const BusinessKnowledgePage = () => {
     const router = useRouter();
-    const [businessType, setBusinessType] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const getDefaultValues = (type) => {
+    const getDefaultValues = () => {
         const hours = {
             monday: { isOpen: true, open: '09:00', close: '18:00' },
             tuesday: { isOpen: true, open: '09:00', close: '18:00' },
@@ -231,49 +208,24 @@ const BusinessKnowledgePage = () => {
             sunday: { isOpen: false, open: '09:00', close: '18:00' },
         };
 
-        if (type === 'ECOMMERCE') {
-            return {
-                businessType: 'ECOMMERCE',
-                data: {
-                    businessIdentity: '',
-                    returnRefundCancellation: '',
-                    shippingDelivery: '',
-                    paymentMethods: '',
-                    languages: ['english'],
-                    businessHours: hours,
-                }
-            };
-        } else {
-            return {
-                businessType: 'RESTAURANT',
-                data: {
-                    businessIdentity: '',
-                    foodVariety: '',
-                    deliveryInformation: '',
-                    paymentInformation: '',
-                    reservationInformation: '',
-                    businessHours: hours,
-                }
-            };
-        }
+        return {
+            data: {
+                businessIdentity: '',
+                foodVariety: '',
+                deliveryInformation: '',
+                paymentInformation: '',
+                reservationInformation: '',
+                businessHours: hours,
+            }
+        };
     };
 
-    const getSchema = (type) => {
-        if (type === 'ECOMMERCE') {
-            return zodResolver(
-                z.object({
-                    businessType: z.literal('ECOMMERCE'),
-                    data: ecommerceKnowledgeSchema
-                })
-            );
-        } else {
-            return zodResolver(
-                z.object({
-                    businessType: z.literal('RESTAURANT'),
-                    data: restaurantKnowledgeSchema
-                })
-            );
-        }
+    const getSchema = () => {
+        return zodResolver(
+            z.object({
+                data: restaurantKnowledgeSchema
+            })
+        );
     };
 
     const {
@@ -283,42 +235,21 @@ const BusinessKnowledgePage = () => {
         setValue,
         formState: { errors },
     } = useForm({
-        resolver: getSchema(businessType),
-        defaultValues: getDefaultValues(businessType),
+        resolver: getSchema(),
+        defaultValues: getDefaultValues(),
     });
 
     useEffect(() => {
-        const type = localStorage.getItem('businessType');
-        if (type) {
-            setBusinessType(type);
-        } else {
-            router.push('/onboarding/business-type');
-        }
         setIsLoading(false);
-    }, [router]);
+    }, []);
 
-    useEffect(() => {
-        if (businessType) {
-            setValue('businessType', businessType);
-
-            const defaultValues = getDefaultValues(businessType);
-            Object.keys(defaultValues.data).forEach((key) => {
-                if (key !== 'businessHours') {
-                    setValue(`data.${key}`, defaultValues.data[key]);
-                }
-            });
-            Object.keys(defaultValues.data.businessHours).forEach((day) => {
-                setValue(`data.businessHours.${day}.isOpen`, defaultValues.data.businessHours[day].isOpen);
-                setValue(`data.businessHours.${day}.open`, defaultValues.data.businessHours[day].open);
-                setValue(`data.businessHours.${day}.close`, defaultValues.data.businessHours[day].close);
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [businessType, setValue]);
-
-    const onSubmit = async (data) => {
+    const onSubmit = async (values) => {
         setIsSubmitting(true);
         try {
+            const payload = {
+                businessType: 'RESTAURANT',
+                ...values,
+            };
             // Simulate API call
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -357,8 +288,6 @@ const BusinessKnowledgePage = () => {
         );
     }
 
-    const isEcommerce = businessType === 'ECOMMERCE';
-    const isRestaurant = businessType === 'RESTAURANT';
     const dataErrors = errors.data || {};
 
     return (
@@ -373,163 +302,80 @@ const BusinessKnowledgePage = () => {
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
-                    {isEcommerce ? (
-                        // ============================================
-                        // E-COMMERCE KNOWLEDGE
-                        // ============================================
-                        <div className="space-y-6">
-                            {/* Business Identity */}
-                            <KnowledgeTextarea
-                                label="Business Identity"
-                                description="Basic information about your business and what you sell."
-                                placeholder="For example,We are StyleHub, an online fashion store based in Lahore, Pakistan. We sell men's, women's and children's clothing, including shirts, trousers, dresses, jackets and accessories. Our products are suitable for casual and everyday wear. We serve customers across Pakistan and focus on providing affordable and good-quality fashion products. Customers can contact us through our business phone number or email for general questions about our products and services."
-                                register={register}
-                                name="data.businessIdentity"
-                                maxLength={1500}
-                                error={dataErrors.businessIdentity}
-                            />
+                    {/* RESTAURANT KNOWLEDGE */}
+                    <div className="space-y-6">
+                        {/* Business Identity */}
+                        <KnowledgeTextarea
+                            label="Business Identity"
+                            description="Basic information about your restaurant and its concept."
+                            placeholder="For example, We are Spice House, a family-friendly restaurant located in Lahore, Pakistan. We serve Pakistani, Chinese and fast food dishes for dine-in and delivery customers. Our restaurant is located on Main Boulevard and is open for lunch and dinner. Customers can contact us by phone or email for general questions, delivery information and other restaurant-related inquiries. We focus on fresh food, reasonable prices and quick service."
+                            register={register}
+                            name="data.businessIdentity"
+                            maxLength={2000}
+                            error={dataErrors.businessIdentity}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Return, Refund & Cancellation Policy */}
-                            <KnowledgeTextarea
-                                label="Return, Refund & Cancellation Policy"
-                                description="Your rules for returns, refunds, and order cancellations."
-                                placeholder="For example,Customers can request a return within 7 days of receiving their order. Products must be unused, unworn and in their original packaging with all tags attached. Items that have been damaged, washed or used cannot be returned. Customers must contact us before sending an item back. Once the returned product is inspected and approved, the refund will be processed within 3–5 business days. Refunds are issued through the original payment method where possible. Delivery charges are non-refundable unless the product received was damaged or incorrect. Orders can be cancelled within 2 hours of placing the order. After the order has been shipped, cancellation is no longer available."
-                                register={register}
-                                name="data.returnRefundCancellation"
-                                maxLength={2000}
-                                error={dataErrors.returnRefundCancellation}
-                            />
+                        {/* Food Variety / Menu Information */}
+                        <KnowledgeTextarea
+                            label="Food Variety / Menu Information"
+                            description="The cuisines, dishes, specialties, and food options you offer."
+                            placeholder="For example,Our restaurant serves a variety of Pakistani, Chinese and fast food dishes. Pakistani food includes Chicken Karahi, Mutton Karahi, Chicken Biryani, Beef Biryani, Chicken Handi, Daal and BBQ items such as Chicken Tikka and Seekh Kabab. Our Chinese menu includes Chicken Chow Mein, Chicken Manchurian, Fried Rice, Chicken Shashlik and Hot & Sour Soup. Fast food options include Zinger Burger, Chicken Burger, Beef Burger, Chicken Shawarma, Loaded Fries and Pizza. We also serve soft drinks, fresh juices, milkshakes and desserts. Our popular dishes include Chicken Karahi, Zinger Burger and Chicken Chow Mein."
+                            register={register}
+                            name="data.foodVariety"
+                            maxLength={4000}
+                            error={dataErrors.foodVariety}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Shipping & Delivery Information */}
-                            <KnowledgeTextarea
-                                label="Shipping & Delivery Information"
-                                description="Your delivery areas, charges, and estimated delivery times."
-                                placeholder="For example,We deliver across Pakistan, including Lahore, Islamabad, Rawalpindi, Karachi, Faisalabad and other major cities. Standard delivery charges are Rs. 200. Orders are normally delivered within 3–5 business days. Delivery to remote areas may take longer. Free delivery is available on orders above Rs. 5,000. Customers will receive their order tracking information after the order has been shipped."
-                                register={register}
-                                name="data.shippingDelivery"
-                                maxLength={1000}
-                                error={dataErrors.shippingDelivery}
-                            />
+                        {/* Delivery Information */}
+                        <KnowledgeTextarea
+                            label="Delivery Information"
+                            description="Your delivery areas, charges, minimum order, and delivery times."
+                            placeholder="For example,We provide delivery within Lahore. Our regular delivery area includes areas within approximately 10 km of the restaurant. The minimum order for delivery is Rs. 500. Standard delivery charges are Rs. 150. Delivery usually takes 30–45 minutes depending on the customer's location and order volume. Free delivery is available for orders above Rs. 2,000 within our standard delivery area. Delivery to areas outside our normal delivery zone may not be available. During busy hours, weekends or special occasions, delivery may take longer than usual."
+                            register={register}
+                            name="data.deliveryInformation"
+                            maxLength={2000}
+                            error={dataErrors.deliveryInformation}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Payment Methods */}
-                            <KnowledgeTextarea
-                                label="Payment Methods"
-                                description="The payment methods customers can use to pay for orders."
-                                placeholder="For example, Cash on Delivery, Credit Card, Debit Card and Bank Transfer."
-                                register={register}
-                                name="data.paymentMethods"
-                                maxLength={100}
-                                error={dataErrors.paymentMethods}
-                            />
+                        {/* Payment Information */}
+                        <KnowledgeTextarea
+                            label="Payment Information"
+                            description="The payment methods available for delivery and dine-in customers."
+                            placeholder="For example,For delivery orders, customers can pay using Cash on Delivery, Credit Card, Debit Card or Bank Transfer. For dine-in customers, we accept Cash, Credit Card and Debit Card payments. Customers should confirm the available payment method when placing large or special orders."
+                            register={register}
+                            name="data.paymentInformation"
+                            maxLength={1000}
+                            error={dataErrors.paymentInformation}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Languages */}
-                            <CheckboxGroup
-                                options={LANGUAGE_OPTIONS}
-                                selected={watch('data.languages') || []}
-                                onChange={(value) => setValue('data.languages', value)}
-                                label="Languages"
-                            />
-                            {dataErrors.languages && (
-                                <p className="text-sm text-destructive">
-                                    {dataErrors.languages.message}
-                                </p>
-                            )}
+                        {/* Reservation Information */}
+                        <KnowledgeTextarea
+                            label="Reservation Information"
+                            description="Instructions for handling reservation requests through TeleAgent."
+                            placeholder="For example,TeleAgent currently does not support creating or recording restaurant reservations. If a customer asks to reserve a table, inform them that reservations cannot be made through TeleAgent and ask them to contact the restaurant directly at the provided phone number. Do not tell customers that a reservation has been created or confirmed through the system."
+                            register={register}
+                            name="data.reservationInformation"
+                            maxLength={1000}
+                            error={dataErrors.reservationInformation}
+                        />
 
-                            <Separator />
+                        <Separator />
 
-                            {/* Weekly Schedule */}
-                            <BusinessHoursSection
-                                register={register}
-                                watch={watch}
-                                setValue={setValue}
-                            />
-                        </div>
-                    ) : (
-                        // ============================================
-                        // RESTAURANT KNOWLEDGE
-                        // ============================================
-                        <div className="space-y-6">
-                            {/* Business Identity */}
-                            <KnowledgeTextarea
-                                label="Business Identity"
-                                description="Basic information about your restaurant and its concept."
-                                placeholder="For example, We are Spice House, a family-friendly restaurant located in Lahore, Pakistan. We serve Pakistani, Chinese and fast food dishes for dine-in and delivery customers. Our restaurant is located on Main Boulevard and is open for lunch and dinner. Customers can contact us by phone or email for general questions, delivery information and other restaurant-related inquiries. We focus on fresh food, reasonable prices and quick service."
-                                register={register}
-                                name="data.businessIdentity"
-                                maxLength={2000}
-                                error={dataErrors.businessIdentity}
-                            />
-
-                            <Separator />
-
-                            {/* Food Variety / Menu Information */}
-                            <KnowledgeTextarea
-                                label="Food Variety / Menu Information"
-                                description="The cuisines, dishes, specialties, and food options you offer."
-                                placeholder="For example,Our restaurant serves a variety of Pakistani, Chinese and fast food dishes. Pakistani food includes Chicken Karahi, Mutton Karahi, Chicken Biryani, Beef Biryani, Chicken Handi, Daal and BBQ items such as Chicken Tikka and Seekh Kabab. Our Chinese menu includes Chicken Chow Mein, Chicken Manchurian, Fried Rice, Chicken Shashlik and Hot & Sour Soup. Fast food options include Zinger Burger, Chicken Burger, Beef Burger, Chicken Shawarma, Loaded Fries and Pizza. We also serve soft drinks, fresh juices, milkshakes and desserts. Our popular dishes include Chicken Karahi, Zinger Burger and Chicken Chow Mein."
-                                register={register}
-                                name="data.foodVariety"
-                                maxLength={4000}
-                                error={dataErrors.foodVariety}
-                            />
-
-                            <Separator />
-
-                            {/* Delivery Information */}
-                            <KnowledgeTextarea
-                                label="Delivery Information"
-                                description="Your delivery areas, charges, minimum order, and delivery times."
-                                placeholder="For example,We provide delivery within Lahore. Our regular delivery area includes areas within approximately 10 km of the restaurant. The minimum order for delivery is Rs. 500. Standard delivery charges are Rs. 150. Delivery usually takes 30–45 minutes depending on the customer's location and order volume. Free delivery is available for orders above Rs. 2,000 within our standard delivery area. Delivery to areas outside our normal delivery zone may not be available. During busy hours, weekends or special occasions, delivery may take longer than usual."
-                                register={register}
-                                name="data.deliveryInformation"
-                                maxLength={2000}
-                                error={dataErrors.deliveryInformation}
-                            />
-
-                            <Separator />
-
-                            {/* Payment Information */}
-                            <KnowledgeTextarea
-                                label="Payment Information"
-                                description="The payment methods available for delivery and dine-in customers."
-                                placeholder="For example,For delivery orders, customers can pay using Cash on Delivery, Credit Card, Debit Card or Bank Transfer. For dine-in customers, we accept Cash, Credit Card and Debit Card payments. Customers should confirm the available payment method when placing large or special orders."
-                                register={register}
-                                name="data.paymentInformation"
-                                maxLength={1000}
-                                error={dataErrors.paymentInformation}
-                            />
-
-                            <Separator />
-
-                            {/* Reservation Information */}
-                            <KnowledgeTextarea
-                                label="Reservation Information"
-                                description="Instructions for handling reservation requests through TeleAgent."
-                                placeholder="For example,TeleAgent currently does not support creating or recording restaurant reservations. If a customer asks to reserve a table, inform them that reservations cannot be made through TeleAgent and ask them to contact the restaurant directly at the provided phone number. Do not tell customers that a reservation has been created or confirmed through the system."
-                                register={register}
-                                name="data.reservationInformation"
-                                maxLength={1000}
-                                error={dataErrors.reservationInformation}
-                            />
-
-                            <Separator />
-
-                            {/* Weekly Schedule */}
-                            <BusinessHoursSection
-                                register={register}
-                                watch={watch}
-                                setValue={setValue}
-                            />
-                        </div>
-                    )}
+                        {/* Weekly Schedule */}
+                        <BusinessHoursSection
+                            register={register}
+                            watch={watch}
+                            setValue={setValue}
+                        />
+                    </div>
 
                     {/* ============================================ */}
                     {/* NAVIGATION */}
