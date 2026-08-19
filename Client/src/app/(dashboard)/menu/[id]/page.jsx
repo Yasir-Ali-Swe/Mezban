@@ -52,29 +52,6 @@ const menuItemSchema = z.object({
     sellingPrice: z.string().min(1, { message: 'Selling price is required' }).transform(val => parseFloat(val)),
     status: z.enum(['available', 'unavailable']),
 });
-
-// Dummy Data
-const DUMMY_CATEGORIES = [
-    { _id: '1', name: 'Burgers' },
-    { _id: '2', name: 'Pizza' },
-    { _id: '3', name: 'BBQ' },
-    { _id: '4', name: 'Chinese' },
-    { _id: '5', name: 'Drinks' },
-    { _id: '6', name: 'Desserts' },
-    { _id: '7', name: 'Sides' },
-];
-
-// Dummy menu item data
-const DUMMY_MENU_ITEM = {
-    _id: 'm1',
-    name: 'Chicken Zinger Burger',
-    category: 'Burgers',
-    costPrice: 420,
-    sellingPrice: 650,
-    status: 'available',
-    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop',
-};
-
 import {
     useMenuItem,
     useUpdateMenuItem,
@@ -98,7 +75,7 @@ const MenuEdit = () => {
     const deleteMenuItemMutation = useDeleteMenuItem();
 
     const menuItem = itemResponse?.data;
-    const categoriesList = categoriesResponse?.data || DUMMY_CATEGORIES;
+    const categoriesList = categoriesResponse?.data || [];
 
     const {
         register,
