@@ -18,36 +18,57 @@ import VerticalBarChart from '@/components/analytics/VerticalBarChart';
 import AiVsManualChart from '@/components/analytics/AiVsManualChart';
 import AiResolutionChart from '@/components/analytics/AiResolutionChart';
 import AgentPerformanceTable from '@/components/analytics/AgentPerformanceTable';
-import { getAnalyticsData } from '@/lib/analyticsData';
+import { useAiAnalytics } from '@/hooks/useApi';
 import { getTimeSeriesData } from '@/lib/chartUtils';
+import {
+    Loader2,
+    MessageSquare,  // For Total Conversations
+    CheckCircle,    // For AI Resolved
+    ShoppingBag,    // For AI Orders
+    TrendingUp,     // For Resolution Rate
+    Sparkles,
+    Target,
+    BarChart3
+} from 'lucide-react';
+
+import { formatNumber } from '@/lib/formatters';
 
 // Helper function to format large numbers
-const formatLargeNumber = (value) => {
-    if (value >= 1000000) {
-        return `${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-        return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-    }
-    return value.toString();
-};
+const formatLargeNumber = (value) => formatNumber(value);
 
 const AiAnalyticsPage = () => {
     const [timeRange, setTimeRange] = useState('weekly');
-    const currentData = getAnalyticsData(timeRange);
+    const { data: responseData, isLoading } = useAiAnalytics(timeRange);
+
+    const currentData = responseData?.data || {
+        aiOverview: { totalConversations: 0, totalChange: 0, aiResolved: 0, resolvedChange: 0, aiOrders: 0, ordersChange: 0, resolutionRate: 0, rateChange: 0 },
+        conversationVolume: [],
+        intentDistribution: [],
+        agentUsage: [],
+        aiVsManual: [],
+        agentPerformance: [],
+    };
 
     // Prepare time-series data with aggregation
     const conversationData = getTimeSeriesData(
-        currentData.conversationVolume,
+        currentData.conversationVolume || [],
         timeRange,
         ['conversations']
     );
 
     const aiVsManualData = getTimeSeriesData(
-        currentData.aiVsManual,
+        currentData.aiVsManual || [],
         timeRange,
         ['manual', 'ai']
     );
+
+    if (isLoading) {
+        return (
+            <div className="flex h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 pb-8">
@@ -81,34 +102,41 @@ const AiAnalyticsPage = () => {
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Total Conversations"
-                    value={currentData.aiOverview.totalConversations}
-                    change={currentData.aiOverview.totalChange}
-                    icon={Bot}
-                    trend="up"
+                    value={currentData.aiOverview?.totalConversations || 0}
+                    change={currentData.aiOverview?.totalChange || 0}
+                    icon={MessageSquare}
+                    iconClassName={"text-blue-500"}
+                    trend={(currentData.aiOverview?.totalChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
+
                 <StatCard
                     title="AI Resolved"
-                    value={currentData.aiOverview.aiResolved}
-                    change={currentData.aiOverview.resolvedChange}
-                    icon={Bot}
-                    trend="up"
+                    value={currentData.aiOverview?.aiResolved || 0}
+                    change={currentData.aiOverview?.resolvedChange || 0}
+                    icon={CheckCircle}
+                    iconClassName={"text-green-500"}
+                    trend={(currentData.aiOverview?.resolvedChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
+
                 <StatCard
                     title="AI Orders"
-                    value={currentData.aiOverview.aiOrders}
-                    change={currentData.aiOverview.ordersChange}
-                    icon={Bot}
-                    trend="up"
+                    value={currentData.aiOverview?.aiOrders || 0}
+                    change={currentData.aiOverview?.ordersChange || 0}
+                    icon={ShoppingBag}
+                    iconClassName={"text-purple-500"}
+                    trend={(currentData.aiOverview?.ordersChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
+
                 <StatCard
                     title="Resolution Rate"
-                    value={currentData.aiOverview.resolutionRate}
-                    change={currentData.aiOverview.rateChange}
-                    icon={Bot}
-                    trend="up"
+                    value={currentData.aiOverview?.resolutionRate || 0}
+                    change={currentData.aiOverview?.rateChange || 0}
+                    icon={Target}
+                    iconClassName={"text-orange-500"}
+                    trend={(currentData.aiOverview?.rateChange || 0) >= 0 ? "up" : "down"}
                     type="percentage"
                 />
             </div>
@@ -121,10 +149,10 @@ const AiAnalyticsPage = () => {
 
             {/* Intent Distribution & Agent Usage */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <IntentDistributionChart data={currentData.intentDistribution} />
+                <IntentDistributionChart data={currentData.intentDistribution || []} />
                 <VerticalBarChart
                     title="Agent Usage"
-                    data={currentData.agentUsage}
+                    data={currentData.agentUsage || []}
                     color="var(--chart-2)"
                     formatter={formatLargeNumber}
                     isTimeSeries={false}
@@ -140,11 +168,11 @@ const AiAnalyticsPage = () => {
             {/* AI Resolution & Agent Performance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <AiResolutionChart
-                    rate={currentData.aiOverview.resolutionRate}
-                    resolved={currentData.aiOverview.aiResolved}
-                    escalated={currentData.aiOverview.totalConversations - currentData.aiOverview.aiResolved}
+                    rate={currentData.aiOverview?.resolutionRate || 0}
+                    resolved={currentData.aiOverview?.aiResolved || 0}
+                    escalated={Math.max(0, (currentData.aiOverview?.totalConversations || 0) - (currentData.aiOverview?.aiResolved || 0))}
                 />
-                <AgentPerformanceTable data={currentData.agentPerformance} />
+                <AgentPerformanceTable data={currentData.agentPerformance || []} />
             </div>
         </div>
     );
