@@ -1,19 +1,10 @@
 'use client';
-
-import { Fragment, useSyncExternalStore } from 'react';
+import { Fragment } from "react";
+import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-    BadgeCheckIcon,
-    BellIcon,
-    CreditCardIcon,
-    LogOutIcon,
-    Bell,
-    Boxes,
-    Building2
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserButton } from '@clerk/nextjs';
+
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -24,14 +15,6 @@ import {
 } from '@/components/ui/breadcrumb';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import ThemeToggle from '@/components/shared/ThemeToggle';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const emptySubscribe = (callback) => {
     window.addEventListener('storage', callback);
@@ -214,76 +197,9 @@ export const Navbar = () => {
                 </div>
 
                 {!isOnboarding && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger
-                            render={
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-9 w-9 rounded-full hover:bg-accent"
-                                >
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src="https://github.com/shadcn.png" alt="User" />
-                                        <AvatarFallback className="bg-primary text-primary-foreground">
-                                            {user?.name?.substring(0, 2)?.toUpperCase() || 'US'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </Button>
-                            }
-                        />
-                        <DropdownMenuContent
-                            align="end"
-                            sideOffset={10}
-                            className="w-56 bg-card border-border"
-                        >
-                            <DropdownMenuGroup>
-                                <DropdownMenuItem
-                                    className="cursor-pointer rounded-md"
-                                    render={
-                                        <Link href="/settings/profile">
-                                            <BadgeCheckIcon className="mr-2 h-4 w-4" />
-                                            My Profile
-                                        </Link>
-                                    }
-                                />
-                                <DropdownMenuItem
-                                    className="cursor-pointer rounded-md"
-                                    render={
-                                        <Link href="/settings/info">
-                                            <Building2 className="mr-2 h-4 w-4" />
-                                            Business Info
-                                        </Link>
-                                    }
-                                />
-                                <DropdownMenuItem
-                                    className="cursor-pointer rounded-md"
-                                    render={
-                                        <Link href="/settings/telegram">
-                                            <Bell className="mr-2 h-4 w-4" />
-                                            Telegram Settings
-                                        </Link>
-                                    }
-                                />
-                                <DropdownMenuItem
-                                    className="cursor-pointer rounded-md"
-                                    render={
-                                        <Link href="/settings/knowledge">
-                                            <Boxes className="mr-2 h-4 w-4" />
-                                            Business Knowledge
-                                        </Link>
-                                    }
-                                />
-                            </DropdownMenuGroup>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={handleLogout}
-                                className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 rounded-md"
-                            >
-                                <LogOutIcon className="mr-2 h-4 w-4" />
-                                Sign Out
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2 pl-2">
+                        <UserButton />
+                    </div>
                 )}
             </div>
         </header>
