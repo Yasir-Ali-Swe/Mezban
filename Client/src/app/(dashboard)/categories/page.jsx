@@ -41,19 +41,6 @@ import {
 } from '@/components/dashboard';
 import StatCard from '@/components/shared/StatCard';
 
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-
-const DUMMY_CATEGORIES = [
-    { _id: 'c1', name: 'Starters', categorySlug: 'starters', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-15T10:30:00Z', productsCount: 12, isActive: true },
-    { _id: 'c2', name: 'BBQ', categorySlug: 'bbq', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-14T14:20:00Z', productsCount: 18, isActive: true },
-    { _id: 'c3', name: 'Main Course', categorySlug: 'main-course', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-13T09:15:00Z', productsCount: 24, isActive: true },
-    { _id: 'c4', name: 'Rice', categorySlug: 'rice', createdBy: { name: 'Sarah Johnson', role: 'manager' }, createdAt: '2024-01-12T16:45:00Z', productsCount: 8, isActive: true },
-    { _id: 'c5', name: 'Breads', categorySlug: 'breads', createdBy: { name: 'Mike Wilson', role: 'staff' }, createdAt: '2024-01-11T11:00:00Z', productsCount: 6, isActive: true },
-    { _id: 'c6', name: 'Salads', categorySlug: 'salads', createdBy: { name: 'Emma Davis', role: 'admin' }, createdAt: '2024-01-10T08:30:00Z', productsCount: 5, isActive: true },
-    { _id: 'c7', name: 'Beverages', categorySlug: 'beverages', createdBy: { name: 'John Doe', role: 'admin' }, createdAt: '2024-01-09T13:20:00Z', productsCount: 10, isActive: true },
-    { _id: 'c8', name: 'Desserts', categorySlug: 'desserts', createdBy: { name: 'Jane Smith', role: 'manager' }, createdAt: '2024-01-08T10:00:00Z', productsCount: 7, isActive: true },
-];
-
 // ─── Filter Config ────────────────────────────────────────────────────────────
 
 const FILTER_DEFAULTS = {
@@ -84,91 +71,101 @@ const getStatusLabel = (status) => {
     return 'All';
 };
 
+import {
+    useCategories,
+    useCategoryStats,
+    useCreateCategory,
+    useUpdateCategory,
+    useDeleteCategory,
+} from '@/hooks/useApi';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CategoriesList = () => {
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
-    // Dialog states (Add/Edit — NOT a ConfirmDialog, it's a form dialog)
+    const { data: responseData, isLoading: isFetching } = useCategories(filters);
+    const { data: statsResponse } = useCategoryStats();
+    const createCategoryMutation = useCreateCategory();
+    const updateCategoryMutation = useUpdateCategory();
+    const deleteCategoryMutation = useDeleteCategory();
+    const isSubmitting = createCategoryMutation.isPending || updateCategoryMutation.isPending;
+
+    // Dialog states
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [categoryName, setCategoryName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
 
-    // Filtered data
-    const filteredCategories = useMemo(() => {
-        let filtered = [...DUMMY_CATEGORIES];
+    const categoriesList = responseData?.data || [];
+    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
 
-        if (filters.search) {
-            const q = filters.search.toLowerCase();
-            filtered = filtered.filter(cat =>
-                cat.name.toLowerCase().includes(q) || cat.categorySlug.toLowerCase().includes(q)
-            );
-        }
-        if (filters.status !== 'all') {
-            const isActive = filters.status === 'active';
-            filtered = filtered.filter(cat => cat.isActive === isActive);
-        }
-
-        return filtered;
-    }, [filters]);
-
-    // Stats
-    const totalCategories = DUMMY_CATEGORIES.length;
-    const activeCategories = DUMMY_CATEGORIES.filter(c => c.isActive).length;
-    const inactiveCategories = DUMMY_CATEGORIES.filter(c => !c.isActive).length;
+    // Stats from dedicated endpoint
+    const statsData = statsResponse?.data || {};
+    const totalCategories = statsData.totalCategories ?? pagination.total ?? categoriesList.length;
+    const activeCategories = statsData.activeCategories ?? categoriesList.filter(c => c.isActive).length;
+    const inactiveCategories = statsData.inactiveCategories ?? categoriesList.filter(c => !c.isActive).length;
 
     // Pagination
-    const totalFiltered = filteredCategories.length;
-    const totalPages = Math.ceil(totalFiltered / filters.limit);
+    const totalFiltered = totalCategories;
+    const totalPages = pagination.totalPages || 1;
     const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + filters.limit, totalFiltered);
+    const paginatedCategories = categoriesList;
 
     const handleAddCategory = () => { setEditingCategory(null); setCategoryName(''); setIsDialogOpen(true); };
     const handleEditCategory = (category) => { setEditingCategory(category); setCategoryName(category.name); setIsDialogOpen(true); };
 
-    const handleSaveCategory = () => {
+    const handleSaveCategory = async () => {
         if (!categoryName.trim()) {
             toast.add({ type: 'error', title: 'Error!', description: 'Category name is required' });
             return;
         }
-        setIsLoading(true);
-        setTimeout(() => {
-            const slug = generateSlug(categoryName);
+
+        try {
             if (editingCategory) {
-                const idx = DUMMY_CATEGORIES.findIndex(c => c._id === editingCategory._id);
-                if (idx !== -1) { DUMMY_CATEGORIES[idx] = { ...DUMMY_CATEGORIES[idx], name: categoryName, categorySlug: slug }; }
+                await updateCategoryMutation.mutateAsync({
+                    id: editingCategory._id || editingCategory.id,
+                    name: categoryName.trim(),
+                });
                 toast.add({ type: 'success', title: 'Success!', description: `Category "${categoryName}" updated successfully!` });
             } else {
-                DUMMY_CATEGORIES.push({ _id: `c${Date.now()}`, name: categoryName, categorySlug: slug, createdBy: { name: 'Current User', role: 'admin' }, createdAt: new Date().toISOString(), productsCount: 0, isActive: true });
+                await createCategoryMutation.mutateAsync({
+                    name: categoryName.trim(),
+                });
                 toast.add({ type: 'success', title: 'Success!', description: `Category "${categoryName}" created successfully!` });
             }
-            setIsLoading(false);
             setIsDialogOpen(false);
             setCategoryName('');
             setEditingCategory(null);
-            // Force re-render
-            updateFilter('page', filters.page);
-        }, 1000);
+        } catch (error) {
+            toast.add({ type: 'error', title: 'Error!', description: error.response?.data?.message || 'Failed to save category' });
+        }
     };
 
-    const handleDelete = (category) => {
+    const handleDelete = async (category) => {
         if (category.productsCount > 0) {
             toast.add({ type: 'error', title: 'Error!', description: `Cannot delete "${category.name}". ${category.productsCount} item(s) are associated with this category.` });
             return;
         }
         if (confirm(`Are you sure you want to delete category "${category.name}"?`)) {
-            toast.add({ type: 'success', title: 'Success!', description: `Category "${category.name}" deleted successfully!` });
+            try {
+                await deleteCategoryMutation.mutateAsync(category._id || category.id);
+                toast.add({ type: 'success', title: 'Success!', description: `Category "${category.name}" deleted successfully!` });
+            } catch (error) {
+                toast.add({ type: 'error', title: 'Error!', description: error.response?.data?.message || 'Failed to delete category' });
+            }
         }
     };
 
-    const handleDeactivate = (category) => {
-        const idx = DUMMY_CATEGORIES.findIndex(c => c._id === category._id);
-        if (idx !== -1) {
-            DUMMY_CATEGORIES[idx].isActive = !DUMMY_CATEGORIES[idx].isActive;
-            toast.add({ type: 'success', title: 'Success!', description: `Category "${category.name}" ${DUMMY_CATEGORIES[idx].isActive ? 'activated' : 'deactivated'} successfully!` });
-            updateFilter('page', filters.page); // trigger re-render
+    const handleDeactivate = async (category) => {
+        try {
+            await updateCategoryMutation.mutateAsync({
+                id: category._id || category.id,
+                isActive: !category.isActive,
+            });
+            toast.add({ type: 'success', title: 'Success!', description: `Category "${category.name}" ${!category.isActive ? 'activated' : 'deactivated'} successfully!` });
+        } catch (error) {
+            toast.add({ type: 'error', title: 'Error!', description: error.response?.data?.message || 'Failed to update category status' });
         }
     };
 
@@ -220,13 +217,8 @@ const CategoriesList = () => {
             key: 'createdBy',
             header: 'Created By',
             headerClassName: 'min-w-37.5',
-            cellClassName: 'text-xs',
-            render: (cat) => (
-                <>
-                    {cat.createdBy?.name || 'N/A'}
-                    <div className="text-[10px] text-muted-foreground">{cat.createdBy?.role || ''}</div>
-                </>
-            ),
+            cellClassName: 'text-xs font-medium',
+            render: (cat) => cat.createdBy?.name || 'N/A',
         },
         {
             key: 'createdAt',
@@ -399,8 +391,8 @@ const CategoriesList = () => {
                         >
                             Cancel
                         </Button>
-                        <Button onClick={handleSaveCategory} disabled={!categoryName.trim() || isLoading}>
-                            {isLoading ? (
+                        <Button onClick={handleSaveCategory} disabled={!categoryName.trim() || isSubmitting}>
+                            {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     {editingCategory ? 'Updating...' : 'Creating...'}
