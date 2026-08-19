@@ -20,23 +20,6 @@ import {
 } from '@/components/dashboard';
 import StatCard from '@/components/shared/StatCard';
 
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-
-const DUMMY_CUSTOMERS = [
-    { _id: 'c1', name: 'John Doe', phone: '+1 (555) 123-4567', telegramChatId: '123456789', orderCount: 12, createdAt: '2024-01-15T10:30:00Z' },
-    { _id: 'c2', name: 'Jane Smith', phone: '+1 (555) 234-5678', telegramChatId: null, orderCount: 5, createdAt: '2024-01-14T14:20:00Z' },
-    { _id: 'c3', name: 'Bob Johnson', phone: '+1 (555) 345-6789', telegramChatId: '987654321', orderCount: 8, createdAt: '2024-01-13T09:15:00Z' },
-    { _id: 'c4', name: 'Sarah Williams', phone: '+1 (555) 456-7890', telegramChatId: null, orderCount: 3, createdAt: '2024-01-12T16:45:00Z' },
-    { _id: 'c5', name: 'Mike Brown', phone: '+1 (555) 567-8901', telegramChatId: '456789123', orderCount: 15, createdAt: '2024-01-11T11:00:00Z' },
-    { _id: 'c6', name: 'Emily Davis', phone: '+1 (555) 678-9012', telegramChatId: '789123456', orderCount: 6, createdAt: '2024-01-10T08:30:00Z' },
-    { _id: 'c7', name: 'David Wilson', phone: '+1 (555) 789-0123', telegramChatId: null, orderCount: 2, createdAt: '2024-01-09T13:20:00Z' },
-    { _id: 'c8', name: 'Lisa Anderson', phone: '+1 (555) 890-1234', telegramChatId: '321654987', orderCount: 9, createdAt: '2024-01-08T10:00:00Z' },
-    { _id: 'c9', name: 'Tom Martinez', phone: '+1 (555) 901-2345', telegramChatId: null, orderCount: 4, createdAt: '2024-01-07T15:30:00Z' },
-    { _id: 'c10', name: 'Rachel Taylor', phone: '+1 (555) 012-3456', telegramChatId: '654987321', orderCount: 7, createdAt: '2024-01-06T08:45:00Z' },
-    { _id: 'c11', name: 'Chris Lee', phone: '+1 (555) 123-7890', telegramChatId: null, orderCount: 1, createdAt: '2024-01-05T14:10:00Z' },
-    { _id: 'c12', name: 'Amanda White', phone: '+1 (555) 234-8901', telegramChatId: '159753486', orderCount: 11, createdAt: '2024-01-04T09:30:00Z' },
-];
-
 // ─── Filter Config ────────────────────────────────────────────────────────────
 
 const FILTER_DEFAULTS = {
@@ -50,7 +33,7 @@ const FILTER_DEFAULTS = {
 const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-import { useCustomers } from '@/hooks/useApi';
+import { useCustomers, useCustomerStats } from '@/hooks/useApi';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -59,17 +42,16 @@ const CustomersList = () => {
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
     const { data: responseData } = useCustomers(filters);
+    const { data: statsResponse } = useCustomerStats();
+
     const customersList = responseData?.data || [];
     const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
+    const statsData = statsResponse?.data || {};
 
     // Stats
-    const totalCustomers = pagination.total || customersList.length;
-    const telegramConnected = customersList.filter(c => c.telegramChatId).length;
-    const now = new Date();
-    const newThisMonth = customersList.filter(c => {
-        const d = new Date(c.createdAt);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length;
+    const totalCustomers = statsData.totalCustomers ?? (pagination.total || customersList.length);
+    const telegramConnected = statsData.telegramConnected ?? customersList.filter(c => c.telegramChatId).length;
+    const newThisMonth = statsData.newThisMonth ?? 0;
 
     // Pagination
     const totalFiltered = totalCustomers;
@@ -136,12 +118,12 @@ const CustomersList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-                <StatCard title="Total Customers" value={totalCustomers} icon={Users} caption="All customers" />
+                <StatCard title="Total Customers" value={totalCustomers} icon={Users} caption="All customers" iconClassName="text-chart-2" />
                 <StatCard
                     title="Connected via Telegram"
                     value={telegramConnected}
                     icon={MessageCircle}
-                    iconClassName="text-primary"
+                    iconClassName="text-chart-1"
                     valueClassName="text-primary"
                     caption={`${telegramConnected} of ${totalCustomers} customers`}
                 />
@@ -151,7 +133,7 @@ const CustomersList = () => {
                     icon={TrendingUp}
                     iconClassName="text-green-500"
                     valueClassName="text-green-500"
-                    caption={`${Math.round((newThisMonth / totalCustomers) * 100)}% of total`}
+                    caption={totalCustomers > 0 ? `${Math.round((newThisMonth / totalCustomers) * 100)}% of total` : '0% of total'}
                 />
             </div>
 
