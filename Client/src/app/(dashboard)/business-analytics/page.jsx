@@ -16,41 +16,45 @@ import RevenueOrdersChart from '@/components/analytics/RevenueOrdersChart';
 import OrderStatusChart from '@/components/analytics/OrderStatusChart';
 import VerticalBarChart from '@/components/analytics/VerticalBarChart';
 import InventoryAnalytics from '@/components/analytics/InventoryAnalytics';
-import { getAnalyticsData } from '@/lib/analyticsData';
+import { useBusinessAnalytics } from '@/hooks/useApi';
+import { formatNumber, formatCurrency } from '@/lib/formatters';
 import { getTimeSeriesData } from '@/lib/chartUtils';
+import { Loader2, DollarSign, ShoppingCart, ShoppingBag, Layers } from 'lucide-react';
 
 // Helper function to format large numbers
-const formatLargeNumber = (value) => {
-    if (value >= 1000000) {
-        return `Rs. ${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-        return `Rs. ${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-    }
-    return `Rs. ${value.toLocaleString()}`;
-};
+const formatLargeNumber = (value) => formatCurrency(value);
 
 // Helper function for Y-axis formatting (without Rs. prefix)
-const formatYAxisValue = (value) => {
-    if (value >= 1000000) {
-        return `${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-        return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-    }
-    return value.toString();
-};
+const formatYAxisValue = (value) => formatNumber(value);
 
 const BusinessAnalyticsPage = () => {
     const [timeRange, setTimeRange] = useState('weekly');
-    const currentData = getAnalyticsData(timeRange);
+    const { data: responseData, isLoading } = useBusinessAnalytics(timeRange);
+
+    const currentData = responseData?.data || {
+        overview: { revenue: 0, revenueChange: 0, orders: 0, ordersChange: 0, avgOrderValue: 0, avgOrderChange: 0, unitsSold: 0, unitsChange: 0 },
+        revenueOrders: [],
+        orderStatus: [],
+        topProducts: [],
+        categoryPerformance: [],
+        dealPerformance: [],
+        inventory: { total: 0, lowStock: 0, outOfStock: 0, items: [] },
+    };
 
     // Prepare time-series data with aggregation
     const revenueOrdersData = getTimeSeriesData(
-        currentData.revenueOrders,
+        currentData.revenueOrders || [],
         timeRange,
         ['revenue', 'orders']
     );
+
+    if (isLoading) {
+        return (
+            <div className="flex h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 pb-8">
@@ -86,34 +90,38 @@ const BusinessAnalyticsPage = () => {
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Total Revenue"
-                    value={currentData.overview.revenue}
-                    change={currentData.overview.revenueChange}
-                    icon={BarChart3}
-                    trend="up"
+                    value={currentData.overview?.revenue || 0}
+                    change={currentData.overview?.revenueChange || 0}
+                    icon={DollarSign}
+                    iconClassName={"text-chart-1"}
+                    trend={(currentData.overview?.revenueChange || 0) >= 0 ? "up" : "down"}
                     type="currency"
                 />
                 <StatCard
                     title="Total Orders"
-                    value={currentData.overview.orders}
-                    change={currentData.overview.ordersChange}
-                    icon={BarChart3}
-                    trend="up"
+                    value={currentData.overview?.orders || 0}
+                    change={currentData.overview?.ordersChange || 0}
+                    icon={ShoppingCart}
+                    iconClassName={"text-chart-2"}
+                    trend={(currentData.overview?.ordersChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
                 <StatCard
                     title="Average Order Value"
-                    value={currentData.overview.avgOrderValue}
-                    change={currentData.overview.avgOrderChange}
-                    icon={BarChart3}
-                    trend="up"
+                    value={currentData.overview?.avgOrderValue || 0}
+                    change={currentData.overview?.avgOrderChange || 0}
+                    icon={ShoppingBag}
+                    iconClassName={"text-chart-3"}
+                    trend={(currentData.overview?.avgOrderChange || 0) >= 0 ? "up" : "down"}
                     type="currency"
                 />
                 <StatCard
                     title="Units Sold"
-                    value={currentData.overview.unitsSold}
-                    change={currentData.overview.unitsChange}
-                    icon={BarChart3}
-                    trend="up"
+                    value={currentData.overview?.unitsSold || 0}
+                    change={currentData.overview?.unitsChange || 0}
+                    icon={Layers}
+                    iconClassName={"text-chart-4"}
+                    trend={(currentData.overview?.unitsChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
             </div>
@@ -126,10 +134,10 @@ const BusinessAnalyticsPage = () => {
 
             {/* Order Status & Top Products */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <OrderStatusChart data={currentData.orderStatus} />
+                <OrderStatusChart data={currentData.orderStatus || []} />
                 <VerticalBarChart
                     title="Top Menu Items"
-                    data={currentData.topProducts}
+                    data={currentData.topProducts || []}
                     color="var(--chart-3)"
                     isTimeSeries={false}
                 />
@@ -139,7 +147,7 @@ const BusinessAnalyticsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <VerticalBarChart
                     title="Category Performance"
-                    data={currentData.categoryPerformance}
+                    data={currentData.categoryPerformance || []}
                     color="var(--chart-4)"
                     formatter={formatLargeNumber}
                     valueFormatter={formatYAxisValue}
@@ -147,13 +155,13 @@ const BusinessAnalyticsPage = () => {
                 />
                 <VerticalBarChart
                     title="Deal Performance"
-                    data={currentData.dealPerformance}
+                    data={currentData.dealPerformance || []}
                     color="var(--chart-5)"
                     isTimeSeries={false}
                 />
             </div>
 
-            {/* Inventory Analytics */}
+            {/* Inventory / Menu Analytics */}
             <InventoryAnalytics data={currentData.inventory} />
         </div>
     );
