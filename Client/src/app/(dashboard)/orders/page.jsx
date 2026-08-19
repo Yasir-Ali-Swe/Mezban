@@ -72,49 +72,29 @@ const formatOrderId = (id) => id.split('-').pop().toUpperCase();
 
 const getStatusLabel = (status) => STATUS_CONFIG[status]?.label || 'All';
 
+import { useOrders } from '@/hooks/useApi';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const OrdersList = () => {
     const router = useRouter();
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
-    const filteredOrders = useMemo(() => {
-        let filtered = [...DUMMY_ORDERS];
-
-        if (filters.search) {
-            const q = filters.search.toLowerCase();
-            filtered = filtered.filter(order =>
-                order.customer.name.toLowerCase().includes(q) ||
-                order.customer.phone.toLowerCase().includes(q) ||
-                order.orderNumber.toLowerCase().includes(q)
-            );
-        }
-        if (filters.status && filters.status !== 'all') {
-            filtered = filtered.filter(order => order.status === filters.status);
-        }
-        if (filters.dateFrom) {
-            const from = new Date(filters.dateFrom); from.setHours(0, 0, 0, 0);
-            filtered = filtered.filter(order => new Date(order.createdAt) >= from);
-        }
-        if (filters.dateTo) {
-            const to = new Date(filters.dateTo); to.setHours(23, 59, 59, 999);
-            filtered = filtered.filter(order => new Date(order.createdAt) <= to);
-        }
-
-        return filtered;
-    }, [filters]);
+    const { data: responseData } = useOrders(filters);
+    const ordersList = responseData?.data || [];
+    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
 
     // Stats
-    const totalOrders = DUMMY_ORDERS.length;
-    const completedOrders = DUMMY_ORDERS.filter(o => o.status === 'completed').length;
-    const cancelledOrders = DUMMY_ORDERS.filter(o => o.status === 'cancelled').length;
+    const totalOrders = pagination.total || ordersList.length;
+    const completedOrders = ordersList.filter(o => o.status === 'completed').length;
+    const cancelledOrders = ordersList.filter(o => o.status === 'cancelled').length;
 
     // Pagination
-    const totalFiltered = filteredOrders.length;
-    const totalPages = Math.ceil(totalFiltered / filters.limit);
+    const totalFiltered = totalOrders;
+    const totalPages = pagination.totalPages || 1;
     const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + filters.limit, totalFiltered);
+    const paginatedOrders = ordersList;
 
     const hasActiveFilters = filters.search || filters.status !== 'all' || filters.dateFrom || filters.dateTo;
 
