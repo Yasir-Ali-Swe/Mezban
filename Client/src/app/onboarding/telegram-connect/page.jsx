@@ -22,6 +22,7 @@ import {
     FieldDescription,
 } from '@/components/ui/field';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useConnectTelegramBot, useCompleteOnboarding } from '@/hooks/useApi';
 
 // ============================================================
 // ZOD SCHEMA
@@ -35,7 +36,9 @@ const telegramConnectSchema = z.object({
 // ============================================================
 const TelegramConnectPage = () => {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(true);
+    const connectBotMutation = useConnectTelegramBot();
+
+    const [isLoading, setIsLoading] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [showToken, setShowToken] = useState(false);
@@ -56,38 +59,35 @@ const TelegramConnectPage = () => {
 
     const botToken = watch('botToken');
 
-    useEffect(() => {
-        setIsLoading(false);
-    }, []);
-
     const handleConnect = async (data) => {
         setIsConnecting(true);
         try {
-            // Simulate API call to verify token
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const response = await connectBotMutation.mutateAsync({
+                botToken: data.botToken,
+            });
 
-            // Mock successful response from Telegram getMe
-            const mockBotInfo = {
-                id: 123456789,
-                name: 'SpiceHouse Assistant',
-                username: 'SpiceHouseBot',
-                isBot: true,
-                avatar: 'https://github.com/shadcn.png',
-            };
-
-            setBotInfo(mockBotInfo);
-            setIsConnected(true);
-
-            toast.success('Telegram bot connected successfully!');
+            if (response?.data?.bot) {
+                setBotInfo(response.data.bot);
+                setIsConnected(true);
+                toast.success('Telegram bot connected successfully!');
+            }
         } catch (error) {
-            toast.error('Failed to connect Telegram bot. Please check your token and try again.');
+            toast.error(error.response?.data?.message || 'Failed to connect Telegram bot. Please check your token.');
         } finally {
             setIsConnecting(false);
         }
     };
 
-    const handleContinue = () => {
-        router.push('/restaurant');
+    const completeOnboardingMutation = useCompleteOnboarding();
+
+    const handleContinue = async () => {
+        try {
+            await completeOnboardingMutation.mutateAsync();
+            toast.success('Onboarding complete! Welcome to your dashboard.');
+            router.push('/restaurant');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to finalize onboarding');
+        }
     };
 
     if (isLoading) {
