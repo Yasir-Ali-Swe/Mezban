@@ -37,21 +37,6 @@ import {
 } from '@/components/dashboard';
 import StatCard from '@/components/shared/StatCard';
 
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-
-const DUMMY_DEALS = [
-    { _id: 'd1', name: 'Family Deal', description: '2 Large Pizzas + 4 Drinks + Garlic Bread', items: 5, price: 2499, isActive: true, orders: 425, imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&h=100&fit=crop' },
-    { _id: 'd2', name: 'Pizza Combo', description: '1 Large Pizza + 2 Drinks + Cheese Sticks', items: 3, price: 1299, isActive: true, orders: 318, imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cd2a5e5e6a6?w=100&h=100&fit=crop' },
-    { _id: 'd3', name: 'Chicken Bucket', description: '8 Pcs Chicken + 2 Large Fries + 2 Drinks', items: 4, price: 2999, isActive: false, orders: 97, imageUrl: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=100&h=100&fit=crop' },
-    { _id: 'd4', name: 'Student Deal', description: '1 Pizza + 1 Drink + Fries', items: 3, price: 899, isActive: true, orders: 189, imageUrl: 'https://images.unsplash.com/photo-1594007654729-407eedc4be65?w=100&h=100&fit=crop' },
-    { _id: 'd5', name: 'Lunch Box', description: 'Burger + Fries + Drink', items: 3, price: 799, isActive: true, orders: 156, imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=100&h=100&fit=crop' },
-    { _id: 'd6', name: 'Buy 1 Get 1', description: 'Buy 1 Large Pizza, Get 1 Free', items: 2, price: 1450, isActive: false, orders: 0, imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop' },
-    { _id: 'd7', name: 'Weekend Special', description: '2 Burgers + 2 Fries + 2 Drinks', items: 6, price: 1599, isActive: true, orders: 98, imageUrl: 'https://images.unsplash.com/photo-1551326844-4df70f78d0e9?w=100&h=100&fit=crop' },
-    { _id: 'd8', name: 'Dinner for Two', description: '2 Main Courses + 2 Sides + 2 Drinks', items: 6, price: 2199, isActive: false, orders: 0, imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop' },
-    { _id: 'd9', name: 'Mega Feast', description: '3 Pizzas + 6 Drinks + 3 Sides + Dessert', items: 13, price: 4999, isActive: true, orders: 45, imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&h=100&fit=crop' },
-    { _id: 'd10', name: 'Kids Meal', description: 'Mini Burger + Fries + Juice + Toy', items: 4, price: 449, isActive: true, orders: 78, imageUrl: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=100&h=100&fit=crop' },
-];
-
 // ─── Filter Config ────────────────────────────────────────────────────────────
 
 const FILTER_DEFAULTS = {
@@ -82,62 +67,63 @@ const formatPrice = (price) =>
 
 const fmtNum = (num) => (num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toString());
 
+import { useDeals, useDealStats, useDeleteDeal, useUpdateDeal } from '@/hooks/useApi';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const DealsList = () => {
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
+    const { data: responseData } = useDeals(filters);
+    const { data: statsResponse } = useDealStats();
+    const deleteDealMutation = useDeleteDeal();
+    const updateDealMutation = useUpdateDeal();
+
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedDeal, setSelectedDeal] = useState(null);
 
-    // Filtered + sorted data
-    const filteredDeals = useMemo(() => {
-        let filtered = [...DUMMY_DEALS];
+    const dealsList = responseData?.data || [];
+    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
 
-        if (filters.search) {
-            const q = filters.search.toLowerCase();
-            filtered = filtered.filter(deal =>
-                deal.name.toLowerCase().includes(q) || deal.description.toLowerCase().includes(q)
-            );
-        }
-        if (filters.status !== 'all') {
-            const isActive = filters.status === 'active';
-            filtered = filtered.filter(deal => deal.isActive === isActive);
-        }
-
-        const { sortBy, order } = filters;
-        filtered.sort((a, b) => {
-            let aVal = a[sortBy], bVal = b[sortBy];
-            if (typeof aVal === 'string') { aVal = aVal.toLowerCase(); bVal = bVal.toLowerCase(); }
-            return order === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
-        });
-
-        return filtered;
-    }, [filters]);
-
-    // Stats
-    const totalDeals = DUMMY_DEALS.length;
-    const activeDeals = DUMMY_DEALS.filter(d => d.isActive).length;
-    const inactiveDeals = DUMMY_DEALS.filter(d => !d.isActive).length;
-    const totalOrders = DUMMY_DEALS.reduce((sum, d) => sum + d.orders, 0);
+    // Stats from dedicated endpoint
+    const statsData = statsResponse?.data || {};
+    const totalDeals = statsData.totalDeals ?? pagination.total ?? dealsList.length;
+    const activeDeals = statsData.activeDeals ?? dealsList.filter(d => d.isActive).length;
+    const inactiveDeals = statsData.inactiveDeals ?? dealsList.filter(d => !d.isActive).length;
+    const totalOrders = statsData.totalOrders ?? dealsList.reduce((sum, d) => sum + (d.orders || 0), 0);
 
     // Pagination
-    const totalFiltered = filteredDeals.length;
-    const totalPages = Math.ceil(totalFiltered / filters.limit);
+    const totalFiltered = totalDeals;
+    const totalPages = pagination.totalPages || 1;
     const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedDeals = filteredDeals.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + filters.limit, totalFiltered);
+    const paginatedDeals = dealsList;
 
     const handleDelete = (deal) => { setSelectedDeal(deal); setIsDeleteDialogOpen(true); };
 
-    const confirmDelete = () => {
-        toast.success(`"${selectedDeal.name}" deleted successfully!`);
-        setIsDeleteDialogOpen(false);
-        setSelectedDeal(null);
+    const confirmDelete = async () => {
+        if (!selectedDeal) return;
+        try {
+            await deleteDealMutation.mutateAsync(selectedDeal._id || selectedDeal.id);
+            toast.success(`"${selectedDeal.name}" deleted successfully!`);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete deal');
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setSelectedDeal(null);
+        }
     };
 
-    const handleToggleActive = (deal) => {
-        toast.success(`"${deal.name}" ${deal.isActive ? 'deactivated' : 'activated'} successfully!`);
+    const handleToggleActive = async (deal) => {
+        try {
+            await updateDealMutation.mutateAsync({
+                id: deal._id || deal.id,
+                status: deal.isActive ? 'inactive' : 'active',
+            });
+            toast.success(`"${deal.name}" ${deal.isActive ? 'deactivated' : 'activated'} successfully!`);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update deal status');
+        }
     };
 
     const hasActiveFilters =
