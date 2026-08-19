@@ -331,9 +331,9 @@ html {
 }
 
 .scrollbarHide {
-    scrollbar-width: none;
+  scrollbar-width: none;
 }
 
 .scrollbarHide::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
