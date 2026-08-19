@@ -283,6 +283,7 @@ const CategoriesList = () => {
                     value={totalCategories}
                     icon={Tags}
                     caption="All categories"
+                    iconClassName="text-chart-2"
                 />
                 <StatCard
                     title="Active Categories"
@@ -290,7 +291,7 @@ const CategoriesList = () => {
                     icon={CheckCircle}
                     iconClassName="text-primary"
                     valueClassName="text-primary"
-                    caption={`${Math.round((activeCategories / totalCategories) * 100)}% of total`}
+                    caption={totalCategories > 0 ? `${Math.round((activeCategories / totalCategories) * 100)}% of total` : '0% of total'}
                 />
                 <StatCard
                     title="Inactive Categories"
