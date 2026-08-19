@@ -55,15 +55,19 @@ const DUMMY_CATEGORIES = [
     { _id: '7', name: 'Sides' },
 ];
 
+import { useCreateMenuItem, useCategories } from '@/hooks/useApi';
+
 const MenuAdd = () => {
     const router = useRouter();
 
     const fileInputRef = useRef(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
 
-    const categoriesList = DUMMY_CATEGORIES;
+    const { data: categoriesResponse } = useCategories({ limit: 100 });
+    const createMenuItemMutation = useCreateMenuItem();
+
+    const categoriesList = categoriesResponse?.data || DUMMY_CATEGORIES;
 
     const {
         register,
@@ -123,21 +127,30 @@ const MenuAdd = () => {
 
     // Handle form submission
     const onSubmit = async (values) => {
-        setIsLoading(true);
+        try {
+            await createMenuItemMutation.mutateAsync({
+                name: values.name,
+                category: values.category,
+                costPrice: values.costPrice,
+                sellingPrice: values.sellingPrice,
+                status: values.status,
+                imageUrl: imagePreview || null,
+                file: selectedFile || undefined,
+            });
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Show success message
-        toast.add({
-            type: "success",
-            title: "Success!",
-            description: "Menu item created successfully!",
-        });
-        setIsLoading(false);
-
-        // Navigate back to menu list
-        router.push('/menu');
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: "Menu item created successfully!",
+            });
+            router.push('/menu');
+        } catch (error) {
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: error.response?.data?.message || "Failed to create menu item",
+            });
+        }
     };
 
     const profitData = calculateProfitMargin();
@@ -425,9 +438,9 @@ const MenuAdd = () => {
                             <Button
                                 type="submit"
                                 className=" w-auto"
-                                disabled={isLoading}
+                                disabled={createMenuItemMutation.isPending}
                             >
-                                {isLoading ? (
+                                {createMenuItemMutation.isPending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Creating...
