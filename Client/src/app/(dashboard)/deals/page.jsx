@@ -259,14 +259,14 @@ const DealsList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Total Deals" value={totalDeals} icon={Gift} caption="All deals" />
+                <StatCard title="Total Deals" value={totalDeals} icon={Gift} caption="All deals" iconClassName="text-chart-2" />
                 <StatCard
                     title="Active Deals"
                     value={activeDeals}
                     icon={CheckCircle}
-                    iconClassName="text-primary"
-                    valueClassName="text-primary"
-                    caption={`${Math.round((activeDeals / totalDeals) * 100)}% of total`}
+                    iconClassName="text-chart-1"
+                    valueClassName="text-chart-1"
+                    caption={totalDeals > 0 ? `${Math.round((activeDeals / totalDeals) * 100)}% of total` : '0% of total'}
                 />
                 <StatCard
                     title="Inactive Deals"
@@ -276,7 +276,7 @@ const DealsList = () => {
                     valueClassName="text-destructive"
                     caption="Currently hidden"
                 />
-                <StatCard title="Total Orders" value={fmtNum(totalOrders)} icon={ShoppingBag} caption="From deals" />
+                <StatCard title="Total Orders" value={fmtNum(totalOrders)} icon={ShoppingBag} caption="From deals" iconClassName="text-chart-4" />
             </div>
 
             {/* Mobile: horizontally scrollable filters */}
