@@ -36,6 +36,12 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import {
+    useDeal,
+    useUpdateDeal,
+    useDeleteDeal,
+    useMenuItems,
+} from '@/hooks/useApi';
+import {
     ArrowLeft,
     Image as ImageIcon,
     X,
@@ -97,14 +103,15 @@ const DealEdit = () => {
     const fileInputRef = useRef(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const { data: dealResponse, isLoading: isFetchingDeal } = useDeal(dealId);
+    const updateDealMutation = useUpdateDeal();
+    const deleteDealMutation = useDeleteDeal();
+    const { data: menuResponse } = useMenuItems({ limit: 100 });
+    const availableMenuItems = menuResponse?.data || [];
+
+    const deal = dealResponse?.data;
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [deal, setDeal] = useState(null);
-
-    // Deal items state
     const [dealItems, setDealItems] = useState([]);
-
-    // Dialog states
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogSearch, setDialogSearch] = useState('');
 
@@ -121,6 +128,7 @@ const DealEdit = () => {
             name: '',
             description: '',
             sellingPrice: '',
+            status: 'active',
         },
     });
 
@@ -128,27 +136,23 @@ const DealEdit = () => {
     const watchedDescription = watch('description');
     const watchedSellingPrice = watch('sellingPrice');
 
-    // Calculate cost price (sum of all item subtotals)
     const costPrice = dealItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
     const profit = parseFloat(watchedSellingPrice || 0) - costPrice;
 
-    // Simulate API call to fetch deal
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDeal(DUMMY_DEAL);
-            setDealItems(DUMMY_DEAL.items);
+        if (deal) {
+            setDealItems(deal.dealItems || deal.items || []);
             reset({
-                name: DUMMY_DEAL.name || '',
-                description: DUMMY_DEAL.description || '',
-                sellingPrice: DUMMY_DEAL.sellingPrice?.toString() || '',
+                name: deal.name || '',
+                description: deal.description || '',
+                sellingPrice: deal.sellingPrice?.toString() || deal.price?.toString() || '',
+                status: deal.status || 'active',
             });
-            if (DUMMY_DEAL.imageUrl) {
-                setImagePreview(DUMMY_DEAL.imageUrl);
+            if (deal.imageUrl) {
+                setImagePreview(deal.imageUrl);
             }
-        }, 800);
-
-        return () => clearTimeout(timer);
-    }, [dealId, reset]);
+        }
+    }, [deal, reset]);
 
     // Handle image selection
     const handleImageSelect = (event) => {
@@ -217,15 +221,15 @@ const DealEdit = () => {
 
     // Get available items (not already in deal)
     const getAvailableItems = () => {
-        return DUMMY_MENU_ITEMS.filter(item =>
-            !dealItems.find(di => di._id === item._id)
+        return availableMenuItems.filter(item =>
+            !dealItems.find(di => (di._id || di.menuItemId) === (item._id || item.id))
         );
     };
 
     // Filter menu items for dialog
     const filteredMenuItems = getAvailableItems().filter(item =>
         item.name.toLowerCase().includes(dialogSearch.toLowerCase()) ||
-        item.category.toLowerCase().includes(dialogSearch.toLowerCase())
+        (item.category || '').toLowerCase().includes(dialogSearch.toLowerCase())
     );
 
     // Handle form submission
@@ -239,35 +243,51 @@ const DealEdit = () => {
             return;
         }
 
-        setIsLoading(true);
+        try {
+            await updateDealMutation.mutateAsync({
+                id: dealId,
+                name: values.name,
+                description: values.description,
+                costPrice,
+                sellingPrice: parseFloat(values.sellingPrice),
+                items: dealItems,
+                status: values.status,
+                file: selectedFile || undefined,
+            });
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        toast.add({
-            type: "success",
-            title: "Success!",
-            description: "Deal updated successfully!",
-        });
-        setIsLoading(false);
-        router.push('/deals');
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: "Deal updated successfully!",
+            });
+            router.push('/deals');
+        } catch (error) {
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: error.response?.data?.message || "Failed to update deal",
+            });
+        }
     };
 
     // Handle delete
     const handleDelete = async () => {
-        setIsLoading(true);
         setIsDeleteDialogOpen(false);
-
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        toast.add({
-            type: "success",
-            title: "Success!",
-            description: "Deal deleted successfully!",
-        });
-        setIsLoading(false);
-        router.push('/deals');
+        try {
+            await deleteDealMutation.mutateAsync(dealId);
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: "Deal deleted successfully!",
+            });
+            router.push('/deals');
+        } catch (error) {
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: error.response?.data?.message || "Failed to delete deal",
+            });
+        }
     };
 
     // Dialog state for selected items
@@ -639,7 +659,7 @@ const DealEdit = () => {
                                 variant="destructive"
                                 className="w-full sm:w-auto order-3 sm:order-2"
                                 onClick={() => setIsDeleteDialogOpen(true)}
-                                disabled={isLoading}
+                                disabled={deleteDealMutation.isPending || updateDealMutation.isPending}
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Deal
@@ -647,9 +667,9 @@ const DealEdit = () => {
                             <Button
                                 type="submit"
                                 className="w-full sm:w-auto order-1 sm:order-3"
-                                disabled={isLoading}
+                                disabled={updateDealMutation.isPending || deleteDealMutation.isPending}
                             >
-                                {isLoading ? (
+                                {updateDealMutation.isPending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Updating...
