@@ -115,64 +115,9 @@ const STATUS_OPTIONS = [
     { value: 'cancelled', label: 'Cancelled' },
 ];
 
-// Dummy order data
-const DUMMY_ORDER = {
-    _id: 'ord_001',
-    orderNumber: 'ORD-2024-001',
-    customer: {
-        name: 'Muhammad Ali',
-        phone: '+92 300 1234567',
-        telegramChatId: '123456789',
-        email: 'ali.muhammad@example.com',
-    },
-    status: 'preparing',
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-01-15T14:20:00Z',
-    items: [
-        {
-            _id: 'item_001',
-            productId: 'prod_001',
-            productName: 'Chicken Karahi (Half)',
-            productImage: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=100&h=100&fit=crop',
-            quantity: 2,
-            unitPrice: 1250,
-            subtotal: 2500,
-        },
-        {
-            _id: 'item_002',
-            productId: 'prod_002',
-            productName: 'Garlic Naan',
-            productImage: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?w=100&h=100&fit=crop',
-            quantity: 4,
-            unitPrice: 120,
-            subtotal: 480,
-        },
-        {
-            _id: 'item_003',
-            productId: 'prod_003',
-            productName: 'Mango Lassi',
-            productImage: 'https://images.unsplash.com/photo-1571006682858-a458b8d62688?w=100&h=100&fit=crop',
-            quantity: 3,
-            unitPrice: 250,
-            subtotal: 750,
-        },
-    ],
-    subtotal: 3730,
-    tax: 150,
-    shipping: 150,
-    total: 4030,
-    shippingAddress: {
-        street: '123 Main Boulevard',
-        city: 'Lahore',
-        state: 'Punjab',
-        zipCode: '54000',
-        country: 'Pakistan',
-    },
-    notes: 'Please send extra mint chutney and spicy raita.',
-};
+import { formatCurrency } from '@/lib/formatters';
 
-const currency = (value) =>
-    `Rs. ${Number(value || 0).toLocaleString()}`;
+const currency = (value) => formatCurrency(value);
 
 const formatDate = (dateString, opts = {}) =>
     new Date(dateString).toLocaleDateString('en-US', {
