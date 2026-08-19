@@ -50,10 +50,6 @@ const menuItemSchema = z.object({
     category: z.string().min(1, { message: 'Please select a category' }),
     costPrice: z.string().min(1, { message: 'Cost price is required' }).transform(val => parseFloat(val)),
     sellingPrice: z.string().min(1, { message: 'Selling price is required' }).transform(val => parseFloat(val)),
-    stock: z.string()
-        .min(1, { message: 'Stock is required' })
-        .transform(val => parseInt(val))
-        .refine(val => val >= 0, { message: 'Stock cannot be negative' }),
     status: z.enum(['available', 'unavailable']),
 });
 
@@ -75,10 +71,16 @@ const DUMMY_MENU_ITEM = {
     category: 'Burgers',
     costPrice: 420,
     sellingPrice: 650,
-    stock: 40,
     status: 'available',
     imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop',
 };
+
+import {
+    useMenuItem,
+    useUpdateMenuItem,
+    useDeleteMenuItem,
+    useCategories,
+} from '@/hooks/useApi';
 
 const MenuEdit = () => {
     const router = useRouter();
@@ -88,11 +90,15 @@ const MenuEdit = () => {
     const fileInputRef = useRef(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [menuItem, setMenuItem] = useState(null);
 
-    const categoriesList = DUMMY_CATEGORIES;
+    const { data: itemResponse, isLoading } = useMenuItem(menuId);
+    const { data: categoriesResponse } = useCategories({ limit: 100 });
+    const updateMenuItemMutation = useUpdateMenuItem();
+    const deleteMenuItemMutation = useDeleteMenuItem();
+
+    const menuItem = itemResponse?.data;
+    const categoriesList = categoriesResponse?.data || DUMMY_CATEGORIES;
 
     const {
         register,
@@ -108,10 +114,24 @@ const MenuEdit = () => {
             category: '',
             costPrice: '',
             sellingPrice: '',
-            stock: '',
             status: 'available',
         },
     });
+
+    useEffect(() => {
+        if (menuItem) {
+            reset({
+                name: menuItem.name || '',
+                category: menuItem.category || '',
+                costPrice: menuItem.costPrice?.toString() || '',
+                sellingPrice: menuItem.sellingPrice?.toString() || '',
+                status: menuItem.status || 'available',
+            });
+            if (menuItem.imageUrl) {
+                setImagePreview(menuItem.imageUrl);
+            }
+        }
+    }, [menuItem, reset]);
 
     const selectedCategory = watch('category');
     const watchedCostPrice = watch('costPrice');
@@ -127,28 +147,6 @@ const MenuEdit = () => {
         const margin = (profit / cost) * 100;
         return { profit, margin };
     };
-
-    // Simulate API call to fetch menu item
-    useEffect(() => {
-        // Simulate loading
-        const timer = setTimeout(() => {
-            setMenuItem(DUMMY_MENU_ITEM);
-            const vals = {
-                name: DUMMY_MENU_ITEM.name || '',
-                category: DUMMY_MENU_ITEM.category || '',
-                costPrice: DUMMY_MENU_ITEM.costPrice?.toString() || '',
-                sellingPrice: DUMMY_MENU_ITEM.sellingPrice?.toString() || '',
-                stock: DUMMY_MENU_ITEM.stock?.toString() || '',
-                status: DUMMY_MENU_ITEM.status || 'available',
-            };
-            reset(vals);
-            if (DUMMY_MENU_ITEM.imageUrl) {
-                setImagePreview(DUMMY_MENU_ITEM.imageUrl);
-            }
-        }, 800);
-
-        return () => clearTimeout(timer);
-    }, [menuId, reset]);
 
     // Handle image selection
     const handleImageSelect = (event) => {
@@ -176,38 +174,51 @@ const MenuEdit = () => {
 
     // Handle form submission
     const onSubmit = async (values) => {
-        setIsLoading(true);
+        try {
+            await updateMenuItemMutation.mutateAsync({
+                id: menuId,
+                name: values.name,
+                category: values.category,
+                costPrice: values.costPrice,
+                sellingPrice: values.sellingPrice,
+                status: values.status,
+                imageUrl: imagePreview || null,
+                file: selectedFile || undefined,
+            });
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Show success message
-        toast.add({
-            type: "success",
-            title: "Success!",
-            description: "Menu item updated successfully!",
-        });
-        setIsLoading(false);
-
-        // Navigate back to menu list
-        router.push('/menu');
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: "Menu item updated successfully!",
+            });
+            router.push('/menu');
+        } catch (error) {
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: error.response?.data?.message || "Failed to update menu item",
+            });
+        }
     };
 
     // Handle delete
     const handleDelete = async () => {
-        setIsLoading(true);
         setIsDeleteDialogOpen(false);
-
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        toast.add({
-            type: "success",
-            title: "Success!",
-            description: "Menu item deleted successfully!",
-        });
-        setIsLoading(false);
-        router.push('/menu');
+        try {
+            await deleteMenuItemMutation.mutateAsync(menuId);
+            toast.add({
+                type: "success",
+                title: "Success!",
+                description: "Menu item deleted successfully!",
+            });
+            router.push('/menu');
+        } catch (error) {
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: error.response?.data?.message || "Failed to delete menu item",
+            });
+        }
     };
 
     const profitData = calculateProfitMargin();
@@ -459,31 +470,10 @@ const MenuEdit = () => {
                             </div>
                         )}
 
-                        {/* Stock Section */}
+                        {/* Status Section */}
                         <div className="space-y-4">
-                            <h2 className="text-sm font-semibold text-muted-foreground">Stock</h2>
+                            <h2 className="text-sm font-semibold text-muted-foreground">Status</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Available Stock */}
-                                <Field orientation="vertical">
-                                    <FieldLabel htmlFor="stock" className="text-sm font-medium">
-                                        Available Stock <span className="text-destructive">*</span>
-                                    </FieldLabel>
-                                    <FieldContent>
-                                        <Input
-                                            id="stock"
-                                            type="number"
-                                            placeholder="0"
-                                            min="0"
-                                            className="h-10 text-sm"
-                                            {...register("stock")}
-                                            aria-invalid={errors.stock ? "true" : "false"}
-                                        />
-                                        {errors.stock && (
-                                            <FieldError errors={[errors.stock]} />
-                                        )}
-                                    </FieldContent>
-                                </Field>
-
                                 {/* Status */}
                                 <Field orientation="vertical">
                                     <FieldLabel className="text-sm font-medium">
@@ -539,9 +529,9 @@ const MenuEdit = () => {
                             <Button
                                 type="submit"
                                 className="w-full sm:w-auto order-1 sm:order-3"
-                                disabled={isLoading}
+                                disabled={updateMenuItemMutation.isPending}
                             >
-                                {isLoading ? (
+                                {updateMenuItemMutation.isPending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Updating...
