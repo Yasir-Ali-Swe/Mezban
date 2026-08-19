@@ -29,6 +29,7 @@ import { Camera, Loader2, Building2, Mail, Phone, MapPin, Globe, ArrowLeft } fro
 import { cn } from '@/lib/utils';
 import { toast } from "@/components/ui/toast";
 import { useRouter } from 'next/navigation';
+import { useBusinessProfile, useUpdateBusinessProfile } from '@/hooks/useApi';
 
 // Dummy business profile data
 const DUMMY_BUSINESS_PROFILE = {
@@ -78,12 +79,15 @@ const businessProfileSchema = z.object({
     website: z.string().url({ message: 'Please enter a valid URL' }).optional().or(z.literal('')),
 });
 
-const BusinessInfoPage = () => {
+const BusinessInfo = ({ mode = "dashboard" }) => {
     const router = useRouter();
     const fileInputRef = useRef(null);
+
+    const { data: profileResponse, isLoading } = useBusinessProfile();
+    const updateProfileMutation = useUpdateBusinessProfile();
+
     const [previewImage, setPreviewImage] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [isPending, setIsPending] = useState(false);
     const [originalValues, setOriginalValues] = useState({
         name: '',
@@ -115,41 +119,25 @@ const BusinessInfoPage = () => {
         },
     });
 
-    // Fetch business profile
     useEffect(() => {
-        const timer = setTimeout(() => {
-            const profile = DUMMY_BUSINESS_PROFILE;
-            const cityName = DUMMY_CITIES.find(c => c.name === profile.city)?.name || '';
-            const countryName = DUMMY_COUNTRIES.find(c => c.name === profile.country)?.name || '';
-
-            reset({
+        if (profileResponse?.data) {
+            const profile = profileResponse.data;
+            const vals = {
                 name: profile.name || '',
                 email: profile.email || '',
                 phone: profile.phone || '',
                 address: profile.address || '',
-                city: cityName || '',
-                country: countryName || '',
+                city: profile.city || '',
+                country: profile.country || '',
                 website: profile.website || '',
-            });
-
-            setOriginalValues({
-                name: profile.name || '',
-                email: profile.email || '',
-                phone: profile.phone || '',
-                address: profile.address || '',
-                city: cityName || '',
-                country: countryName || '',
-                website: profile.website || '',
-            });
-
+            };
+            reset(vals);
+            setOriginalValues(vals);
             if (profile.imageUrl) {
                 setPreviewImage(profile.imageUrl);
             }
-            setIsLoading(false);
-        }, 800);
-
-        return () => clearTimeout(timer);
-    }, [reset]);
+        }
+    }, [profileResponse, reset]);
 
     const watchedName = watch('name');
     const watchedEmail = watch('email');
@@ -183,39 +171,53 @@ const BusinessInfoPage = () => {
         }
     };
 
+    const handleRemoveImage = () => {
+        setSelectedFile(null);
+        setPreviewImage(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     // Handle image click to trigger file input
-    const handleAvatarClick = () => {
+    const handleImageClick = () => {
         fileInputRef.current?.click();
     };
 
     // Handle form submission
-    const onSubmit = (values) => {
+    const onSubmit = async (values) => {
         setIsPending(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            setOriginalValues({
+        try {
+            await updateProfileMutation.mutateAsync({
                 name: values.name,
                 email: values.email,
                 phone: values.phone,
                 address: values.address,
                 city: values.city,
                 country: values.country,
-                website: values.website || '',
+                website: values.website,
+                imageUrl: previewImage || null,
             });
 
-            if (selectedFile) {
-                setSelectedFile(null);
-            }
+            setOriginalValues(values);
             toast.add({
                 type: "success",
                 title: "Success!",
                 description: "Business information updated successfully!",
-            })
-            setIsPending(false);
+            });
             reset(values);
-            router.push('/onboarding/business-knowledge');
-        }, 1500);
+            if (mode === "onboarding") {
+                router.push('/onboarding/business-knowledge');
+            }
+        } catch (error) {
+            toast.add({
+                type: "error",
+                title: "Error!",
+                description: error.response?.data?.message || "Failed to update business information",
+            });
+        } finally {
+            setIsPending(false);
+        }
     };
 
     // Handle back navigation
@@ -258,7 +260,7 @@ const BusinessInfoPage = () => {
                             <div className="relative group">
                                 <Avatar
                                     className="h-24 w-24 cursor-pointer transition-opacity hover:opacity-90"
-                                    onClick={handleAvatarClick}
+                                    onClick={handleImageClick}
                                 >
                                     <AvatarImage src={avatarImage} alt="Business" />
                                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
@@ -272,7 +274,7 @@ const BusinessInfoPage = () => {
                                         "transition-all hover:bg-primary/90 hover:scale-110",
                                         "ring-2 ring-background rounded-full"
                                     )}
-                                    onClick={handleAvatarClick}
+                                    onClick={handleImageClick}
                                 >
                                     <Camera className="h-4 w-4" />
                                 </button>
@@ -472,7 +474,7 @@ const BusinessInfoPage = () => {
                             <Button
                                 type="submit"
                                 className="h-10 text-sm font-medium"
-                                disabled={!hasChanges() || isPending}
+                                disabled={mode === 'onboarding' ? isPending : (!hasChanges() || isPending)}
                             >
                                 {isPending ? (
                                     <>
@@ -491,4 +493,4 @@ const BusinessInfoPage = () => {
     );
 };
 
-export default BusinessInfoPage;
+export default BusinessInfo;
