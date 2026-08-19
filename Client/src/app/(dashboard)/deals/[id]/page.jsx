@@ -68,32 +68,7 @@ const dealSchema = z.object({
         .refine(val => val > 0, { message: 'Selling price must be greater than 0' }),
 });
 
-// Dummy Menu Items
-const DUMMY_MENU_ITEMS = [
-    { _id: 'm1', name: 'Zinger Burger', category: 'Burgers', price: 650, imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop' },
-    { _id: 'm2', name: 'Chicken Pizza', category: 'Pizza', price: 1450, imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&h=100&fit=crop' },
-    { _id: 'm3', name: 'French Fries', category: 'Sides', price: 280, imageUrl: 'https://images.unsplash.com/photo-1585109406040-9d52f21a03d1?w=100&h=100&fit=crop' },
-    { _id: 'm4', name: 'Pepsi', category: 'Drinks', price: 120, imageUrl: 'https://images.unsplash.com/photo-1581010148125-6a8be79e9790?w=100&h=100&fit=crop' },
-    { _id: 'm5', name: 'Chicken Wings', category: 'Appetizers', price: 780, imageUrl: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=100&h=100&fit=crop' },
-    { _id: 'm6', name: 'Garlic Bread', category: 'Sides', price: 200, imageUrl: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=100&h=100&fit=crop' },
-    { _id: 'm7', name: 'Chicken Tikka', category: 'Main Course', price: 890, imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop' },
-    { _id: 'm8', name: 'Mango Juice', category: 'Drinks', price: 180, imageUrl: 'https://images.unsplash.com/photo-1546173159-3152d6d3c0d3?w=100&h=100&fit=crop' },
-];
 
-// Dummy Deal Data
-const DUMMY_DEAL = {
-    _id: 'd1',
-    name: 'Family Feast',
-    description: 'A complete meal for four people including burgers, fries and drinks.',
-    sellingPrice: 1499,
-    imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=400&fit=crop',
-    status: 'active',
-    items: [
-        { _id: 'm1', name: 'Zinger Burger', unitPrice: 650, quantity: 2, subtotal: 1300 },
-        { _id: 'm3', name: 'French Fries', unitPrice: 280, quantity: 2, subtotal: 560 },
-        { _id: 'm4', name: 'Pepsi', unitPrice: 120, quantity: 2, subtotal: 240 },
-    ],
-};
 
 const DealEdit = () => {
     const router = useRouter();
