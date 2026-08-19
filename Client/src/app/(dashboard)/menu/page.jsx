@@ -321,14 +321,14 @@ const MenuList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-                <StatCard title="Total Menu Items" value={totalItems} icon={Utensils} caption="All items" />
+                <StatCard title="Total Menu Items" value={totalItems} icon={Utensils} caption="All items" iconClassName="text-chart-1" />
                 <StatCard
                     title="Available Items"
                     value={availableItems}
                     icon={PackageOpen}
                     iconClassName="text-primary"
                     valueClassName="text-primary"
-                    caption={`${Math.round((availableItems / totalItems) * 100)}% of total`}
+                    caption={totalItems > 0 ? `${Math.round((availableItems / totalItems) * 100)}% of total` : '0% of total'}
                 />
                 <StatCard
                     title="Unavailable Items"
@@ -338,7 +338,7 @@ const MenuList = () => {
                     valueClassName="text-destructive"
                     caption="Not available"
                 />
-                <StatCard title="Categories" value={categoriesCount} icon={Layers} caption="Total categories" />
+                <StatCard title="Categories" value={categoriesCount} icon={Layers} caption="Total categories" iconClassName="text-chart-4" />
             </div>
 
             {/* Filters */}
