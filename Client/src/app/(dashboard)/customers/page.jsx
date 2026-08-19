@@ -50,39 +50,33 @@ const FILTER_DEFAULTS = {
 const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
+import { useCustomers } from '@/hooks/useApi';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CustomersList = () => {
     const router = useRouter();
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
-    // Filtered data
-    const filteredCustomers = useMemo(() => {
-        let filtered = [...DUMMY_CUSTOMERS];
-        if (filters.search) {
-            const q = filters.search.toLowerCase();
-            filtered = filtered.filter(c =>
-                c.name.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q)
-            );
-        }
-        return filtered;
-    }, [filters]);
+    const { data: responseData } = useCustomers(filters);
+    const customersList = responseData?.data || [];
+    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
 
     // Stats
-    const totalCustomers = DUMMY_CUSTOMERS.length;
-    const telegramConnected = DUMMY_CUSTOMERS.filter(c => c.telegramChatId).length;
+    const totalCustomers = pagination.total || customersList.length;
+    const telegramConnected = customersList.filter(c => c.telegramChatId).length;
     const now = new Date();
-    const newThisMonth = DUMMY_CUSTOMERS.filter(c => {
+    const newThisMonth = customersList.filter(c => {
         const d = new Date(c.createdAt);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).length;
 
     // Pagination
-    const totalFiltered = filteredCustomers.length;
-    const totalPages = Math.ceil(totalFiltered / filters.limit);
+    const totalFiltered = totalCustomers;
+    const totalPages = pagination.totalPages || 1;
     const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + filters.limit, totalFiltered);
+    const paginatedCustomers = customersList;
 
     // Column definitions
     const columns = [
