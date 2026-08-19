@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Fragment } from "react";
 import {
     Card,
     CardContent,
@@ -72,7 +73,15 @@ const QUICK_ACTIONS = [
     { icon: Users, label: 'View Customers', href: '/customers' },
 ];
 
+import { useDashboardStats } from '@/hooks/useApi';
+
 const RestaurantDashboard = () => {
+    const { data: responseData } = useDashboardStats();
+    const statsData = responseData?.data?.stats || DUMMY_STATS;
+    const recentOrdersData = responseData?.data?.recentOrders || DUMMY_RECENT_ORDERS;
+    const recentConversationsData = responseData?.data?.recentConversations || DUMMY_CONVERSATIONS;
+    const alertsData = responseData?.data?.alerts || DUMMY_ALERTS;
+
     return (
         <div className="space-y-6 pb-8">
             {/* Page Header */}
@@ -84,17 +93,17 @@ const RestaurantDashboard = () => {
             </div>
 
             {/* Stats Cards - Using StatCard */}
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard
                     title="Today's Orders"
-                    value={DUMMY_STATS.todayOrders}
+                    value={statsData.todayOrders}
                     change={15}
                     icon={ShoppingCart}
                     trend="up"
                 />
                 <StatCard
                     title="Today's Revenue"
-                    value={DUMMY_STATS.todayRevenue}
+                    value={statsData.todayRevenue}
                     change={10}
                     icon={DollarSign}
                     trend="up"
@@ -102,18 +111,10 @@ const RestaurantDashboard = () => {
                 />
                 <StatCard
                     title="Active Deals"
-                    value={DUMMY_STATS.activeDeals}
+                    value={statsData.activeDeals}
                     icon={Gift}
                     valueClassName="text-primary"
                     caption="Marketing overview"
-                />
-                <StatCard
-                    title="Low Stock Items"
-                    value={DUMMY_STATS.lowStockItems}
-                    change={8}
-                    icon={Utensils}
-                    trend="up"
-                    valueClassName="text-red-600"
                 />
             </div>
 
@@ -141,7 +142,7 @@ const RestaurantDashboard = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {DUMMY_RECENT_ORDERS.map((order) => (
+                                    {recentOrdersData.map((order) => (
                                         <TableRow key={order.id}>
                                             <TableCell className="font-mono text-xs font-medium">
                                                 {order.id}
