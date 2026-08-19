@@ -1,21 +1,34 @@
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 const Page = () => {
   const router = useRouter();
+  const { isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
-    router.replace("/restaurant");
-  }, [router]);
+    if (!isLoaded) return;
+
+    if (isSignedIn) {
+      router.replace("/restaurant");
+    } else {
+      router.replace("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
+
       <p className="mt-4 text-sm text-muted-foreground">
-        Taking You To The Dashboard...
+        {isLoaded
+          ? isSignedIn
+            ? "Taking you to the dashboard..."
+            : "Taking you to sign in..."
+          : "Checking authentication..."}
       </p>
     </div>
   );
