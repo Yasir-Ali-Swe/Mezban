@@ -56,17 +56,23 @@ const copyToClipboard = (text, label) => {
     });
 };
 
-const TelegramSettingsPage = () => {
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const botData = DUMMY_BOT_DATA;
+import { useTelegramConfig } from '@/hooks/useApi';
 
-    const handleRefresh = () => {
+const TelegramSettingsPage = () => {
+    const { data: responseData, refetch } = useTelegramConfig();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const botData = responseData?.data || DUMMY_BOT_DATA;
+
+    const handleRefresh = async () => {
         setIsRefreshing(true);
-        // Simulate refresh
-        setTimeout(() => {
-            setIsRefreshing(false);
+        try {
+            await refetch();
             toast.success('Webhook status refreshed successfully!');
-        }, 1500);
+        } catch {
+            toast.error('Failed to refresh bot status');
+        } finally {
+            setIsRefreshing(false);
+        }
     };
 
     return (
