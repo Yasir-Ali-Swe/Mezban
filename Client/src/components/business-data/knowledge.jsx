@@ -167,8 +167,21 @@ const KnowledgeTextarea = ({
 // ============================================================
 // MAIN PAGE
 // ============================================================
-const BusinessKnowledgePage = () => {
+import {
+    useBusinessKnowledge,
+    useUpdateBusinessKnowledge,
+    useBusinessHours,
+    useUpdateBusinessHours,
+} from '@/hooks/useApi';
+
+const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
     const router = useRouter();
+
+    const { data: knowledgeResponse } = useBusinessKnowledge();
+    const { data: hoursResponse } = useBusinessHours();
+    const updateKnowledgeMutation = useUpdateBusinessKnowledge();
+    const updateHoursMutation = useUpdateBusinessHours();
+
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const getDefaultValues = () => {
@@ -207,21 +220,42 @@ const BusinessKnowledgePage = () => {
         handleSubmit,
         watch,
         setValue,
+        reset,
         formState: { errors },
     } = useForm({
         resolver: getSchema(),
         defaultValues: getDefaultValues(),
     });
 
+    useEffect(() => {
+        if (knowledgeResponse?.data) {
+            const k = knowledgeResponse.data;
+            setValue('data.businessIdentity', k.businessIdentity || '');
+            setValue('data.foodVariety', k.foodVariety || '');
+            setValue('data.deliveryInformation', k.deliveryInformation || '');
+            setValue('data.paymentInformation', k.paymentInformation || '');
+            setValue('data.reservationInformation', k.reservationInformation || '');
+        }
+    }, [knowledgeResponse, setValue]);
+
+    useEffect(() => {
+        if (Array.isArray(hoursResponse?.data) && hoursResponse.data.length > 0) {
+            hoursResponse.data.forEach(h => {
+                const dayKey = h.dayOfWeek.toLowerCase();
+                setValue(`data.businessHours.${dayKey}.isOpen`, h.isOpen);
+                setValue(`data.businessHours.${dayKey}.open`, h.open || '09:00');
+                setValue(`data.businessHours.${dayKey}.close`, h.close || '18:00');
+            });
+        }
+    }, [hoursResponse, setValue]);
+
     const onSubmit = async (values) => {
         setIsSubmitting(true);
         try {
-            // Attach businessType: 'RESTAURANT' directly to payload for backend API compatibility
-            const payload = {
-                businessType: 'RESTAURANT',
-                ...values,
-            };
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            await Promise.all([
+                updateKnowledgeMutation.mutateAsync(values.data),
+                updateHoursMutation.mutateAsync(values.data.businessHours),
+            ]);
 
             toast.add({
                 type: "success",
@@ -229,13 +263,14 @@ const BusinessKnowledgePage = () => {
                 description: 'Business knowledge saved successfully!'
             });
 
-            console.log('Submitted Data:', payload);
-            router.push('/onboarding/telegram-connect');
+            if (mode === "onboarding") {
+                router.push('/onboarding/telegram-connect');
+            }
         } catch (error) {
             toast.add({
                 type: "error",
                 title: "Error!",
-                description: 'Failed to save business knowledge'
+                description: error.response?.data?.message || 'Failed to save business knowledge'
             });
         } finally {
             setIsSubmitting(false);
@@ -343,16 +378,18 @@ const BusinessKnowledgePage = () => {
                     {/* ============================================ */}
                     {/* NAVIGATION */}
                     {/* ============================================ */}
-                    <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="h-10 text-sm font-medium"
-                            onClick={() => router.push('/onboarding/business-info')}
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            Back
-                        </Button>
+                    <div className={cn("flex items-center justify-between gap-3 pt-4 border-t border-border", mode === "dashboard" && "justify-end")}>
+                        {mode === "onboarding" && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-10 text-sm font-medium"
+                                onClick={() => router.push('/onboarding/business-info')}
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Back
+                            </Button>
+                        )}
                         <Button
                             type="submit"
                             className="h-10 text-sm font-medium"
@@ -364,7 +401,7 @@ const BusinessKnowledgePage = () => {
                                     Saving...
                                 </>
                             ) : (
-                                'Save & Continue'
+                                mode === "onboarding" ? 'Save & Continue' : 'Save Changes'
                             )}
                         </Button>
                     </div>
