@@ -32,31 +32,11 @@ import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
     FilterSearchInput,
     FilterDropdown,
-    FilterPriceRange,
     DataTable,
     PaginationFooter,
     ConfirmDialog,
 } from '@/components/dashboard';
 import StatCard from '@/components/shared/StatCard';
-
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-
-const DUMMY_MENU_ITEMS = [
-    { _id: 'm1', name: 'Zinger Burger', category: 'Burgers', price: 650, imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop', isAvailable: true, orders: 1245, createdAt: '2024-01-15T10:30:00Z' },
-    { _id: 'm2', name: 'Chicken Pizza', category: 'Pizza', price: 1450, imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&h=100&fit=crop', isAvailable: true, orders: 845, createdAt: '2024-01-14T14:20:00Z' },
-    { _id: 'm3', name: 'Pepsi 500ml', category: 'Drinks', price: 120, imageUrl: 'https://images.unsplash.com/photo-1581010148125-6a8be79e9790?w=100&h=100&fit=crop', isAvailable: false, orders: 2410, createdAt: '2024-01-13T09:15:00Z' },
-    { _id: 'm4', name: 'French Fries', category: 'Sides', price: 280, imageUrl: 'https://images.unsplash.com/photo-1585109406040-9d52f21a03d1?w=100&h=100&fit=crop', isAvailable: true, orders: 1032, createdAt: '2024-01-12T16:45:00Z' },
-    { _id: 'm5', name: 'Chicken Wings', category: 'Appetizers', price: 780, imageUrl: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=100&h=100&fit=crop', isAvailable: true, orders: 620, createdAt: '2024-01-11T11:00:00Z' },
-    { _id: 'm6', name: 'Chicken Tikka', category: 'Main Course', price: 890, imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop', isAvailable: true, orders: 450, createdAt: '2024-01-10T08:30:00Z' },
-    { _id: 'm7', name: 'Beef Burger', category: 'Burgers', price: 720, imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=100&h=100&fit=crop', isAvailable: false, orders: 890, createdAt: '2024-01-09T13:20:00Z' },
-    { _id: 'm8', name: 'Cola 500ml', category: 'Drinks', price: 110, imageUrl: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=100&h=100&fit=crop', isAvailable: true, orders: 1800, createdAt: '2024-01-08T10:00:00Z' },
-    { _id: 'm9', name: 'Garlic Bread', category: 'Sides', price: 200, imageUrl: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=100&h=100&fit=crop', isAvailable: true, orders: 560, createdAt: '2024-01-07T15:30:00Z' },
-    { _id: 'm10', name: 'Chicken Shawarma', category: 'Main Course', price: 550, imageUrl: 'https://images.unsplash.com/photo-1551326844-4df70f78d0e9?w=100&h=100&fit=crop', isAvailable: false, orders: 740, createdAt: '2024-01-06T08:45:00Z' },
-    { _id: 'm11', name: 'Mushroom Pizza', category: 'Pizza', price: 1200, imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cd2a5e5e6a6?w=100&h=100&fit=crop', isAvailable: true, orders: 320, createdAt: '2024-01-05T14:10:00Z' },
-    { _id: 'm12', name: 'Mango Juice', category: 'Drinks', price: 180, imageUrl: 'https://images.unsplash.com/photo-1546173159-3152d6d3c0d3?w=100&h=100&fit=crop', isAvailable: true, orders: 410, createdAt: '2024-01-04T09:30:00Z' },
-];
-
-const DUMMY_CATEGORIES = ['Burgers', 'Pizza', 'Drinks', 'Sides', 'Appetizers', 'Main Course'];
 
 // ─── Filter Config ────────────────────────────────────────────────────────────
 
@@ -66,16 +46,9 @@ const FILTER_DEFAULTS = {
     search: '',
     category: 'all',
     availability: 'all',
-    minPrice: '',
-    maxPrice: '',
     sortBy: 'name',
     order: 'asc',
 };
-
-const CATEGORY_OPTIONS = [
-    { value: 'all', label: 'All' },
-    ...DUMMY_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
 
 const AVAILABILITY_OPTIONS = [
     { value: 'all', label: 'All' },
@@ -90,79 +63,79 @@ const formatPrice = (price) =>
 
 const fmtOrders = (num) => (num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num.toString());
 
+import {
+    useMenuItems,
+    useMenuStats,
+    useDeleteMenuItem,
+    useUpdateMenuItem,
+    useCategories,
+} from '@/hooks/useApi';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const MenuList = () => {
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
+    const { data: responseData } = useMenuItems(filters);
+    const { data: statsResponse } = useMenuStats();
+    const { data: categoriesData } = useCategories({ limit: 100 });
+    const deleteMenuItemMutation = useDeleteMenuItem();
+    const updateMenuItemMutation = useUpdateMenuItem();
+
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
-    // Filtered + sorted data
-    const filteredItems = useMemo(() => {
-        let filtered = [...DUMMY_MENU_ITEMS];
+    const menuItems = responseData?.data || [];
+    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
+    const categoriesList = (categoriesData?.data || []).map(c => c.name);
 
-        if (filters.search) {
-            const q = filters.search.toLowerCase();
-            filtered = filtered.filter(item =>
-                item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q)
-            );
-        }
-        if (filters.category !== 'all') {
-            filtered = filtered.filter(item => item.category === filters.category);
-        }
-        if (filters.availability !== 'all') {
-            const isAvailable = filters.availability === 'available';
-            filtered = filtered.filter(item => item.isAvailable === isAvailable);
-        }
-        if (filters.minPrice) {
-            filtered = filtered.filter(item => item.price >= parseFloat(filters.minPrice));
-        }
-        if (filters.maxPrice) {
-            filtered = filtered.filter(item => item.price <= parseFloat(filters.maxPrice));
-        }
-
-        const { sortBy, order } = filters;
-        filtered.sort((a, b) => {
-            let aVal = a[sortBy], bVal = b[sortBy];
-            if (typeof aVal === 'string') { aVal = aVal.toLowerCase(); bVal = bVal.toLowerCase(); }
-            return order === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
-        });
-
-        return filtered;
-    }, [filters]);
-
-    // Stats
-    const totalItems = DUMMY_MENU_ITEMS.length;
-    const availableItems = DUMMY_MENU_ITEMS.filter(item => item.isAvailable).length;
-    const unavailableItems = DUMMY_MENU_ITEMS.filter(item => !item.isAvailable).length;
-    const categoriesCount = DUMMY_CATEGORIES.length;
+    // Stats from dedicated endpoint
+    const statsData = statsResponse?.data || {};
+    const totalItems = statsData.totalItems ?? pagination.total ?? menuItems.length;
+    const availableItems = statsData.availableItems ?? menuItems.filter(item => item.isAvailable).length;
+    const unavailableItems = statsData.unavailableItems ?? menuItems.filter(item => !item.isAvailable).length;
+    const categoriesCount = statsData.categoriesCount ?? (categoriesList.length || 1);
 
     // Pagination
-    const totalFiltered = filteredItems.length;
-    const totalPages = Math.ceil(totalFiltered / filters.limit);
+    const totalFiltered = totalItems;
+    const totalPages = pagination.totalPages || 1;
     const startIndex = (filters.page - 1) * filters.limit;
-    const endIndex = startIndex + filters.limit;
-    const paginatedItems = filteredItems.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + filters.limit, totalFiltered);
+    const paginatedItems = menuItems;
 
     const handleDelete = (item) => {
         setSelectedItem(item);
         setIsDeleteDialogOpen(true);
     };
 
-    const confirmDelete = () => {
-        toast.success(`"${selectedItem.name}" deleted successfully!`);
-        setIsDeleteDialogOpen(false);
-        setSelectedItem(null);
+    const confirmDelete = async () => {
+        if (!selectedItem) return;
+        try {
+            await deleteMenuItemMutation.mutateAsync(selectedItem._id || selectedItem.id);
+            toast.success(`"${selectedItem.name}" deleted successfully!`);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete menu item');
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setSelectedItem(null);
+        }
     };
 
-    const handleToggleAvailability = (item) => {
-        toast.success(`"${item.name}" marked as ${item.isAvailable ? 'unavailable' : 'available'} successfully!`);
+    const handleToggleAvailability = async (item) => {
+        try {
+            await updateMenuItemMutation.mutateAsync({
+                id: item._id || item.id,
+                status: item.isAvailable ? 'unavailable' : 'available',
+            });
+            toast.success(`"${item.name}" marked as ${item.isAvailable ? 'unavailable' : 'available'} successfully!`);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update item availability');
+        }
     };
 
     const hasActiveFilters =
         filters.search || filters.category !== 'all' || filters.availability !== 'all' ||
-        filters.minPrice || filters.maxPrice || filters.sortBy !== 'name' || filters.order !== 'asc';
+        filters.sortBy !== 'name' || filters.order !== 'asc';
 
     // Sort dropdown groups
     const sortGroups = [
@@ -172,7 +145,6 @@ const MenuList = () => {
                 { value: 'name', label: 'Name' },
                 { value: 'price', label: 'Price' },
                 { value: 'orders', label: 'Orders' },
-                { value: 'stock', label: 'Stock' },
             ],
             onSelect: (v) => updateFilter('sortBy', v),
         },
@@ -186,6 +158,11 @@ const MenuList = () => {
         },
     ];
 
+    const categoryOptions = useMemo(() => [
+        { value: 'all', label: 'All' },
+        ...((categoriesData?.data || []).map((c) => ({ value: c.name, label: c.name }))),
+    ], [categoriesData]);
+
     // All filter controls as a reusable fragment
     const filterControls = (
         <>
@@ -197,7 +174,7 @@ const MenuList = () => {
             />
             <FilterDropdown
                 label={filters.category === 'all' ? 'Category' : filters.category}
-                options={CATEGORY_OPTIONS}
+                options={categoryOptions}
                 onSelect={(v) => updateFilter('category', v)}
                 menuLabel="Category"
             />
@@ -207,15 +184,6 @@ const MenuList = () => {
                 options={AVAILABILITY_OPTIONS}
                 onSelect={(v) => updateFilter('availability', v)}
                 menuLabel="Status"
-            />
-            <FilterPriceRange
-                minValue={filters.minPrice}
-                maxValue={filters.maxPrice}
-                onMinChange={(v) => updateFilter('minPrice', v)}
-                onMaxChange={(v) => updateFilter('maxPrice', v)}
-                minPlaceholder="Min"
-                maxPlaceholder="Max"
-                inputClassName="w-16 md:w-20"
             />
             <FilterDropdown
                 label={[...sortGroups[0].options].find(s => s.value === filters.sortBy)?.label || 'Sort'}
