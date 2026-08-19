@@ -366,59 +366,47 @@ function OrderDetailsSkeleton() {
     );
 }
 
+import { useOrder, useUpdateOrderStatus } from '@/hooks/useApi';
+
 const OrderDetails = () => {
     const router = useRouter();
     const params = useParams();
-    const orderId = params.id;
+    const orderId = params.orderId || params.id;
 
-    const [order, setOrder] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isUpdating, setIsUpdating] = useState(false);
+    const { data: responseData, isLoading } = useOrder(orderId);
+    const updateStatusMutation = useUpdateOrderStatus();
+
+    const order = responseData?.data;
     const [selectedStatus, setSelectedStatus] = useState('');
     const [copied, setCopied] = useState(false);
-    // Simulate an API call to fetch the order — swap for a real fetch.
-    useEffect(() => {
-        // Use a timeout to avoid synchronous setState in effect
-        const timer = setTimeout(() => {
-            setOrder(DUMMY_ORDER);
-            setSelectedStatus(DUMMY_ORDER.status);
-            setIsLoading(false);
-        }, 800);
 
-        return () => clearTimeout(timer);
-    }, [orderId]);
+    useEffect(() => {
+        if (order) {
+            setSelectedStatus(order.status);
+        }
+    }, [order]);
 
     const handleStatusChange = async (newStatus) => {
-        if (newStatus === selectedStatus) return;
-
-        const previousStatus = selectedStatus;
-        setIsUpdating(true);
-        setSelectedStatus(newStatus);
+        if (!order || newStatus === selectedStatus) return;
 
         try {
-            // Simulated API call — replace with your real update request.
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            setOrder((prev) => ({
-                ...prev,
+            setSelectedStatus(newStatus);
+            await updateStatusMutation.mutateAsync({
+                id: order._id || order.id,
                 status: newStatus,
-                updatedAt: new Date().toISOString(),
-            }));
-
+            });
             toast.add({
-                type: "success",
-                title: "Success!",
-                description: `Order marked as ${STATUS_CONFIG[newStatus].label.toLowerCase()}`,
+                type: 'success',
+                title: 'Status Updated',
+                description: `Order is now ${STATUS_CONFIG[newStatus]?.label || newStatus}.`,
             });
         } catch (error) {
-            setSelectedStatus(previousStatus);
+            setSelectedStatus(order.status);
             toast.add({
-                type: "error",
-                title: "Error!",
-                description: "Could not update order status. Please try again.",
+                type: 'error',
+                title: 'Update Failed',
+                description: error.response?.data?.message || 'Could not update order status.',
             });
-        } finally {
-            setIsUpdating(false);
         }
     };
     if (isLoading) {
