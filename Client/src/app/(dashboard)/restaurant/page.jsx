@@ -33,37 +33,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import StatCard from '@/components/shared/StatCard';
+import { formatCurrency } from '@/lib/formatters';
 
-// Dummy data
-const DUMMY_STATS = {
-    todayOrders: 18,
-    todayRevenue: 32800,
-    activeDeals: 12,
-    lowStockItems: 8,
-};
-
-const DUMMY_RECENT_ORDERS = [
-    { id: 'ORD-001', customer: 'John Doe', total: 1499, status: 'completed', time: '2 min ago', items: 3 },
-    { id: 'ORD-002', customer: 'Jane Smith', total: 2399, status: 'pending', time: '15 min ago', items: 5 },
-    { id: 'ORD-003', customer: 'Mike Johnson', total: 799, status: 'processing', time: '45 min ago', items: 2 },
-    { id: 'ORD-004', customer: 'Sarah Wilson', total: 1899, status: 'completed', time: '1 hour ago', items: 4 },
-    { id: 'ORD-005', customer: 'David Brown', total: 3499, status: 'pending', time: '2 hours ago', items: 6 },
-];
-
+// Dummy data kept per specification
 const DUMMY_CONVERSATIONS = [
     { customer: 'Alice', lastMessage: 'When will my order arrive?', agent: 'AI Agent', time: '5 min ago' },
     { customer: 'Bob', lastMessage: 'I want to change my address', agent: 'AI Agent', time: '20 min ago' },
     { customer: 'Charlie', lastMessage: 'Do you have this in size L?', agent: 'Human', time: '1 hour ago' },
     { customer: 'Diana', lastMessage: 'Thanks for the quick delivery!', agent: 'AI Agent', time: '2 hours ago' },
     { customer: 'Eve', lastMessage: 'Can I get a refund?', agent: 'AI Agent', time: '3 hours ago' },
-];
-
-const DUMMY_ALERTS = [
-    { type: 'low_stock', message: 'Menu item "Zinger Burger" is running low (3 items left)', priority: 'high' },
-    { type: 'low_stock', message: 'Menu item "French Fries" is running low (5 items left)', priority: 'medium' },
-    { type: 'expiring_deal', message: 'Deal "Family Feast" expires in 2 days', priority: 'high' },
-    { type: 'expiring_deal', message: 'Deal "Student Special" expires in 5 days', priority: 'medium' },
-    { type: 'low_stock', message: 'Menu item "Chicken Wings" is running low (2 items left)', priority: 'high' },
 ];
 
 const QUICK_ACTIONS = [
@@ -76,11 +54,10 @@ const QUICK_ACTIONS = [
 import { useDashboardStats } from '@/hooks/useApi';
 
 const RestaurantDashboard = () => {
-    const { data: responseData } = useDashboardStats();
-    const statsData = responseData?.data?.stats || DUMMY_STATS;
-    const recentOrdersData = responseData?.data?.recentOrders || DUMMY_RECENT_ORDERS;
-    const recentConversationsData = responseData?.data?.recentConversations || DUMMY_CONVERSATIONS;
-    const alertsData = responseData?.data?.alerts || DUMMY_ALERTS;
+    const { data: responseData, isLoading } = useDashboardStats();
+    const statsData = responseData?.data?.stats || { todayOrders: 0, todayRevenue: 0, activeDeals: 0 };
+    const recentOrdersData = responseData?.data?.recentOrders || [];
+    const alertsData = responseData?.data?.alerts || [];
 
     return (
         <div className="space-y-6 pb-8">
@@ -97,16 +74,15 @@ const RestaurantDashboard = () => {
                 <StatCard
                     title="Today's Orders"
                     value={statsData.todayOrders}
-                    change={15}
                     icon={ShoppingCart}
-                    trend="up"
+                    iconClassName={"text-chart-1"}
+                    type="number"
                 />
                 <StatCard
                     title="Today's Revenue"
                     value={statsData.todayRevenue}
-                    change={10}
                     icon={DollarSign}
-                    trend="up"
+                    iconClassName={"text-chart-2"}
                     type="currency"
                 />
                 <StatCard
@@ -114,6 +90,7 @@ const RestaurantDashboard = () => {
                     value={statsData.activeDeals}
                     icon={Gift}
                     valueClassName="text-primary"
+                    iconClassName={"text-chart-3"}
                     caption="Marketing overview"
                 />
             </div>
@@ -142,28 +119,38 @@ const RestaurantDashboard = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {recentOrdersData.map((order) => (
-                                        <TableRow key={order.id}>
-                                            <TableCell className="font-mono text-xs font-medium">
-                                                {order.id}
-                                            </TableCell>
-                                            <TableCell>{order.customer}</TableCell>
-                                            <TableCell className="text-center">{order.items}</TableCell>
-                                            <TableCell className="text-right font-medium">
-                                                Rs. {order.total.toLocaleString()}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <StatusBadge status={order.status} />
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                    <Link href={`/orders/${order.id}`}>
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Link>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {
+                                        recentOrdersData.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-8">
+                                                    <div className="flex flex-col items-center justify-center gap-2">
+                                                        <span className="text-muted-foreground">No recent orders</span>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : recentOrdersData.map((order) => (
+                                            <TableRow key={order._id || order.id}>
+                                                <TableCell className="font-mono text-xs font-medium">
+                                                    {order.id}
+                                                </TableCell>
+                                                <TableCell>{order.customer}</TableCell>
+                                                <TableCell className="text-center">{order.items}</TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    {formatCurrency(order.total)}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <StatusBadge status={order.status} />
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                        <Link href={`/orders/${order._id || order.id}`}>
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    }
                                 </TableBody>
                             </Table>
                         </div>
@@ -201,7 +188,7 @@ const RestaurantDashboard = () => {
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm font-medium">Recent Conversations</CardTitle>
                         <Button variant="ghost" size="sm">
-                            View All
+                            <Link href="/conversations">View All</Link>
                         </Button>
                     </CardHeader>
                     <CardContent className="p-0 flex-1">
@@ -231,7 +218,9 @@ const RestaurantDashboard = () => {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                    <Eye className="h-3.5 w-3.5" />
+                                                    <Link href="/conversations">
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                    </Link>
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -251,20 +240,28 @@ const RestaurantDashboard = () => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2 flex-1">
-                        {DUMMY_ALERTS.map((alert, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                            >
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <StatusBadge status={alert.priority} />
-                                    <span className="text-sm truncate">{alert.message}</span>
-                                </div>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 ml-2">
-                                    <Link href="/menu">View</Link>
-                                </Button>
+                        {alertsData.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                                No system alerts at this time.
                             </div>
-                        ))}
+                        ) : (
+                            alertsData.map((alert, index) => (
+                                <div
+                                    key={index}
+                                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                                >
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <StatusBadge status={alert.priority || 'medium'} />
+                                        <span className="text-sm truncate">{alert.message}</span>
+                                    </div>
+                                    {alert.href && (
+                                        <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 ml-2">
+                                            <Link href={alert.href}>View</Link>
+                                        </Button>
+                                    )}
+                                </div>
+                            ))
+                        )}
                     </CardContent>
                 </Card>
             </div>
