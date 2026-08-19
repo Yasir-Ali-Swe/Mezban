@@ -44,17 +44,6 @@ const menuItemSchema = z.object({
     status: z.enum(['available', 'unavailable']),
 });
 
-// Dummy Data
-const DUMMY_CATEGORIES = [
-    { _id: '1', name: 'Burgers' },
-    { _id: '2', name: 'Pizza' },
-    { _id: '3', name: 'BBQ' },
-    { _id: '4', name: 'Chinese' },
-    { _id: '5', name: 'Drinks' },
-    { _id: '6', name: 'Desserts' },
-    { _id: '7', name: 'Sides' },
-];
-
 import { useCreateMenuItem, useCategories } from '@/hooks/useApi';
 
 const MenuAdd = () => {
@@ -67,7 +56,7 @@ const MenuAdd = () => {
     const { data: categoriesResponse } = useCategories({ limit: 100 });
     const createMenuItemMutation = useCreateMenuItem();
 
-    const categoriesList = categoriesResponse?.data || DUMMY_CATEGORIES;
+    const categoriesList = categoriesResponse?.data || [];
 
     const {
         register,
