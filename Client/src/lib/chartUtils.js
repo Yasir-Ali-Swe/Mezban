@@ -11,7 +11,10 @@ export const aggregateIntoTwoDayPeriods = (
   // Get the full date objects from the data
   data.forEach((item) => {
     if (item.fullDate) {
-      dates.push(item.fullDate);
+      const d = item.fullDate instanceof Date ? item.fullDate : new Date(item.fullDate);
+      if (!isNaN(d.getTime())) {
+        dates.push(d);
+      }
     }
   });
 
@@ -51,8 +54,10 @@ export const aggregateIntoTwoDayPeriods = (
       const item1 = data[i];
       const item2 = data[i + 1];
 
-      const date1 = dates[i] || new Date();
-      const date2 = dates[i + 1] || new Date();
+      const raw1 = dates[i] || new Date();
+      const raw2 = dates[i + 1] || new Date();
+      const date1 = raw1 instanceof Date ? raw1 : new Date(raw1);
+      const date2 = raw2 instanceof Date ? raw2 : new Date(raw2);
 
       const startMonth = date1.toLocaleDateString("en-US", { month: "short" });
       const startDay = date1.getDate();
@@ -211,15 +216,9 @@ export const getChartMinWidth = (numBars, screenWidth, thresholds = {}) => {
   return `${xlarge}px`;
 };
 
+import { formatNumber } from "./formatters.js";
+
 export const formatCompactNumber = (value) => {
-  if (value === null || value === undefined) return "";
-  const num = Number(value);
-  if (Number.isNaN(num)) return String(value);
-  if (Math.abs(num) >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (Math.abs(num) >= 1000) {
-    return `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}k`;
-  }
-  return num.toLocaleString();
+  return formatNumber(value);
 };
+
