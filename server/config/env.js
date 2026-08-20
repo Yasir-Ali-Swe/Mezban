@@ -8,7 +8,10 @@ const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 const cloud_name = process.env.cloud_name;
 const api_key = process.env.api_key;
 const api_secret = process.env.api_secret;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 export {
+  GEMINI_API_KEY,
   PORT,
   DATABASE_URL,
   GOOGLE_GENAI_API_KEY,
