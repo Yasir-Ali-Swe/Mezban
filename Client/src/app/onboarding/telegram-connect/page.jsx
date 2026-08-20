@@ -65,6 +65,7 @@ const TelegramConnectPage = () => {
             const response = await connectBotMutation.mutateAsync({
                 botToken: data.botToken,
             });
+            console.log("response", response);
 
             if (response?.data?.bot) {
                 setBotInfo(response.data.bot);
@@ -205,10 +206,10 @@ const TelegramConnectPage = () => {
                             <div className="rounded-lg border border-border p-4">
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center justify-cente flex-shrink-0">
-                                        {botInfo.avatar ? (
+                                        {botInfo.avatar || botInfo.avatarUrl ? (
                                             <Avatar className="h-12 w-12">
-                                                <AvatarImage src={botInfo.avatar} />
-                                                <AvatarFallback>{botInfo.name}</AvatarFallback>
+                                                <AvatarImage src={botInfo.avatar || botInfo.avatarUrl} />
+                                                <AvatarFallback>{botInfo.name ? botInfo.name.charAt(0) : 'B'}</AvatarFallback>
                                             </Avatar>
                                         ) : (
                                             <Bot className="h-12 w-12 text-primary" />
@@ -216,7 +217,9 @@ const TelegramConnectPage = () => {
                                     </div>
                                     <div>
                                         <p className="font-medium text-sm">{botInfo.name}</p>
-                                        <p className="text-sm text-muted-foreground">@{botInfo.username}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {botInfo.username ? (botInfo.username.startsWith('@') ? botInfo.username : `@${botInfo.username}`) : ''}
+                                        </p>
                                         <Badge variant="outline" className="mt-1 text-xs">
                                             Bot ID: {botInfo.id}
                                         </Badge>
