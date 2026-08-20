@@ -19,6 +19,8 @@ import {
     getChartMinWidth
 } from '@/lib/chartUtils';
 
+import { formatNumber } from '@/lib/formatters';
+
 const VerticalBarChart = ({
     title,
     data,
@@ -51,25 +53,8 @@ const VerticalBarChart = ({
         }
     };
 
-    const defaultFormatter = (value) => {
-        if (value >= 1000000) {
-            return `${(value / 1000000).toFixed(1)}M`;
-        }
-        if (value >= 1000) {
-            return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-        }
-        return value.toLocaleString();
-    };
-
-    const yAxisFormatter = (value) => {
-        if (value >= 1000000) {
-            return `${(value / 1000000).toFixed(1)}M`;
-        }
-        if (value >= 1000) {
-            return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
-        }
-        return value.toString();
-    };
+    const defaultFormatter = (value) => formatNumber(value);
+    const yAxisFormatter = (value) => formatNumber(value);
 
     const tooltipFormatter = formatter || defaultFormatter;
 
