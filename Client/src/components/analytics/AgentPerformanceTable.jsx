@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 const AgentPerformanceTable = ({ data }) => {
     return (
@@ -38,8 +38,8 @@ const AgentPerformanceTable = ({ data }) => {
                             {data.map((agent, index) => (
                                 <TableRow key={index}>
                                     <TableCell className="font-medium text-sm whitespace-nowrap">{agent.agent}</TableCell>
-                                    <TableCell className="text-center">{agent.conversations.toLocaleString()}</TableCell>
-                                    <TableCell className="text-center">{agent.resolved.toLocaleString()}</TableCell>
+                                    <TableCell className="text-center">{formatNumber(agent.conversations)}</TableCell>
+                                    <TableCell className="text-center">{formatNumber(agent.resolved)}</TableCell>
                                     <TableCell className="text-center">
                                         <Badge
                                             className={cn(
