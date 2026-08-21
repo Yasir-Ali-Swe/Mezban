@@ -152,6 +152,7 @@ model TelegramConfig {
   firstName String?
   lastName  String?
   username  String?
+  avatarUrl String?
 
   isConnected Boolean @default(false)
 
@@ -313,6 +314,12 @@ model Customer {
   email String?
 
   telegramChatId String
+  telegramUserId String?
+  username       String?
+  firstName      String?
+  lastName       String?
+  avatarUrl      String?
+  languageCode   String?
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
@@ -326,6 +333,7 @@ model Customer {
   @@unique([businessId, telegramChatId])
   @@index([businessId])
   @@index([businessId, phone])
+  @@index([businessId, telegramUserId])
 }
 
 // ============================================================
@@ -505,14 +513,17 @@ model Message {
   content String @db.Text
 
   telegramMessageId String?
+  telegramUpdateId  String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
+  @@index([conversationId, telegramMessageId])
   @@index([conversationId])
   @@index([conversationId, createdAt])
   @@index([telegramMessageId])
+  @@index([telegramUpdateId])
 }
 
 enum MessageSender {
@@ -691,6 +702,7 @@ enum ConversationStatus {
   ACTIVE
   RESOLVED
   CLOSED
+  ESCALATED
 }
 
 enum AgentType {
