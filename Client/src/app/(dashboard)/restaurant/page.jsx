@@ -58,7 +58,7 @@ const RestaurantDashboard = () => {
     const statsData = responseData?.data?.stats || { todayOrders: 0, todayRevenue: 0, activeDeals: 0 };
     const recentOrdersData = responseData?.data?.recentOrders || [];
     const alertsData = responseData?.data?.alerts || [];
-
+    console.log(alertsData)
     return (
         <div className="space-y-6 pb-8">
             {/* Page Header */}
@@ -245,22 +245,33 @@ const RestaurantDashboard = () => {
                                 No system alerts at this time.
                             </div>
                         ) : (
-                            alertsData.map((alert, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                                >
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <StatusBadge status={alert.priority || 'medium'} />
-                                        <span className="text-sm truncate">{alert.message}</span>
+                            alertsData.map((alert, index) => {
+                                const content = (
+                                    <>
+                                        <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                                            <StatusBadge status={alert.priority || 'medium'} />
+                                            <span className="text-sm truncate block">{alert.message}</span>
+                                        </div>
+                                    </>
+                                );
+
+                                return alert.href ? (
+                                    <Link
+                                        key={index}
+                                        href={alert.href}
+                                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                                    >
+                                        {content}
+                                    </Link>
+                                ) : (
+                                    <div
+                                        key={index}
+                                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                                    >
+                                        {content}
                                     </div>
-                                    {alert.href && (
-                                        <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0 ml-2">
-                                            <Link href={alert.href}>View</Link>
-                                        </Button>
-                                    )}
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </CardContent>
                 </Card>
