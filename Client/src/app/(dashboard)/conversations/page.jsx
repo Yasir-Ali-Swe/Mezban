@@ -90,182 +90,7 @@ const AGENT_OPTIONS = [
     { value: 'SUPPORT_AGENT', label: 'Support Agent' },
 ];
 
-// ─── DATA UTILITIES (Mock Data Generation) ──────────────────────────────────
-
-const generateMockCustomers = () => {
-    const firstNames = ['Ahmed', 'Ali', 'Sara', 'Fatima', 'Mohammed', 'Zainab', 'Hassan', 'Layla', 'Omar', 'Aisha'];
-    const lastNames = ['Khan', 'Ahmed', 'Ali', 'Hassan', 'Qureshi', 'Malik', 'Siddiqui', 'Rashid', 'Farooq', 'Noor'];
-    const usernames = ['ahmed123', 'ali_tech', 'sara_89', 'fatima_2023', 'mohd_k', 'zainab_s', 'hassan_r', 'layla_m', 'omar_f', 'aisha_n'];
-
-    return firstNames.map((first, index) => ({
-        id: `cus_${String(index + 1).padStart(3, '0')}`,
-        name: `${first} ${lastNames[index % lastNames.length]}`,
-        username: usernames[index % usernames.length],
-        telegramId: `${Math.floor(10000000 + Math.random() * 90000000)}`
-    }));
-};
-
-const generateMockConversations = (count) => {
-    const customers = generateMockCustomers();
-    const statuses = ['RESOLVED', 'ACTIVE', 'ESCALATED', 'ABANDONED'];
-    const statusWeights = [0.55, 0.15, 0.20, 0.10];
-
-    const intents = ['MENU_SEARCH', 'MENU_INFO', 'PLACE_ORDER', 'ORDER_STATUS', 'DEAL_INFO', 'SUPPORT'];
-    const agents = ['MENU_AGENT', 'ORDER_AGENT', 'DEAL_AGENT', 'SUPPORT_AGENT'];
-
-    const messages = [
-        "I want to order 2 Zinger burgers",
-        "Show me the menu",
-        "I have a problem with my order",
-        "Is there any discount available?",
-        "What's the status of my delivery?",
-        "I need help with my account",
-        "Can I return this product?",
-        "Show me the menu",
-        "I want to place a bulk order",
-        "How long is the delivery time?",
-        "I want to cancel my order",
-        "What payment methods do you accept?",
-        "I'm having trouble checking out",
-        "Are there any deals available?",
-        "I need support with my order"
-    ];
-
-    const conversations = [];
-    const now = new Date();
-
-    for (let i = 0; i < count; i++) {
-        const status = statuses[
-            statusWeights.reduce((acc, weight, index) => {
-                if (Math.random() < weight) return index;
-                return acc;
-            }, 0)
-        ];
-
-        const customer = customers[Math.floor(Math.random() * customers.length)];
-        const intent = intents[Math.floor(Math.random() * intents.length)];
-        const agent = agents[Math.floor(Math.random() * agents.length)];
-        const message = messages[Math.floor(Math.random() * messages.length)];
-
-        const date = new Date(now);
-        date.setDate(date.getDate() - Math.floor(Math.random() * 30));
-        date.setHours(Math.floor(Math.random() * 24));
-        date.setMinutes(Math.floor(Math.random() * 60));
-
-        conversations.push({
-            id: `conv_${String(i + 1).padStart(6, '0')}`,
-            customer: {
-                id: customer.id,
-                name: customer.name,
-                username: customer.username,
-                telegramId: customer.telegramId
-            },
-            intent,
-            agent,
-            status,
-            lastMessage: message,
-            lastActivity: date.toISOString(),
-        });
-    }
-
-    conversations.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-    return conversations;
-};
-
-const generateStats = (conversations, dateRange) => {
-    const total = conversations.length;
-    const active = conversations.filter(c => c.status === 'ACTIVE').length;
-    const resolved = conversations.filter(c => c.status === 'RESOLVED').length;
-    const escalated = conversations.filter(c => c.status === 'ESCALATED').length;
-    const abandoned = conversations.filter(c => c.status === 'ABANDONED').length;
-
-    const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
-    const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
-
-    let changeMultiplier = 1;
-    if (dateRange === 'today') changeMultiplier = 0.2;
-    else if (dateRange === 'week') changeMultiplier = 0.7;
-    else if (dateRange === 'month') changeMultiplier = 1;
-    else if (dateRange === 'all') changeMultiplier = 1.5;
-
-    return {
-        total: total,
-        totalChange: Math.round((5 + Math.random() * 15) * changeMultiplier),
-        active: active,
-        resolved: resolved,
-        resolutionRate: resolutionRate,
-        escalated: escalated,
-        escalationRate: escalationRate,
-        abandoned: abandoned,
-    };
-};
-
-const getConversationStats = (dateRange = 'week') => {
-    let count = 100;
-    if (dateRange === 'today') count = 20;
-    else if (dateRange === 'week') count = 100;
-    else if (dateRange === 'month') count = 300;
-    else if (dateRange === 'all') count = 500;
-
-    const allConversations = generateMockConversations(count);
-    return generateStats(allConversations, dateRange);
-};
-
-const getConversations = ({
-    page = 1,
-    limit = 10,
-    search = '',
-    status = null,
-    intent = null,
-    agent = null,
-    dateRange = 'week'
-}) => {
-    let count = 200;
-    if (dateRange === 'today') count = 50;
-    else if (dateRange === 'week') count = 200;
-    else if (dateRange === 'month') count = 500;
-    else if (dateRange === 'all') count = 1000;
-
-    const allConversations = generateMockConversations(count);
-
-    let filtered = allConversations;
-    if (status && status !== 'all') {
-        filtered = filtered.filter(c => c.status === status);
-    }
-    if (intent && intent !== 'all') {
-        filtered = filtered.filter(c => c.intent === intent);
-    }
-    if (agent && agent !== 'all') {
-        filtered = filtered.filter(c => c.agent === agent);
-    }
-    if (search) {
-        const searchLower = search.toLowerCase();
-        filtered = filtered.filter(c =>
-            c.customer.name.toLowerCase().includes(searchLower) ||
-            c.customer.username?.toLowerCase().includes(searchLower) ||
-            c.customer.telegramId.includes(searchLower) ||
-            c.lastMessage.toLowerCase().includes(searchLower) ||
-            c.status.toLowerCase().includes(searchLower) ||
-            c.intent.toLowerCase().includes(searchLower)
-        );
-    }
-
-    const total = filtered.length;
-    const totalPages = Math.ceil(total / limit);
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedData = filtered.slice(startIndex, endIndex);
-
-    return {
-        data: paginatedData,
-        pagination: {
-            page,
-            limit,
-            total,
-            totalPages,
-        }
-    };
-};
+import { useConversations, useConversationStats } from '@/hooks/useApi';
 
 // ─── Filter Defaults ─────────────────────────────────────────────────────────
 
@@ -284,56 +109,20 @@ const FILTER_DEFAULTS = {
 const ConversationsPage = () => {
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
 
-    const [loading, setLoading] = useState(true);
-    const [conversations, setConversations] = useState([]);
-    const [stats, setStats] = useState(null);
-    const [pagination, setPagination] = useState(null);
-    const [isFirstLoad, setIsFirstLoad] = useState(true);
+    const { data: statsResponse } = useConversationStats(filters.dateRange || 'all');
+    const { data: responseData, isLoading: loading } = useConversations({
+        page: filters.page,
+        limit: filters.limit,
+        search: filters.search || undefined,
+        status: (filters.status && filters.status !== 'all') ? filters.status : undefined,
+        intent: (filters.intent && filters.intent !== 'all') ? filters.intent : undefined,
+        agent: (filters.agent && filters.agent !== 'all') ? filters.agent : undefined,
+        dateRange: filters.dateRange || 'all',
+    });
 
-    // ─── Load Data ────────────────────────────────────────────────────────────
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchData = async () => {
-            if (!isMounted) return;
-
-            setLoading(true);
-            try {
-                const dateRange = filters.dateRange || 'all';
-                const statsData = getConversationStats(dateRange);
-                if (isMounted) setStats(statsData);
-
-                const { data, pagination: paginationData } = getConversations({
-                    page: filters.page,
-                    limit: filters.limit,
-                    search: filters.search || undefined,
-                    status: (filters.status && filters.status !== 'all') ? filters.status : undefined,
-                    intent: (filters.intent && filters.intent !== 'all') ? filters.intent : undefined,
-                    agent: (filters.agent && filters.agent !== 'all') ? filters.agent : undefined,
-                    dateRange,
-                });
-
-                if (isMounted) {
-                    setConversations(data);
-                    setPagination(paginationData);
-                }
-            } catch (error) {
-                console.error('Error loading conversations:', error);
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                    setIsFirstLoad(false);
-                }
-            }
-        };
-
-        fetchData();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [filters]);
+    const conversations = responseData?.data || [];
+    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
+    const stats = statsResponse?.data || { total: 0, active: 0, resolved: 0, resolutionRate: 0, escalated: 0, escalationRate: 0 };
 
     // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -379,7 +168,9 @@ const ConversationsPage = () => {
                         {conversation.customer.name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                        @{conversation.customer.username || conversation.customer.telegramId}
+                        {conversation.customer.username
+                            ? conversation.customer.displayUsername || `@${conversation.customer.username}`
+                            : `ID: ${conversation.customer.telegramId}`}
                     </span>
                 </div>
             ),
@@ -391,7 +182,7 @@ const ConversationsPage = () => {
             render: (conversation) => (
                 <StatusBadge
                     status="intent"
-                    label={getIntentBadge(conversation.intent)}
+                    label={conversation.intent ? getIntentBadge(conversation.intent) : '-'}
                 />
             ),
         },
@@ -401,7 +192,7 @@ const ConversationsPage = () => {
             headerClassName: 'min-w-[120px]',
             render: (conversation) => (
                 <span className="text-sm">
-                    {conversation.agent.replace(/_/g, ' ')}
+                    {conversation.agent ? conversation.agent.replace(/_/g, ' ') : '-'}
                 </span>
             ),
         },
@@ -419,7 +210,7 @@ const ConversationsPage = () => {
             headerClassName: 'min-w-[150px]',
             render: (conversation) => (
                 <span className="text-sm text-muted-foreground">
-                    {truncateMessage(conversation.lastMessage)}
+                    {conversation.lastMessage ? truncateMessage(conversation.lastMessage) : '-'}
                 </span>
             ),
         },
@@ -429,7 +220,7 @@ const ConversationsPage = () => {
             headerClassName: 'min-w-[100px]',
             render: (conversation) => (
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {timeAgo(conversation.lastActivity)}
+                    {conversation.lastActivity ? timeAgo(conversation.lastActivity) : '-'}
                 </span>
             ),
         },
@@ -450,7 +241,7 @@ const ConversationsPage = () => {
 
     // ─── Loading State ──────────────────────────────────────────────────────
 
-    if (loading && conversations.length === 0 && isFirstLoad) {
+    if (loading && conversations.length === 0) {
         return (
             <div className="space-y-4 sm:space-y-6 pb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
