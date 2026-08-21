@@ -42,30 +42,29 @@ const getUserSnapshot = () => {
 };
 const getUserServerSnapshot = () => null;
 
-// Breadcrumb configuration
 const breadcrumbConfig = {
-    '/restaurant': 'Dashboard',
-    '/ai-analytics': 'AI Analytics',
-    '/business-analytics': 'Business Analytics',
-    '/categories': 'Categories',
-    '/conversations': 'Conversations',
-    '/customers': 'Customers',
-    '/menu': 'Menu',
-    '/menu/new': 'New Menu Item',
-    '/menu/[id]': 'Edit Menu Item',
-    '/deals': 'Deals',
-    '/deals/new': 'New Deal',
-    "/deals/[id]": 'Edit Deal',
-    '/settings': 'Settings',
-    '/settings/info': 'Business Info',
-    '/settings/knowledge': 'Business Knowledge',
-    '/settings/profile': 'My Profile',
-    '/settings/telegram': 'Telegram',
-    '/orders': 'Orders',
-    '/orders/[orderId]': 'Order Details',
-    '/onboarding/business-info': 'Business Info',
-    '/onboarding/business-knowledge': 'Business Knowledge',
-    '/onboarding/telegram-connect': 'Connect Telegram',
+    '/restaurant': { label: 'Dashboard' },
+    '/ai-analytics': { label: 'AI Analytics' },
+    '/business-analytics': { label: 'Business Analytics' },
+    '/categories': { label: 'Categories' },
+    '/conversations': { label: 'Conversations' },
+    '/customers': { label: 'Customers' },
+    '/menu': { label: 'Menu' },
+    '/menu/new': { label: 'New Menu Item' },
+    '/menu/[id]': { label: 'Edit Menu Item' },
+    '/deals': { label: 'Deals' },
+    '/deals/new': { label: 'New Deal' },
+    '/deals/[id]': { label: 'Edit Deal' },
+    '/settings': { label: 'Settings', navigable: false }, // no page at /settings
+    '/settings/info': { label: 'Business Info' },
+    '/settings/knowledge': { label: 'Business Knowledge' },
+    '/settings/profile': { label: 'My Profile' },
+    '/settings/telegram': { label: 'Telegram' },
+    '/orders': { label: 'Orders' },
+    '/orders/[orderId]': { label: 'Order Details' },
+    '/onboarding/business-info': { label: 'Business Info' },
+    '/onboarding/business-knowledge': { label: 'Business Knowledge' },
+    '/onboarding/telegram-connect': { label: 'Connect Telegram' },
 };
 
 const getBreadcrumbs = (pathname) => {
@@ -89,9 +88,11 @@ const getBreadcrumbs = (pathname) => {
         });
 
         if (matchingKey) {
+            const config = breadcrumbConfig[matchingKey];
             breadcrumbs.push({
                 path: currentPath,
-                label: breadcrumbConfig[matchingKey],
+                label: config.label,
+                navigable: config.navigable !== false, // default true unless explicitly false
             });
 
             continue;
@@ -124,6 +125,7 @@ const getBreadcrumbs = (pathname) => {
         breadcrumbs.push({
             path: currentPath,
             label,
+            navigable: true,
         });
     }
 
@@ -157,6 +159,11 @@ export const Navbar = () => {
                         <BreadcrumbList>
                             {breadcrumbs.map((item, index) => {
                                 const isLast = index === breadcrumbs.length - 1 || !item.path;
+                                // Only render an actual link when this crumb is the
+                                // last one is handled separately (always plain text),
+                                // and when the route is marked navigable.
+                                const isClickable = !isLast && item.navigable !== false;
+
                                 return (
                                     <Fragment key={`${item.label}-${index}`}>
                                         <BreadcrumbItem>
@@ -164,7 +171,7 @@ export const Navbar = () => {
                                                 <BreadcrumbPage className="font-semibold text-foreground">
                                                     {item.label}
                                                 </BreadcrumbPage>
-                                            ) : (
+                                            ) : isClickable ? (
                                                 <BreadcrumbLink
                                                     render={
                                                         <Link
@@ -175,6 +182,10 @@ export const Navbar = () => {
                                                         </Link>
                                                     }
                                                 />
+                                            ) : (
+                                                <BreadcrumbPage className="text-muted-foreground cursor-default">
+                                                    {item.label}
+                                                </BreadcrumbPage>
                                             )}
                                         </BreadcrumbItem>
                                         {!isLast && <BreadcrumbSeparator />}
