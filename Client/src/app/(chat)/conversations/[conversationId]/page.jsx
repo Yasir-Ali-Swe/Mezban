@@ -29,95 +29,7 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 
-// ============================================================
-// MOCK DATA
-// ============================================================
-const MOCK_CONVERSATION = {
-    id: 'conv_000001',
-    customer: {
-        id: 'cus_001',
-        name: 'Ahmed Khan',
-        username: 'ahmed123',
-        avatar: 'https://github.com/shadcn.png',
-    },
-    botAvatar: 'https://github.com/shadcn.png',
-    botName: 'TeleAgent Bot',
-    lastMessageAt: '2026-08-09T14:42:00Z',
-    messages: [
-        // Customer messages
-        {
-            id: 'msg_001',
-            conversationId: 'conv_000001',
-            senderType: 'customer',
-            content: 'Hi, do you have Zinger Burger?',
-            createdAt: '2026-08-09T14:30:00Z',
-        },
-        // Product Agent responses
-        {
-            id: 'msg_002',
-            conversationId: 'conv_000001',
-            senderType: 'agent',
-            content: 'Yes, Zinger Burger is available.',
-            createdAt: '2026-08-09T14:30:45Z',
-            agentType: 'product',
-            agentName: 'Product Agent',
-        },
-        {
-            id: 'msg_003',
-            conversationId: 'conv_000001',
-            senderType: 'agent',
-            content: 'It is priced at Rs. 650.',
-            createdAt: '2026-08-09T14:31:10Z',
-            agentType: 'product',
-            agentName: 'Product Agent',
-        },
-        // Customer follow-up
-        {
-            id: 'msg_004',
-            conversationId: 'conv_000001',
-            senderType: 'customer',
-            content: 'I want two burgers, please.',
-            createdAt: '2026-08-09T14:32:00Z',
-        },
-        // Order Agent responses
-        {
-            id: 'msg_005',
-            conversationId: 'conv_000001',
-            senderType: 'agent',
-            content: 'Sure. I can help you create the order for 2 Zinger Burgers.',
-            createdAt: '2026-08-09T14:32:30Z',
-            agentType: 'order',
-            agentName: 'Order Agent',
-        },
-        {
-            id: 'msg_006',
-            conversationId: 'conv_000001',
-            senderType: 'agent',
-            content: 'Your order has been prepared for confirmation. Would you like to proceed?',
-            createdAt: '2026-08-09T14:33:15Z',
-            agentType: 'order',
-            agentName: 'Order Agent',
-        },
-        // Customer confirms
-        {
-            id: 'msg_007',
-            conversationId: 'conv_000001',
-            senderType: 'customer',
-            content: 'Yes, please confirm the order.',
-            createdAt: '2026-08-09T14:34:00Z',
-        },
-        // Order Agent final
-        {
-            id: 'msg_008',
-            conversationId: 'conv_000001',
-            senderType: 'agent',
-            content: 'Order confirmed! Your order #ORD-1234 has been placed. You will receive a confirmation shortly.',
-            createdAt: '2026-08-09T14:34:45Z',
-            agentType: 'order',
-            agentName: 'Order Agent',
-        },
-    ],
-};
+import { useConversation } from '@/hooks/useApi';
 
 // Helper to get avatar initials
 const getInitials = (name) => {
@@ -354,27 +266,10 @@ const ConversationMessages = ({ conversation }) => {
 // ============================================================
 const ConversationDetailPage = () => {
     const params = useParams();
-    const [conversation, setConversation] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const conversationId = params.conversationId || params.id;
 
-    // In a real app, fetch from API using params.id
-    useEffect(() => {
-        // Simulate API call
-        const fetchConversation = async () => {
-            setLoading(true);
-            try {
-                // Mock API call
-                await new Promise((resolve) => setTimeout(resolve, 500));
-                setConversation(MOCK_CONVERSATION);
-            } catch (error) {
-                console.error('Error fetching conversation:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchConversation();
-    }, [params.id]);
+    const { data: responseData, isLoading: loading } = useConversation(conversationId);
+    const conversation = responseData?.data;
 
     if (loading) {
         return (
