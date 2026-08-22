@@ -156,14 +156,15 @@ const OrdersList = () => {
                     value={totalOrders}
                     icon={ShoppingBag}
                     iconClassName="text-chart-1"
+                    valueClassName={"text-chart-1"}
                     caption="All orders"
                 />
                 <StatCard
                     title="Completed Orders"
                     value={completedOrders}
                     icon={CheckCircle}
-                    iconClassName="text-green-500"
-                    valueClassName="text-green-500"
+                    iconClassName="text-chart-2"
+                    valueClassName="text-chart-2"
                     caption={totalOrders > 0 ? `${Math.round((completedOrders / totalOrders) * 100)}% of total` : '0% of total'}
                 />
                 <StatCard
