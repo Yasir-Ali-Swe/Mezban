@@ -94,6 +94,7 @@ const BusinessAnalyticsPage = () => {
                     change={currentData.overview?.revenueChange || 0}
                     icon={DollarSign}
                     iconClassName={"text-chart-1"}
+                    valueClassName={"text-chart-1"}
                     trend={(currentData.overview?.revenueChange || 0) >= 0 ? "up" : "down"}
                     type="currency"
                 />
@@ -103,6 +104,7 @@ const BusinessAnalyticsPage = () => {
                     change={currentData.overview?.ordersChange || 0}
                     icon={ShoppingCart}
                     iconClassName={"text-chart-2"}
+                    valueClassName={"text-chart-2"}
                     trend={(currentData.overview?.ordersChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
@@ -112,6 +114,7 @@ const BusinessAnalyticsPage = () => {
                     change={currentData.overview?.avgOrderChange || 0}
                     icon={ShoppingBag}
                     iconClassName={"text-chart-3"}
+                    valueClassName={"text-chart-3"}
                     trend={(currentData.overview?.avgOrderChange || 0) >= 0 ? "up" : "down"}
                     type="currency"
                 />
@@ -121,6 +124,7 @@ const BusinessAnalyticsPage = () => {
                     change={currentData.overview?.unitsChange || 0}
                     icon={Layers}
                     iconClassName={"text-chart-4"}
+                    valueClassName={"text-chart-4"}
                     trend={(currentData.overview?.unitsChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
