@@ -382,7 +382,7 @@ const MenuList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-                <StatCard title="Total Menu Items" value={totalItems} icon={Utensils} caption="All items" iconClassName="text-chart-1" />
+                <StatCard title="Total Menu Items" value={totalItems} icon={Utensils} caption="All items" iconClassName="text-green-500" valueClassName={"text-green-500"} />
                 <StatCard
                     title="Available Items"
                     value={availableItems}
@@ -399,7 +399,7 @@ const MenuList = () => {
                     valueClassName="text-destructive"
                     caption="Not available"
                 />
-                <StatCard title="Categories" value={categoriesCount} icon={Layers} caption="Total categories" iconClassName="text-chart-4" />
+                <StatCard title="Categories" value={categoriesCount} icon={Layers} caption="Total categories" iconClassName="text-chart-3" valueClassName={"text-chart-3"} />
             </div>
 
             {/* Filters */}
