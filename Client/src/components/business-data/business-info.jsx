@@ -56,7 +56,6 @@ const DUMMY_CITIES = [
     { _id: '8', name: 'Quetta' },
 ];
 
-// Dummy countries for dropdown
 const DUMMY_COUNTRIES = [
     { _id: '1', name: 'Pakistan' },
     { _id: '2', name: 'India' },
