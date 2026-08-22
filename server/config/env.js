@@ -9,7 +9,7 @@ const cloud_name = process.env.cloud_name;
 const api_key = process.env.api_key;
 const api_secret = process.env.api_secret;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
+const FRONTEND_URL = process.env.FRONTEND_URL
 export {
   GEMINI_API_KEY,
   PORT,
@@ -20,4 +20,5 @@ export {
   cloud_name,
   api_key,
   api_secret,
+  FRONTEND_URL
 };
