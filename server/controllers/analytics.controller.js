@@ -3,17 +3,22 @@ import prisma from "../config/prisma.js";
 // Helper to calculate date ranges based on timeRange
 const getDateRanges = (timeRange) => {
   const now = new Date();
+  const rangeEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
   let days = 7;
   if (timeRange === "monthly") days = 30;
   if (timeRange === "yearly") days = 365;
 
-  const currentStart = new Date(now);
-  currentStart.setDate(currentStart.getDate() - days);
+  const currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1), 0, 0, 0, 0);
 
   const prevStart = new Date(currentStart);
-  prevStart.setDate(prevStart.getDate() - days);
+  if (timeRange === "yearly") {
+    prevStart.setFullYear(prevStart.getFullYear() - 1);
+  } else {
+    prevStart.setDate(prevStart.getDate() - days);
+  }
 
-  return { now, days, currentStart, prevStart };
+  return { now: rangeEnd, days, currentStart, prevStart };
 };
 
 // Helper to compute percentage change
