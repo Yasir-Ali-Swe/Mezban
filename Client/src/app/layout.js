@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
 import { ClerkProvider } from "@clerk/nextjs";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { SocketProvider } from '@/contexts/SocketContext';
 
 export const metadata = {
   title: "TeleAgent - SaaS Dashboard",
@@ -23,7 +24,9 @@ export default function RootLayout({ children }) {
               disableTransitionOnChange
             >
               <TooltipProvider>
-                {children}
+                <SocketProvider>
+                  {children}
+                </SocketProvider>
                 <Toaster />
               </TooltipProvider>
             </ThemeProvider>
