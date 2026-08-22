@@ -320,7 +320,7 @@ const DealsList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Total Deals" value={totalDeals} icon={Gift} caption="All deals" iconClassName="text-chart-2" />
+                <StatCard title="Total Deals" value={totalDeals} icon={Gift} caption="All deals" iconClassName="text-chart-2" valueClassName={"text-green-500"} />
                 <StatCard
                     title="Active Deals"
                     value={activeDeals}
@@ -337,7 +337,7 @@ const DealsList = () => {
                     valueClassName="text-destructive"
                     caption="Currently hidden"
                 />
-                <StatCard title="Total Orders" value={fmtNum(totalOrders)} icon={ShoppingBag} caption="From deals" iconClassName="text-chart-4" />
+                <StatCard title="Total Orders" value={fmtNum(totalOrders)} icon={ShoppingBag} caption="From deals" iconClassName="text-chart-4" valueClassName={"text-chart-3"} />
             </div>
 
             {/* Mobile: horizontally scrollable filters */}
