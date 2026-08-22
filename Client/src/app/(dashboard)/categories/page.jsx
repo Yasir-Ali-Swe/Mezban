@@ -283,6 +283,7 @@ const CategoriesList = () => {
                     value={totalCategories}
                     icon={Tags}
                     caption="All categories"
+                    valueClassName={"text-chart-2"}
                     iconClassName="text-chart-2"
                 />
                 <StatCard
