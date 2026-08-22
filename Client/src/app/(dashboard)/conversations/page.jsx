@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -26,6 +26,8 @@ import {
     PaginationFooter,
 } from '@/components/dashboard';
 import StatCard from '@/components/shared/StatCard';
+import { useSocket } from '@/contexts/SocketContext';
+import { useConversations, useConversationStats } from '@/hooks/useApi';
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────
 
@@ -90,8 +92,6 @@ const AGENT_OPTIONS = [
     { value: 'SUPPORT_AGENT', label: 'Support Agent' },
 ];
 
-import { useConversations, useConversationStats } from '@/hooks/useApi';
-
 // ─── Filter Defaults ─────────────────────────────────────────────────────────
 
 const FILTER_DEFAULTS = {
@@ -108,8 +108,16 @@ const FILTER_DEFAULTS = {
 
 const ConversationsPage = () => {
     const { filters, updateFilter, resetFilters, getPageNums } = useUrlFilters(FILTER_DEFAULTS);
+    const { socket, isConnected } = useSocket();
 
-    const { data: statsResponse } = useConversationStats(filters.dateRange || 'all');
+    // Use ref to track if we've already processed a socket event
+    const processingRef = useRef(false);
+
+    const [conversations, setConversations] = useState([]);
+    const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+    const [stats, setStats] = useState({ total: 0, active: 0, resolved: 0, resolutionRate: 0, escalated: 0, escalationRate: 0 });
+
+    const { data: statsResponse, refetch: refetchStats } = useConversationStats(filters.dateRange || 'all');
     const { data: responseData, isLoading: loading } = useConversations({
         page: filters.page,
         limit: filters.limit,
@@ -120,9 +128,92 @@ const ConversationsPage = () => {
         dateRange: filters.dateRange || 'all',
     });
 
-    const conversations = responseData?.data || [];
-    const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
-    const stats = statsResponse?.data || { total: 0, active: 0, resolved: 0, resolutionRate: 0, escalated: 0, escalationRate: 0 };
+    // Update data from API responses - only when responseData actually changes
+    useEffect(() => {
+        if (responseData?.data) {
+            setConversations(responseData.data);
+        }
+        if (responseData?.pagination) {
+            setPagination(responseData.pagination);
+        }
+    }, [responseData]);
+
+    useEffect(() => {
+        if (statsResponse?.data) {
+            setStats(statsResponse.data);
+        }
+    }, [statsResponse]);
+
+    // ─── Socket Event Listeners ─────────────────────────────────────────────
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNewConversation = (newConversation) => {
+            setConversations((prev) => {
+                const exists = prev.some(conv => conv.id === newConversation.id);
+                if (exists) return prev;
+                return [newConversation, ...prev];
+            });
+
+            setPagination((prev) => ({
+                ...prev,
+                total: prev.total + 1,
+            }));
+
+            refetchStats();
+        };
+
+        const handleConversationUpdated = (updatedData) => {
+            setConversations((prev) => {
+                const updated = prev.map((conv) => {
+                    if (conv.id === updatedData.conversationId) {
+                        return {
+                            ...conv,
+                            lastMessage: updatedData.lastMessage || conv.lastMessage,
+                            lastActivity: updatedData.lastActivity || conv.lastActivity,
+                        };
+                    }
+                    return conv;
+                });
+
+                const updatedConv = updated.find(c => c.id === updatedData.conversationId);
+                if (updatedConv) {
+                    const rest = updated.filter(c => c.id !== updatedData.conversationId);
+                    return [updatedConv, ...rest];
+                }
+                return updated;
+            });
+
+            refetchStats();
+        };
+
+        const handleStatusUpdated = (data) => {
+            setConversations((prev) => {
+                return prev.map((conv) => {
+                    if (conv.id === data.conversationId) {
+                        return {
+                            ...conv,
+                            status: data.status,
+                        };
+                    }
+                    return conv;
+                });
+            });
+
+            refetchStats();
+        };
+
+        socket.on('new-conversation', handleNewConversation);
+        socket.on('conversation-updated', handleConversationUpdated);
+        socket.on('conversation-status-updated', handleStatusUpdated);
+
+        return () => {
+            socket.off('new-conversation', handleNewConversation);
+            socket.off('conversation-updated', handleConversationUpdated);
+            socket.off('conversation-status-updated', handleStatusUpdated);
+        };
+    }, [socket, refetchStats]);
 
     // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -244,6 +335,7 @@ const ConversationsPage = () => {
     if (loading && conversations.length === 0) {
         return (
             <div className="space-y-4 sm:space-y-6 pb-8">
+                {/* Loading skeleton */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <div className="h-7 sm:h-8 w-32 sm:w-48 bg-muted animate-pulse rounded"></div>
@@ -276,12 +368,20 @@ const ConversationsPage = () => {
 
     return (
         <div className="space-y-4 sm:space-y-6 pb-8">
+            {/* Connection Status Indicator */}
+            {!isConnected && (
+                <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></div>
+                    Connecting to real-time updates...
+                </div>
+            )}
+
             {/* Page Header */}
             <div className="flex flex-row items-center justify-between gap-3 sm:gap-4">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold tracking-tight sm:text-3xl">Conversations</h1>
                     <p className="text-sm text-muted-foreground">
-                        Monitor customer conversations.
+                        Monitor customer conversations in real-time.
                     </p>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -346,7 +446,7 @@ const ConversationsPage = () => {
                 </div>
             )}
 
-            {/* Mobile: horizontally scrollable filters */}
+            {/* Mobile filters */}
             <div className="md:hidden relative">
                 <div className="overflow-x-auto scrollbar-thin pt-1 pb-2.5">
                     <div className="flex items-center gap-2 min-w-max">
@@ -395,7 +495,7 @@ const ConversationsPage = () => {
                 </div>
             </div>
 
-            {/* Desktop: flex wrap filters */}
+            {/* Desktop filters */}
             <div className="hidden md:flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
                 <FilterSearchInput
                     placeholder="Search conversations..."
@@ -457,3 +557,4 @@ const ConversationsPage = () => {
 };
 
 export default ConversationsPage;
+
