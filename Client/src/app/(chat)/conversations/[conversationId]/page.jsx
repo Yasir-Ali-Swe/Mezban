@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -28,7 +28,7 @@ import {
     Collapsible,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-
+import { useSocket } from '@/contexts/SocketContext';
 import { useConversation } from '@/hooks/useApi';
 
 // Helper to get avatar initials
@@ -148,6 +148,7 @@ const MessageBubbleContent = ({ content }) => {
         </BubbleContent>
     );
 };
+
 const MessageGroupRenderer = ({ messages,
     customerName,
     customerAvatar,
@@ -159,7 +160,6 @@ const MessageGroupRenderer = ({ messages,
     const align = isCustomer ? 'start' : 'end';
     const variant = isCustomer ? 'muted' : 'default';
 
-    // Determine if we should show agent name footer
     const showAgentFooter = !isCustomer && messages.some((m) => m.agentName);
     const agentName = messages.find((m) => m.agentName)?.agentName;
 
@@ -167,11 +167,10 @@ const MessageGroupRenderer = ({ messages,
         <MessageGroup>
             {messages.map((message, index) => {
                 const isLast = index === messages.length - 1;
-                const showAvatar = isLast; // Only show avatar on last message
+                const showAvatar = isLast;
 
                 return (
                     <Message key={message.id} align={align}>
-                        {/* Avatar - only on last message */}
                         {showAvatar ? (
                             <MessageAvatar>
                                 <Avatar className="h-8 w-8">
@@ -192,13 +191,9 @@ const MessageGroupRenderer = ({ messages,
                         )}
 
                         <MessageContent>
-                            {/* <Bubble variant={variant} align={align}>
-                                <BubbleContent>{message.content}</BubbleContent>
-                            </Bubble> */}
                             <Bubble variant={variant} align={align}>
                                 <MessageBubbleContent content={message.content} />
                             </Bubble>
-                            {/* Footer - only on last message if agent */}
                             {showAgentFooter && isLast && agentName && (
                                 <MessageFooter>{agentName}</MessageFooter>
                             )}
@@ -213,16 +208,24 @@ const MessageGroupRenderer = ({ messages,
 // ============================================================
 // CONVERSATION MESSAGES COMPONENT
 // ============================================================
-const ConversationMessages = ({ conversation }) => {
-    const { messages, customer, botAvatar } = conversation;
+const ConversationMessages = ({ conversation, newMessages = [] }) => {
+    const { messages = [], customer = {}, botAvatar } = conversation;
 
-    // Group consecutive messages from the same sender.
-    // Agent messages are also split when the agent changes.
+    // Deduplicate messages by id
+    const seenIds = new Set();
+    const allMessages = [...messages, ...newMessages].filter((m) => {
+        if (!m || !m.id) return true;
+        if (seenIds.has(m.id)) return false;
+        seenIds.add(m.id);
+        return true;
+    });
+
+    // Group consecutive messages from the same sender
     const groupedMessages = [];
     let currentGroup = [];
 
-    messages.forEach((message, index) => {
-        const prevMessage = index > 0 ? messages[index - 1] : null;
+    allMessages.forEach((message, index) => {
+        const prevMessage = index > 0 ? allMessages[index - 1] : null;
 
         const isNewGroup =
             !prevMessage ||
@@ -236,7 +239,6 @@ const ConversationMessages = ({ conversation }) => {
             if (currentGroup.length > 0) {
                 groupedMessages.push(currentGroup);
             }
-
             currentGroup = [message];
         } else {
             currentGroup.push(message);
@@ -261,15 +263,101 @@ const ConversationMessages = ({ conversation }) => {
         </div>
     );
 };
+
 // ============================================================
 // MAIN CONVERSATION DETAIL PAGE
 // ============================================================
 const ConversationDetailPage = () => {
     const params = useParams();
+    const router = useRouter();
     const conversationId = params.conversationId || params.id;
+    const messagesEndRef = useRef(null);
+    const [newMessages, setNewMessages] = useState([]);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const processingRef = useRef(false);
 
-    const { data: responseData, isLoading: loading } = useConversation(conversationId);
+    const { socket, isConnected, joinConversation, leaveConversation } = useSocket();
+    const { data: responseData, isLoading: loading, refetch } = useConversation(conversationId);
     const conversation = responseData?.data;
+
+    // Scroll to bottom when new messages arrive
+    const scrollToBottom = useCallback(() => {
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+    }, []);
+
+    // Scroll to bottom on initial load
+    useEffect(() => {
+        if (!loading && conversation) {
+            scrollToBottom();
+            setIsInitialLoad(false);
+        }
+    }, [loading, conversation, scrollToBottom]);
+
+    // Join conversation room when component mounts
+    useEffect(() => {
+        if (!socket || !isConnected || !conversationId) return;
+
+        joinConversation(conversationId);
+
+        return () => {
+            leaveConversation(conversationId);
+        };
+    }, [socket, isConnected, conversationId, joinConversation, leaveConversation]);
+
+    // Listen for new messages - with deduplication
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleNewMessage = (messageData) => {
+            // Only add if it's for this conversation
+            if (messageData.conversationId === conversationId) {
+                // Check if message already exists (prevent duplicates)
+                setNewMessages((prev) => {
+                    const exists = prev.some(msg => msg.id === messageData.id);
+                    if (exists) return prev;
+                    return [...prev, messageData];
+                });
+                scrollToBottom();
+            }
+        };
+
+        socket.on('new-message', handleNewMessage);
+
+        return () => {
+            socket.off('new-message', handleNewMessage);
+        };
+    }, [socket, conversationId, scrollToBottom]);
+
+    // Refetch conversation when we get a conversation-updated event - with debounce
+    useEffect(() => {
+        if (!socket) return;
+
+        let timeoutId = null;
+
+        const handleConversationUpdated = (data) => {
+            if (data.conversationId === conversationId) {
+                // Debounce refetch to prevent multiple calls
+                if (timeoutId) clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    refetch();
+                }, 300);
+            }
+        };
+
+        socket.on('conversation-updated', handleConversationUpdated);
+
+        return () => {
+            socket.off('conversation-updated', handleConversationUpdated);
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [socket, conversationId, refetch]);
+
+    // Clear new messages when conversation data changes
+    useEffect(() => {
+        setNewMessages([]);
+    }, [conversationId]);
 
     if (loading) {
         return (
@@ -297,14 +385,26 @@ const ConversationDetailPage = () => {
         <div className="h-screen w-full overflow-hidden">
             <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
 
+                {/* Connection Status */}
+                {!isConnected && !isInitialLoad && (
+                    <div className="bg-yellow-50 dark:bg-yellow-950/30 border-b border-yellow-200 dark:border-yellow-800 px-4 py-2 text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-2 shrink-0">
+                        <div className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></div>
+                        Reconnecting to real-time updates...
+                    </div>
+                )}
+
                 {/* Fixed Conversation Header */}
                 <div className="shrink-0 border-b">
                     <ConversationHeader conversation={conversation} />
                 </div>
 
-                {/* Only the messages scroll */}
+                {/* Messages - Only the messages scroll */}
                 <ScrollArea className="min-h-0 flex-1 border-x">
-                    <ConversationMessages conversation={conversation} />
+                    <ConversationMessages
+                        conversation={conversation}
+                        newMessages={newMessages}
+                    />
+                    <div ref={messagesEndRef} />
                 </ScrollArea>
 
             </div>
