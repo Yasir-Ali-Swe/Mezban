@@ -17,6 +17,9 @@ import {
     Eye,
     MessageSquare,
     ChevronDown,
+    MessageCircle,
+    CheckCircle,
+    AlertCircle,
 } from 'lucide-react';
 import { useUrlFilters } from '@/hooks/useUrlFilters';
 import {
@@ -424,23 +427,32 @@ const ConversationsPage = () => {
                         change={stats.totalChange}
                         trend={stats.totalChange > 0 ? 'up' : 'down'}
                         icon={MessageSquare}
+                        iconClassName="text-chart-1"
+                        valueClassName="text-chart-1"
+                        caption="All conversations"
                     />
                     <StatCard
                         title="Active"
                         value={stats.active}
-                        icon={MessageSquare}
+                        icon={MessageCircle}
+                        iconClassName="text-chart-2"
+                        valueClassName="text-chart-2"
                         caption="Currently active"
                     />
                     <StatCard
                         title="Resolved"
                         value={stats.resolved}
-                        icon={MessageSquare}
+                        icon={CheckCircle}
+                        iconClassName="text-chart-3"
+                        valueClassName="text-chart-3"
                         caption={`${stats.resolutionRate}% resolution rate`}
                     />
                     <StatCard
                         title="Escalated"
                         value={stats.escalated}
-                        icon={MessageSquare}
+                        icon={AlertCircle}
+                        iconClassName="text-destructive"
+                        valueClassName="text-destructive"
                         caption={`${stats.escalationRate}% escalated`}
                     />
                 </div>
