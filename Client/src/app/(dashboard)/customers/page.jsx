@@ -18,6 +18,7 @@ import {
     DataTable,
     PaginationFooter,
 } from '@/components/dashboard';
+import { toast } from '@/components/ui/toast';
 import StatCard from '@/components/shared/StatCard';
 
 // ─── Filter Config ────────────────────────────────────────────────────────────
@@ -43,6 +44,8 @@ const CustomersList = () => {
 
     const { data: responseData } = useCustomers(filters);
     const { data: statsResponse } = useCustomerStats();
+    console.log(responseData, "customer data")
+    console.log(statsResponse, "stats response")
 
     const customersList = responseData?.data || [];
     const pagination = responseData?.pagination || { page: 1, total: 0, totalPages: 1 };
@@ -164,7 +167,14 @@ const CustomersList = () => {
                 getRowKey={(c) => c._id}
                 emptyMessage="No customers found."
                 tableMinWidth="min-w-175"
-                onRowClick={(c) => router.push(`/conversations/${c._id}`)}
+                onRowClick={(c) => {
+                    const targetConversationId = c.latestConversationId || c.conversationId;
+                    if (targetConversationId) {
+                        router.push(`/conversations/${targetConversationId}`);
+                    } else {
+                        toast.error('No conversation found for this customer');
+                    }
+                }}
                 footer={
                     <PaginationFooter
                         page={filters.page}
