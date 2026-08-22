@@ -105,7 +105,8 @@ const AiAnalyticsPage = () => {
                     value={currentData.aiOverview?.totalConversations || 0}
                     change={currentData.aiOverview?.totalChange || 0}
                     icon={MessageSquare}
-                    iconClassName={"text-blue-500"}
+                    iconClassName={"text-chart-1"}
+                    valueClassName={"text-chart-1"}
                     trend={(currentData.aiOverview?.totalChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
@@ -115,7 +116,8 @@ const AiAnalyticsPage = () => {
                     value={currentData.aiOverview?.aiResolved || 0}
                     change={currentData.aiOverview?.resolvedChange || 0}
                     icon={CheckCircle}
-                    iconClassName={"text-green-500"}
+                    iconClassName={"text-chart-2"}
+                    valueClassName={"text-chart-2"}
                     trend={(currentData.aiOverview?.resolvedChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
@@ -125,7 +127,8 @@ const AiAnalyticsPage = () => {
                     value={currentData.aiOverview?.aiOrders || 0}
                     change={currentData.aiOverview?.ordersChange || 0}
                     icon={ShoppingBag}
-                    iconClassName={"text-purple-500"}
+                    iconClassName={"text-chart-3"}
+                    valueClassName={"text-chart-3"}
                     trend={(currentData.aiOverview?.ordersChange || 0) >= 0 ? "up" : "down"}
                     type="number"
                 />
@@ -135,7 +138,8 @@ const AiAnalyticsPage = () => {
                     value={currentData.aiOverview?.resolutionRate || 0}
                     change={currentData.aiOverview?.rateChange || 0}
                     icon={Target}
-                    iconClassName={"text-orange-500"}
+                    iconClassName={"text-chart-4"}
+                    valueClassName={"text-chart-4"}
                     trend={(currentData.aiOverview?.rateChange || 0) >= 0 ? "up" : "down"}
                     type="percentage"
                 />
