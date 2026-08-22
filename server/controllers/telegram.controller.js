@@ -1,5 +1,21 @@
 import crypto from "crypto";
 import prisma from "../config/prisma.js";
+import { emitNewMessage, emitNewConversation } from "../socket/socket.js";
+
+// Get io instance from app
+let ioInstance = null;
+
+export const setIo = (io) => {
+  ioInstance = io;
+};
+
+// Track processing updates to prevent duplicates
+const processingUpdates = new Set();
+
+// Sync cooldown to prevent multiple syncs
+let isSyncing = false;
+let lastSyncTime = 0;
+const SYNC_COOLDOWN = 10000; // 10 seconds between syncs
 
 export const getTelegramConfig = async (req, res) => {
   try {
@@ -29,7 +45,7 @@ export const getTelegramConfig = async (req, res) => {
           id: config.botId,
           name: config.botName,
           username: safeUsername,
-          avatarUrl: avatarUrl, // ✅ Use proxy URL
+          avatarUrl: avatarUrl,
           isConnected: config.isConnected,
           connectedOn: config.connectedAt,
         },
@@ -120,7 +136,7 @@ export const connectTelegramBot = async (req, res) => {
       isLocalhost: webhookUrl.includes("localhost") || webhookUrl.includes("127.0.0.1"),
     });
 
-    // 4. Configure Telegram Webhook via official setWebhook API
+    // 4. Configure Telegram Webhook
     let webhookStatus = "connected";
     const isLocal = webhookUrl.includes("localhost") || webhookUrl.includes("127.0.0.1") || !webhookUrl.startsWith("https://");
 
@@ -177,7 +193,7 @@ export const connectTelegramBot = async (req, res) => {
       console.warn("Telegram getWebhookInfo check failed:", e.message);
     }
 
-    // 6. Fetch Telegram Bot profile photo - STORE FILE_ID, NOT FILE_PATH
+    // 6. Fetch Telegram Bot profile photo - STORE FILE_ID
     let botAvatarFileId = null;
     try {
       const photosRes = await fetch(
@@ -188,14 +204,14 @@ export const connectTelegramBot = async (req, res) => {
         const photoSizes = photosData.result.photos[0];
         const largestPhoto = photoSizes[photoSizes.length - 1];
         if (largestPhoto?.file_id) {
-          botAvatarFileId = largestPhoto.file_id; // ✅ Store the permanent file_id
+          botAvatarFileId = largestPhoto.file_id;
         }
       }
     } catch (avatarErr) {
       console.warn("Could not fetch bot profile photo during connect:", avatarErr.message);
     }
 
-    // 7. Save real Telegram identity and configuration to database
+    // 7. Save configuration to database
     const config = await prisma.telegramConfig.upsert({
       where: { businessId: req.businessId },
       update: {
@@ -211,7 +227,7 @@ export const connectTelegramBot = async (req, res) => {
         firstName,
         lastName,
         username,
-        avatarUrl: botAvatarFileId, // ✅ Store file_id
+        avatarUrl: botAvatarFileId,
         isConnected: true,
         connectedAt: new Date(),
         lastUpdateAt: new Date(),
@@ -230,7 +246,7 @@ export const connectTelegramBot = async (req, res) => {
         firstName,
         lastName,
         username,
-        avatarUrl: botAvatarFileId, // ✅ Store file_id
+        avatarUrl: botAvatarFileId,
         isConnected: true,
         connectedAt: new Date(),
         lastUpdateAt: new Date(),
@@ -239,7 +255,6 @@ export const connectTelegramBot = async (req, res) => {
 
     const safeUsername = config.botUsername ? (config.botUsername.startsWith("@") ? config.botUsername : `@${config.botUsername}`) : "";
 
-    // 8. Build the avatar URL using the proxy endpoint
     const avatarUrl = config.avatarUrl
       ? `${baseUrl}/api/telegram/avatar/${req.businessId}?fileId=${config.avatarUrl}`
       : `https://ui-avatars.com/api/?name=${encodeURIComponent(config.botName)}&background=0088CC&color=fff&size=128`;
@@ -251,7 +266,7 @@ export const connectTelegramBot = async (req, res) => {
           id: config.botId,
           name: config.botName,
           username: safeUsername,
-          avatarUrl: avatarUrl, // ✅ Use proxy URL
+          avatarUrl: avatarUrl,
           isConnected: true,
           connectedOn: config.connectedAt,
         },
@@ -284,9 +299,21 @@ export const connectTelegramBot = async (req, res) => {
   }
 };
 
-export const processTelegramUpdate = async (config, update) => {
+// ============================================================
+// OPTIMIZED: processTelegramUpdate with parallel operations
+// ============================================================
+// ============================================================
+// OPTIMIZED: processTelegramUpdate with immediate Telegram response
+// ============================================================
+export const processTelegramUpdate = async (config, update, io) => {
+  const startTime = Date.now();
+  console.log(`[Telegram Process] Starting processing for update ${update.update_id}`);
+
   const message = update.message || update.edited_message;
-  if (!message || !message.from || !message.chat) return;
+  if (!message || !message.from || !message.chat) {
+    console.log(`[Telegram Process] No valid message found`);
+    return;
+  }
 
   const businessId = config.businessId;
   const telegramUserId = String(message.from.id);
@@ -299,54 +326,63 @@ export const processTelegramUpdate = async (config, update) => {
   const telegramUpdateId = update.update_id ? String(update.update_id) : null;
 
   const customerName = [firstName, lastName].filter(Boolean).join(" ") || username || "Telegram User";
+  const baseUrl = process.env.APP_URL || process.env.BASE_URL || "http://localhost:5000";
 
-  // 1. Fetch customer Telegram profile photo - STORE FILE_ID
-  let avatarFileId = null;
-  try {
-    const photosRes = await fetch(
-      `https://api.telegram.org/bot${config.botToken}/getUserProfilePhotos?user_id=${telegramUserId}&limit=1`
-    );
-    const photosData = await photosRes.json();
-    if (photosData.ok && photosData.result?.total_count > 0) {
-      const photoSizes = photosData.result.photos[0];
-      const largestPhoto = photoSizes[photoSizes.length - 1];
-      if (largestPhoto?.file_id) {
-        avatarFileId = largestPhoto.file_id; // ✅ Store the permanent file_id
+  // 1. Fire avatar fetch completely in background (FIRE AND FORGET - do NOT await!)
+  (async () => {
+    try {
+      const photosRes = await fetch(
+        `https://api.telegram.org/bot${config.botToken}/getUserProfilePhotos?user_id=${telegramUserId}&limit=1`
+      );
+      const photosData = await photosRes.json();
+      if (photosData.ok && photosData.result?.total_count > 0) {
+        const photoSizes = photosData.result.photos[0];
+        const largestPhoto = photoSizes[photoSizes.length - 1];
+        if (largestPhoto?.file_id) {
+          await prisma.customer.updateMany({
+            where: { businessId, telegramChatId },
+            data: { avatarUrl: largestPhoto.file_id },
+          });
+        }
       }
+    } catch (photoErr) {
+      console.warn("[Telegram Process] Background photo fetch non-critical warning:", photoErr.message);
     }
-  } catch (photoErr) {
-    console.warn("[Telegram Process] Could not fetch user profile photo:", photoErr.message);
-  }
+  })();
 
-  // 2. Upsert Customer record
-  const customer = await prisma.customer.upsert({
+  // 2. Get or create customer record in DB
+  let customer = await prisma.customer.findFirst({
     where: {
-      businessId_telegramChatId: {
-        businessId,
-        telegramChatId,
-      },
-    },
-    update: {
-      name: customerName,
-      telegramUserId,
-      firstName,
-      lastName,
-      username,
-      languageCode,
-      ...(avatarFileId && { avatarUrl: avatarFileId }), // ✅ Store file_id
-    },
-    create: {
       businessId,
       telegramChatId,
-      telegramUserId,
-      name: customerName,
-      firstName,
-      lastName,
-      username,
-      languageCode,
-      avatarUrl: avatarFileId, // ✅ Store file_id
     },
   });
+
+  if (!customer) {
+    customer = await prisma.customer.create({
+      data: {
+        businessId,
+        telegramChatId,
+        telegramUserId,
+        name: customerName,
+        firstName,
+        lastName,
+        username,
+        languageCode,
+      },
+    });
+  } else {
+    customer = await prisma.customer.update({
+      where: { id: customer.id },
+      data: {
+        name: customerName,
+        firstName,
+        lastName,
+        username,
+        languageCode,
+      },
+    });
+  }
 
   // 3. Find or Create Active Conversation
   let conversation = await prisma.conversation.findFirst({
@@ -357,7 +393,9 @@ export const processTelegramUpdate = async (config, update) => {
     },
   });
 
+  let isNewConversation = false;
   if (!conversation) {
+    isNewConversation = true;
     conversation = await prisma.conversation.create({
       data: {
         businessId,
@@ -403,7 +441,7 @@ export const processTelegramUpdate = async (config, update) => {
   }
 
   // 6. Store Customer Message in DB
-  await prisma.message.create({
+  const customerMessage = await prisma.message.create({
     data: {
       conversationId: conversation.id,
       sender: "CUSTOMER",
@@ -413,7 +451,7 @@ export const processTelegramUpdate = async (config, update) => {
     },
   });
 
-  // 7. Generate Bot / Agent Response
+  // 7. Generate Bot Response
   let replyText = "";
   if (messageText.toLowerCase() === "/start") {
     replyText = `Hello ${firstName || customerName}! Welcome to ${config.botName || "our restaurant"}. How can I help you today?`;
@@ -421,36 +459,30 @@ export const processTelegramUpdate = async (config, update) => {
     replyText = `Thank you for your message! Our AI assistant (${config.botName || "TeleAgent"}) has received your inquiry: "${messageText}". How else can we assist you?`;
   }
 
-  // 8. Send Agent Response via Telegram API
-  let agentMessageId = null;
-  try {
-    const sendRes = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: telegramChatId,
-        text: replyText,
-      }),
-    });
-    const sendData = await sendRes.json();
-    if (sendData.ok && sendData.result?.message_id) {
-      agentMessageId = String(sendData.result.message_id);
-    }
-  } catch (sendErr) {
-    console.error("[Telegram Process] Failed to send Telegram agent response:", sendErr.message);
-  }
+  // ⚡ 8. PRIORITY HIGH: Send Agent Response to Telegram Customer IMMEDIATELY!
+  const sendTelegramPromise = fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: telegramChatId,
+      text: replyText,
+    }),
+  }).then(r => r.json()).catch(err => {
+    console.error("[Telegram Process] Telegram sendMessage error:", err.message);
+    return null;
+  });
 
-  // 9. Store Agent Message in DB & update conversation metadata
-  await prisma.message.create({
+  // 9. Store Agent Message in DB
+  const agentMessage = await prisma.message.create({
     data: {
       conversationId: conversation.id,
       sender: "AGENT",
       agentType: "GENERAL_AGENT",
       content: replyText,
-      telegramMessageId: agentMessageId,
     },
   });
 
+  // Update conversation metadata
   await prisma.conversation.update({
     where: { id: conversation.id },
     data: {
@@ -458,38 +490,92 @@ export const processTelegramUpdate = async (config, update) => {
       lastActivity: new Date(),
     },
   });
-};
 
-export const syncPendingTelegramUpdates = async (businessId) => {
-  try {
-    const config = await prisma.telegramConfig.findUnique({
-      where: { businessId },
-    });
-
-    if (!config || !config.isConnected || !config.botToken) return;
-
-    const updatesRes = await fetch(`https://api.telegram.org/bot${config.botToken}/getUpdates`);
-    const updatesData = await updatesRes.json();
-
-    if (updatesData.ok && Array.isArray(updatesData.result) && updatesData.result.length > 0) {
-      console.log(`[Telegram Sync] Syncing ${updatesData.result.length} pending updates for business ${businessId}...`);
-      let maxUpdateId = 0;
-      for (const update of updatesData.result) {
-        await processTelegramUpdate(config, update);
-        if (update.update_id > maxUpdateId) {
-          maxUpdateId = update.update_id;
-        }
-      }
-      if (maxUpdateId > 0) {
-        // Acknowledge updates with offset to clear queue on Telegram
-        await fetch(`https://api.telegram.org/bot${config.botToken}/getUpdates?offset=${maxUpdateId + 1}`);
-      }
+  // 10. Update agent message with Telegram message ID once send completes
+  sendTelegramPromise.then(async (sendData) => {
+    if (sendData?.ok && sendData.result?.message_id) {
+      await prisma.message.update({
+        where: { id: agentMessage.id },
+        data: { telegramMessageId: String(sendData.result.message_id) },
+      }).catch(() => { });
     }
-  } catch (err) {
-    console.error(`[Telegram Sync] Error syncing updates for business ${businessId}:`, err.message);
+  });
+
+  // 11. Prepare customer & bot avatars for real-time socket events
+  const customerAvatar = customer.avatarUrl
+    ? `/api/conversations/avatar/${customer.id}`
+    : null;
+
+  const botAvatar = "/api/conversations/bot-avatar";
+
+  // 12. Emit Real-Time Socket.IO Events
+  if (io) {
+    const customerMessageData = {
+      id: customerMessage.id,
+      conversationId: conversation.id,
+      senderType: "customer",
+      sender: "CUSTOMER",
+      content: customerMessage.content,
+      agentType: null,
+      agentName: null,
+      createdAt: customerMessage.createdAt.toISOString(),
+      customer: {
+        id: customer.id,
+        name: customerName,
+        avatar: customerAvatar,
+      },
+      businessId: businessId,
+    };
+
+    const agentMessageData = {
+      id: agentMessage.id,
+      conversationId: conversation.id,
+      senderType: "agent",
+      sender: "AGENT",
+      content: agentMessage.content,
+      agentType: "GENERAL_AGENT",
+      agentName: "GENERAL AGENT",
+      createdAt: agentMessage.createdAt.toISOString(),
+      businessId: businessId,
+      botAvatar: botAvatar,
+    };
+
+    // Emit to conversation room & business room
+    emitNewMessage(io, conversation.id, customerMessageData);
+    emitNewMessage(io, conversation.id, agentMessageData);
+
+    if (isNewConversation) {
+      const conversationData = {
+        id: conversation.id,
+        customer: {
+          id: customer.id,
+          name: customerName,
+          avatar: customerAvatar,
+        },
+        lastMessage: replyText,
+        lastActivity: conversation.lastActivity.toISOString(),
+        status: conversation.status,
+        agent: conversation.agent,
+      };
+      emitNewConversation(io, businessId, conversationData);
+    }
+
+    io.to(`business-${businessId}`).emit("conversation-updated", {
+      conversationId: conversation.id,
+      lastMessage: replyText,
+      lastActivity: new Date().toISOString(),
+      customerId: customer.id,
+      customerName: customerName,
+    });
   }
+
+  const endTime = Date.now();
+  console.log(`⚡ [Telegram Process] Fast completed processing update ${update.update_id} in ${endTime - startTime}ms`);
 };
 
+// ============================================================
+// handleTelegramWebhook - Respond immediately to Telegram
+// ============================================================
 export const handleTelegramWebhook = async (req, res) => {
   try {
     const { businessId } = req.params;
@@ -509,13 +595,93 @@ export const handleTelegramWebhook = async (req, res) => {
     }
 
     const update = req.body;
-    await processTelegramUpdate(config, update);
+    const updateId = update.update_id;
 
-    return res.status(200).json({ success: true });
+    if (processingUpdates.has(updateId)) {
+      return res.status(200).json({ success: true });
+    }
+
+    processingUpdates.add(updateId);
+    const io = req.app.get("io");
+
+    // Respond immediately (200 OK) to Telegram so Telegram does not retry
+    res.status(200).json({ success: true });
+
+    setImmediate(async () => {
+      try {
+        await processTelegramUpdate(config, update, io);
+      } catch (error) {
+        console.error("[Telegram Webhook] Background processing error:", error);
+      } finally {
+        setTimeout(() => {
+          processingUpdates.delete(updateId);
+        }, 5000);
+      }
+    });
+
   } catch (error) {
     console.error("handleTelegramWebhook error:", error);
-    return res.status(500).json({ success: false, message: "Webhook processing error" });
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: "Webhook processing error" });
+    }
   }
+};
+
+// ============================================================
+// syncPendingTelegramUpdates with Socket emission
+// ============================================================
+export const syncPendingTelegramUpdates = async (businessId, io = null) => {
+  try {
+    const config = await prisma.telegramConfig.findUnique({
+      where: { businessId },
+    });
+
+    if (!config || !config.isConnected || !config.botToken) return;
+
+    const updatesRes = await fetch(`https://api.telegram.org/bot${config.botToken}/getUpdates`);
+    const updatesData = await updatesRes.json();
+
+    if (updatesData.ok && Array.isArray(updatesData.result) && updatesData.result.length > 0) {
+      console.log(`[Telegram Sync] Syncing ${updatesData.result.length} pending updates for business ${businessId}...`);
+      let maxUpdateId = 0;
+      for (const update of updatesData.result) {
+        await processTelegramUpdate(config, update, io);
+        if (update.update_id > maxUpdateId) {
+          maxUpdateId = update.update_id;
+        }
+      }
+      if (maxUpdateId > 0) {
+        await fetch(`https://api.telegram.org/bot${config.botToken}/getUpdates?offset=${maxUpdateId + 1}`);
+      }
+    }
+  } catch (err) {
+    console.error(`[Telegram Sync] Error syncing updates for business ${businessId}:`, err.message);
+  }
+};
+
+// ============================================================
+// Background Telegram Update Poller for Local HTTP Development
+// ============================================================
+let isPollerRunning = false;
+export const startTelegramPolling = (io) => {
+  if (isPollerRunning) return;
+  isPollerRunning = true;
+  console.log("⚡ [Telegram Poller] Background polling initialized (checking for updates every 2s)...");
+
+  setInterval(async () => {
+    try {
+      const activeConfigs = await prisma.telegramConfig.findMany({
+        where: { isConnected: true },
+      });
+
+      for (const config of activeConfigs) {
+        if (!config.botToken) continue;
+        await syncPendingTelegramUpdates(config.businessId, io);
+      }
+    } catch (err) {
+      // Ignore background loop error
+    }
+  }, 2000);
 };
 
 export const disconnectTelegramBot = async (req, res) => {
@@ -568,7 +734,6 @@ export const getTelegramAvatar = async (req, res) => {
       return res.status(400).json({ success: false, message: "fileId is required" });
     }
 
-    // Get the bot config to get the token
     const config = await prisma.telegramConfig.findUnique({
       where: { businessId },
     });
@@ -577,7 +742,6 @@ export const getTelegramAvatar = async (req, res) => {
       return res.status(404).json({ success: false, message: "Bot not configured" });
     }
 
-    // Get the file path from Telegram
     const fileRes = await fetch(
       `https://api.telegram.org/bot${config.botToken}/getFile?file_id=${fileId}`
     );
@@ -587,7 +751,6 @@ export const getTelegramAvatar = async (req, res) => {
       return res.status(404).json({ success: false, message: "Avatar not found" });
     }
 
-    // Fetch the actual image
     const fileUrl = `https://api.telegram.org/file/bot${config.botToken}/${fileData.result.file_path}`;
     const imageRes = await fetch(fileUrl);
 
@@ -595,12 +758,10 @@ export const getTelegramAvatar = async (req, res) => {
       return res.status(404).json({ success: false, message: "Failed to fetch avatar" });
     }
 
-    // Set proper headers
     const contentType = imageRes.headers.get("content-type") || "image/jpeg";
     res.set("Content-Type", contentType);
-    res.set("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+    res.set("Cache-Control", "public, max-age=3600");
 
-    // Send the image
     const buffer = Buffer.from(await imageRes.arrayBuffer());
     return res.send(buffer);
   } catch (error) {
