@@ -276,7 +276,9 @@ export const getConversationById = async (req, res) => {
     const config = await prisma.telegramConfig.findUnique({
       where: { businessId },
     });
-    const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const host = (req.get ? req.get("host") : req.headers?.host) || "localhost:5000";
+    const protocol = req.protocol || "http";
+    const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${protocol}://${host}`;
 
     // Transform customer avatar using unified proxy
     const customerAvatar = conv.customer.avatarUrl
