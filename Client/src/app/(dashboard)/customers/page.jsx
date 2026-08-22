@@ -121,21 +121,21 @@ const CustomersList = () => {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-                <StatCard title="Total Customers" value={totalCustomers} icon={Users} caption="All customers" iconClassName="text-chart-2" />
+                <StatCard title="Total Customers" value={totalCustomers} icon={Users} caption="All customers" iconClassName="text-chart-2" valueClassName={"text-chart-2"} />
                 <StatCard
                     title="Connected via Telegram"
                     value={telegramConnected}
                     icon={MessageCircle}
                     iconClassName="text-chart-1"
-                    valueClassName="text-primary"
+                    valueClassName="text-chart-1"
                     caption={`${telegramConnected} of ${totalCustomers} customers`}
                 />
                 <StatCard
                     title="New This Month"
                     value={newThisMonth}
                     icon={TrendingUp}
-                    iconClassName="text-green-500"
-                    valueClassName="text-green-500"
+                    iconClassName="text-chart-3"
+                    valueClassName="text-chart-3"
                     caption={totalCustomers > 0 ? `${Math.round((newThisMonth / totalCustomers) * 100)}% of total` : '0% of total'}
                 />
             </div>
