@@ -402,6 +402,7 @@ export function useAiAnalytics(timeRange = 'weekly') {
   return useQuery({
     queryKey: QUERY_KEYS.aiAnalytics(timeRange),
     queryFn: () => analyticsApi.getAiAnalytics(timeRange),
+    refetchInterval: 5000,
   });
 }
 
@@ -429,7 +430,14 @@ export function useConversation(id) {
     queryKey: QUERY_KEYS.conversation(id),
     queryFn: () => conversationsApi.getById(id),
     enabled: Boolean(id),
-    refetchInterval: 3000,
+    refetchInterval: (query) => {
+      if (query.state.status === 'error') return false;
+      return 3000;
+    },
+    retry: (failureCount, error) => {
+      if (error?.response?.status === 404) return false;
+      return failureCount < 2;
+    },
   });
 }
 
