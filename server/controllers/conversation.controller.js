@@ -1,5 +1,4 @@
 import prisma from "../config/prisma.js";
-import { syncPendingTelegramUpdates } from "./telegram.controller.js";
 
 // Helper function to transform customer avatar
 const transformCustomerAvatar = (customer, businessId, req) => {
@@ -30,8 +29,7 @@ export const getConversationStats = async (req, res) => {
     const businessId = req.businessId;
     const { dateRange = "all" } = req.query;
 
-    // Sync any pending Telegram updates (especially for local/HTTP dev environment)
-    await syncPendingTelegramUpdates(businessId);
+    // ✅ REMOVED: await syncPendingTelegramUpdates(businessId);
 
     const where = { businessId };
     if (dateRange !== "all") {
@@ -91,8 +89,7 @@ export const getConversations = async (req, res) => {
       dateRange = "all",
     } = req.query;
 
-    // Sync any pending Telegram updates
-    await syncPendingTelegramUpdates(businessId);
+    // ✅ REMOVED: await syncPendingTelegramUpdates(businessId);
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -191,7 +188,7 @@ export const getConversations = async (req, res) => {
           displayUsername,
           telegramId: conv.customer.telegramChatId,
           telegramUserId: conv.customer.telegramUserId,
-          avatar: customerAvatar, // ✅ Use unified proxy
+          avatar: customerAvatar,
         },
         intent: conv.intent || null,
         agent: conv.agent || "GENERAL_AGENT",
@@ -301,10 +298,10 @@ export const getConversationById = async (req, res) => {
           username: conv.customer.username || null,
           displayUsername,
           telegramId: conv.customer.telegramChatId,
-          avatar: customerAvatar, // ✅ Use unified proxy
+          avatar: customerAvatar,
         },
         botName: config?.botName || "TeleAgent AI",
-        botAvatar: botAvatar, // ✅ Use unified proxy
+        botAvatar: botAvatar,
         status: conv.status,
         intent: conv.intent,
         agent: conv.agent,
