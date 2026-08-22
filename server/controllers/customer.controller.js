@@ -70,6 +70,11 @@ export const getCustomers = async (req, res) => {
           _count: {
             select: { orders: true },
           },
+          conversations: {
+            orderBy: { lastActivity: "desc" },
+            take: 1,
+            select: { id: true, status: true },
+          },
         },
       }),
       prisma.customer.count({ where }),
@@ -82,6 +87,8 @@ export const getCustomers = async (req, res) => {
       phone: c.phone || "",
       email: c.email || "",
       telegramChatId: c.telegramChatId || null,
+      latestConversationId: c.conversations[0]?.id || null,
+      conversationId: c.conversations[0]?.id || null,
       orderCount: c._count.orders,
       orders: c._count.orders,
       createdAt: c.createdAt,
