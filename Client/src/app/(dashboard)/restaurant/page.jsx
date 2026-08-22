@@ -76,6 +76,7 @@ const RestaurantDashboard = () => {
                     value={statsData.todayOrders}
                     icon={ShoppingCart}
                     iconClassName={"text-chart-1"}
+                    valueClassName={"text-chart-1"}
                     type="number"
                 />
                 <StatCard
@@ -83,13 +84,14 @@ const RestaurantDashboard = () => {
                     value={statsData.todayRevenue}
                     icon={DollarSign}
                     iconClassName={"text-chart-2"}
+                    valueClassName={"text-chart-2"}
                     type="currency"
                 />
                 <StatCard
                     title="Active Deals"
                     value={statsData.activeDeals}
                     icon={Gift}
-                    valueClassName="text-primary"
+                    valueClassName="text-chart-3"
                     iconClassName={"text-chart-3"}
                     caption="Marketing overview"
                 />
