@@ -458,7 +458,7 @@ export const processTelegramUpdate = async (config, update, io) => {
   let selectedAgent = "GENERAL_AGENT";
 
   if (messageText.toLowerCase() === "/start") {
-    replyText = `Hello ${firstName || customerName}! Welcome to ${config.botName || "our restaurant"}. How can I help you today?`;
+    replyText = `<b>Hello! 👋</b>\n\nWelcome to <b>${config.botName || "our restaurant"}</b>.\n\nI can help you with:\n\n• 🍽️ Menu and food information\n• 🚚 Delivery information\n• 💳 Payment methods\n• 🕐 Opening hours\n• 🪑 Table reservations\n• 🛒 Orders and order status\n\n<b>How can I help you today?</b>`;
   } else {
     try {
       const aiResult = await processMessageWithAi({
