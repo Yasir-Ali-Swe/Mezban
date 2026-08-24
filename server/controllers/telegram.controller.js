@@ -469,6 +469,8 @@ export const processTelegramUpdate = async (config, update, io) => {
       });
       replyText = aiResult.replyText;
       selectedAgent = aiResult.agent || "GENERAL_AGENT";
+      console.log("[Selected Agent]:", selectedAgent);
+      console.log("[Reply Text]:", replyText);
     } catch (aiErr) {
       console.error("[Telegram Process] AI Error:", aiErr.message);
       replyText = `Thank you for your message! How else can we assist you today at ${config.botName || "our restaurant"}?`;
