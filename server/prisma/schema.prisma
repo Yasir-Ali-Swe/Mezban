@@ -634,32 +634,6 @@ model KnowledgeDocument {
 // RAG - KNOWLEDGE CHUNK
 // ============================================================
 
-// model KnowledgeChunk {
-// id         String @id @default(cuid())
-// businessId String
-// documentId String
-
-// content String @db.Text
-
-// chunkIndex Int
-
-// embedding Unsupported("vector(768)")?
-
-// metadata Json?
-
-// business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-// document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-// createdAt DateTime @default(now())
-// updatedAt DateTime @updatedAt
-
-// @@unique([documentId, chunkIndex])
-
-// @@index([businessId])
-// @@index([documentId])
-// }
-
 model KnowledgeChunk {
   id         String @id @default(cuid())
   businessId String
@@ -667,7 +641,10 @@ model KnowledgeChunk {
 
   content    String @db.Text
   chunkIndex Int
-  metadata   Json?
+
+  embedding Unsupported("vector(768)")?
+
+  metadata Json?
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
