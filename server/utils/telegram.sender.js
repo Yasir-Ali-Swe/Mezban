@@ -7,21 +7,25 @@ export async function sendTelegramMessage(
   text,
   options = {}
 ) {
-  if (!botToken || !chatId || !text) {
+  if (!botToken || !chatId) {
     throw new Error(
-      "botToken, chatId, and text are required for sending Telegram messages"
+      "botToken and chatId are required for sending Telegram messages"
     );
   }
 
+  // Fallback text if empty/null text is passed
+  let messageText = typeof text === "string" ? text.trim() : "";
+  if (!messageText) {
+    messageText = `<b>How can I help?</b>\n\nI can help you with:\n\n• 🍽️ Menu\n• 🚚 Delivery\n• 🕐 Opening hours\n• 🪑 Reservations\n• 🛒 Orders`;
+  }
+
   const parseMode =
-    options.parseMode !== undefined
-      ? options.parseMode
-      : "HTML";
+    options.parseMode !== undefined ? options.parseMode : "HTML";
 
   try {
     const payload = {
       chat_id: chatId,
-      text,
+      text: messageText,
       disable_web_page_preview: true,
     };
 
@@ -46,24 +50,27 @@ export async function sendTelegramMessage(
       return data;
     }
 
-    console.error(
-      "[Telegram Sender Error]",
-      {
-        description: data.description,
-        errorCode: data.error_code,
-        chatId,
-      }
-    );
-    // Retry without formatting if Telegram rejects HTML.
-    const formattingError =
-      data.description?.includes("can't parse entities") ||
-      data.description?.includes("can't find end of the entity") ||
-      data.description?.includes("Unsupported start tag");
+    console.error("[Telegram Sender Error]", {
+      errorCode: data.error_code,
+      description: data.description,
+      chatId,
+      textLength: messageText.length,
+    });
 
-    if (formattingError) {
+    // Check if error is related to HTML formatting/entity parsing
+    const descriptionLower = (data.description || "").toLowerCase();
+    const isFormattingError =
+      descriptionLower.includes("can't parse entities") ||
+      descriptionLower.includes("can't find end of the entity") ||
+      descriptionLower.includes("unsupported start tag") ||
+      (data.error_code === 400 && descriptionLower.includes("entity"));
+
+    if (isFormattingError) {
       console.warn(
         "[Telegram Sender] HTML formatting failed. Retrying as plain text."
       );
+
+      const plainText = stripTelegramHtml(messageText);
 
       const fallbackResponse = await fetch(
         `https://api.telegram.org/bot${botToken}/sendMessage`,
@@ -74,7 +81,7 @@ export async function sendTelegramMessage(
           },
           body: JSON.stringify({
             chat_id: chatId,
-            text: stripTelegramHtml(text),
+            text: plainText,
             disable_web_page_preview: true,
           }),
         }
@@ -84,18 +91,13 @@ export async function sendTelegramMessage(
     }
 
     return data;
-
   } catch (error) {
-    console.error(
-      "[Telegram Sender Exception]",
-      error.message
-    );
-
+    console.error("[Telegram Sender Exception]", error.message);
     return null;
   }
 }
 
-function stripTelegramHtml(text) {
+export function stripTelegramHtml(text) {
   if (!text || typeof text !== "string") {
     return "";
   }
