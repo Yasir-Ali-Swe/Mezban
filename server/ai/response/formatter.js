@@ -1,15 +1,3 @@
-/**
- * Formats AI responses for Telegram.
- *
- * The AI agents output Telegram HTML directly.
- * This formatter:
- * 1. Removes unwanted AI prefix introductions.
- * 2. Removes Markdown code fences.
- * 3. Sanitizes unsupported HTML tags to protect Telegram parsing.
- * 4. Normalizes whitespace.
- * 5. Returns a safe fallback if response is empty.
- */
-
 export function formatAiResponse(
   text,
   {
@@ -36,7 +24,13 @@ export function formatAiResponse(
   cleaned = cleaned.replace(/\s*```$/i, "");
 
   // ============================================================
-  // 2. REMOVE UNNECESSARY AI INTRODUCTIONS (Non-greetings only)
+  // 2. REMOVE MARKDOWN FORMATTING
+  // ============================================================
+
+  cleaned = removeMarkdown(cleaned);
+
+  // ============================================================
+  // 3. REMOVE UNNECESSARY AI INTRODUCTIONS
   // ============================================================
 
   if (!isGreeting) {
@@ -64,7 +58,7 @@ export function formatAiResponse(
   }
 
   // ============================================================
-  // 3. REMOVE "AT RESTAURANT" INTRODUCTIONS
+  // 4. REMOVE "AT RESTAURANT" INTRODUCTIONS
   // ============================================================
 
   if (restaurantName) {
@@ -85,13 +79,19 @@ export function formatAiResponse(
   }
 
   // ============================================================
-  // 4. SANITIZE TELEGRAM HTML
+  // 5. SANITIZE TELEGRAM HTML
   // ============================================================
 
   cleaned = sanitizeTelegramHtml(cleaned);
 
   // ============================================================
-  // 5. CLEAN WHITESPACE
+  // 6. BALANCE HTML TAGS
+  // ============================================================
+
+  cleaned = balanceTelegramHtml(cleaned);
+
+  // ============================================================
+  // 7. CLEAN WHITESPACE
   // ============================================================
 
   cleaned = cleaned
@@ -107,6 +107,10 @@ export function formatAiResponse(
   return cleaned;
 }
 
+// ============================================================
+// FALLBACK
+// ============================================================
+
 function getFallbackResponse() {
   return `<b>How can I help?</b>
 
@@ -120,60 +124,209 @@ I can help you with:
 }
 
 // ============================================================
+// REMOVE MARKDOWN
+// ============================================================
+
+function removeMarkdown(text) {
+  let result = text;
+
+  // Code fences
+  result = result.replace(/```[\s\S]*?```/g, "");
+
+  // Markdown headings
+  result = result.replace(/^#{1,6}\s+/gm, "");
+
+  // Markdown bold
+  result = result.replace(/\*\*(.*?)\*\*/gs, "$1");
+
+  // Markdown italic
+  result = result.replace(/(?<!\*)\*(?!\s)(.*?)(?<!\s)\*(?!\*)/gs, "$1");
+
+  // Markdown underline-like formatting
+  result = result.replace(/__(.*?)__/gs, "$1");
+
+  // Markdown strikethrough
+  result = result.replace(/~~(.*?)~~/gs, "$1");
+
+  // Markdown links
+  result = result.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    '<a href="$2">$1</a>'
+  );
+
+  return result;
+}
+
+// ============================================================
 // TELEGRAM HTML SANITIZER
 // ============================================================
 
 function sanitizeTelegramHtml(text) {
   let result = text;
 
+  // ----------------------------------------------------------
   // Convert unsupported block tags to line breaks
+  // ----------------------------------------------------------
+
   result = result.replace(/<\/(p|div)>/gi, "\n");
   result = result.replace(/<(p|div)[^>]*>/gi, "");
 
+  // ----------------------------------------------------------
   // Convert line breaks
+  // ----------------------------------------------------------
+
   result = result.replace(/<br\s*\/?>/gi, "\n");
 
-  // Format list items
+  // ----------------------------------------------------------
+  // Convert list items
+  // ----------------------------------------------------------
+
   result = result.replace(/<li[^>]*>/gi, "• ");
   result = result.replace(/<\/li>/gi, "\n");
+
   result = result.replace(/<\/?(ul|ol)[^>]*>/gi, "");
 
-  // Remove unsupported headings
+  // ----------------------------------------------------------
+  // Remove headings
+  // ----------------------------------------------------------
+
   result = result.replace(/<\/?h[1-6][^>]*>/gi, "");
 
-  // Protect valid Telegram HTML tags
+  // ----------------------------------------------------------
+  // Allowed Telegram tags
+  // ----------------------------------------------------------
+
   const protectedTags = [];
+
   const telegramTagRegex =
     /<\/?(b|strong|i|em|u|s|strike|del|ins|code|pre|blockquote)(?:\s[^>]*)?>/gi;
 
   result = result.replace(telegramTagRegex, (match) => {
     const token = `@@@TG_TAG_${protectedTags.length}@@@`;
+
     protectedTags.push(match);
+
     return token;
   });
 
+  // ----------------------------------------------------------
   // Protect Telegram links
+  // ----------------------------------------------------------
+
   result = result.replace(
     /<a\s+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis,
     (_, url, label) => {
       const token = `@@@TG_TAG_${protectedTags.length}@@@`;
+
       protectedTags.push(
         `<a href="${escapeHtmlAttribute(url)}">${label}</a>`
       );
+
       return token;
     }
   );
 
-  // Remove any remaining unsupported HTML
+  // ----------------------------------------------------------
+  // Remove every remaining unsupported HTML tag
+  // ----------------------------------------------------------
+
   result = result.replace(/<[^>]+>/g, "");
 
+  // ----------------------------------------------------------
   // Restore Telegram tags
+  // ----------------------------------------------------------
+
   result = result.replace(
     /@@@TG_TAG_(\d+)@@@/g,
     (_, index) => protectedTags[Number(index)] || ""
   );
 
   return result;
+}
+
+// ============================================================
+// BALANCE TELEGRAM HTML
+// ============================================================
+
+function balanceTelegramHtml(text) {
+  const allowedTags = [
+    "b",
+    "strong",
+    "i",
+    "em",
+    "u",
+    "s",
+    "strike",
+    "del",
+    "ins",
+    "code",
+    "pre",
+    "blockquote",
+  ];
+
+  const tagRegex = /<\/?(b|strong|i|em|u|s|strike|del|ins|code|pre|blockquote)(?:\s[^>]*)?>/gi;
+
+  const stack = [];
+
+  let result = "";
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(tagRegex)) {
+    const tag = match[0];
+    const tagName = match[1].toLowerCase();
+
+    result += text.slice(lastIndex, match.index);
+
+    const isClosingTag = tag.startsWith("</");
+
+    if (!allowedTags.includes(tagName)) {
+      lastIndex = match.index + tag.length;
+      continue;
+    }
+
+    if (isClosingTag) {
+      const position = findLastTag(stack, tagName);
+
+      if (position !== -1) {
+        // Close nested tags first if necessary.
+        for (let i = stack.length - 1; i >= position; i--) {
+          const openTag = stack.pop();
+
+          if (openTag !== tagName) {
+            result += `</${openTag}>`;
+          }
+        }
+      }
+
+      // The requested closing tag.
+      result += `</${tagName}>`;
+    } else {
+      result += tag;
+      stack.push(tagName);
+    }
+
+    lastIndex = match.index + tag.length;
+  }
+
+  result += text.slice(lastIndex);
+
+  // Close any remaining open tags.
+  while (stack.length > 0) {
+    const tagName = stack.pop();
+    result += `</${tagName}>`;
+  }
+
+  return result;
+}
+
+function findLastTag(stack, tagName) {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i] === tagName) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 // ============================================================
