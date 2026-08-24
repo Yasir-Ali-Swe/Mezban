@@ -10,17 +10,23 @@ export async function runOrderAgent({
   ragContextText,
   toolResultText,
 }) {
+  const safeRestaurantName = restaurantName || "our restaurant";
   const modelName = GEMINI_MODEL || "gemini-1.5-flash";
   const apiKey = GEMINI_API_KEY;
 
-  const basePrompt = BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName || "our restaurant");
-  const agentPrompt = ORDER_AGENT_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName || "our restaurant");
+  if (!apiKey) {
+    console.error("[Order Agent] GEMINI_API_KEY is missing.");
+    return fallbackResponse(safeRestaurantName);
+  }
+
+  const basePrompt = BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, safeRestaurantName);
+  const agentPrompt = ORDER_AGENT_PROMPT.replace(/{RESTAURANT_NAME}/g, safeRestaurantName);
 
   const promptText = `
 ${basePrompt}
 ${agentPrompt}
 
-RESTAURANT NAME: ${restaurantName}
+RESTAURANT NAME: ${safeRestaurantName}
 
 ${customerContextText ? `CUSTOMER INFO:\n${customerContextText}\n` : ""}
 ${conversationHistoryText ? `CONVERSATION HISTORY:\n${conversationHistoryText}\n` : ""}
@@ -30,7 +36,10 @@ ${toolResultText ? `TOOL EXECUTION RESULT (STRUCTURED ORDER/MENU DATA):\n${toolR
 USER QUERY:
 "${userQuery}"
 
-State dish names, prices in Rs. (PKR), order totals, and status updates clearly to the customer.
+FORMATTING DIRECTIVES:
+- Use ONLY Telegram HTML formatting (<b>bold</b>, <i>italic</i>, <code>code</code>, <blockquote>quote</blockquote>, • bullet items).
+- Do NOT output Markdown (no #, **, *, _, \`\`\`).
+- State dish names, prices in Rs. (PKR), order totals, and status updates clearly to the customer.
 `;
 
   try {
@@ -46,12 +55,45 @@ State dish names, prices in Rs. (PKR), order totals, and status updates clearly 
     });
 
     const data = await response.json();
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    if (replyText.trim()) return replyText.trim();
+    if (!response.ok) {
+      console.error("[Order Agent Gemini Error]", {
+        status: response.status,
+        message: data?.error?.message || "Gemini API request failed",
+      });
+      return fallbackResponse(safeRestaurantName);
+    }
+
+    const replyText =
+      data.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join("")
+        .trim() || "";
+
+    if (replyText) return replyText;
+
+    console.warn("[Order Agent] Gemini returned an empty response.");
+    return fallbackResponse(safeRestaurantName);
   } catch (err) {
-    console.error("[Order Agent Error]:", err.message);
+    console.error("[Order Agent Exception]:", err.message);
+    return fallbackResponse(safeRestaurantName);
   }
+}
 
-  return `Thank you for your inquiry about our menu and orders at ${restaurantName}. How can I assist you with your order?`;
+function fallbackResponse(restaurantName) {
+  return `<b>Menu & Orders</b>
+
+How can I assist you with your order at <b>${escapeHtml(restaurantName)}</b>?
+
+• 🍽️ Browse menu items
+• 🏷️ View promotional deals
+• 🛒 Place an order
+• 📦 Track order status`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
