@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import prisma from "../config/prisma.js";
 import { emitNewMessage, emitNewConversation } from "../socket/socket.js";
+import { processMessageWithAi } from "../ai/ai.js";
+import { sendTelegramMessage } from "../utils/telegram.sender.js";
 
 // Get io instance from app
 let ioInstance = null;
@@ -451,25 +453,31 @@ export const processTelegramUpdate = async (config, update, io) => {
     },
   });
 
-  // 7. Generate Bot Response
+  // 7. Generate AI Bot Response via Multi-Agent Framework
   let replyText = "";
+  let selectedAgent = "GENERAL_AGENT";
+
   if (messageText.toLowerCase() === "/start") {
     replyText = `Hello ${firstName || customerName}! Welcome to ${config.botName || "our restaurant"}. How can I help you today?`;
   } else {
-    replyText = `Thank you for your message! Our AI assistant (${config.botName || "TeleAgent"}) has received your inquiry: "${messageText}". How else can we assist you?`;
+    try {
+      const aiResult = await processMessageWithAi({
+        businessId,
+        conversationId: conversation.id,
+        customerId: customer.id,
+        messageText,
+      });
+      replyText = aiResult.replyText;
+      selectedAgent = aiResult.agent || "GENERAL_AGENT";
+    } catch (aiErr) {
+      console.error("[Telegram Process] AI Error:", aiErr.message);
+      replyText = `Thank you for your message! How else can we assist you today at ${config.botName || "our restaurant"}?`;
+    }
   }
 
-  // ⚡ 8. PRIORITY HIGH: Send Agent Response to Telegram Customer IMMEDIATELY!
-  const sendTelegramPromise = fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: telegramChatId,
-      text: replyText,
-    }),
-  }).then(r => r.json()).catch(err => {
-    console.error("[Telegram Process] Telegram sendMessage error:", err.message);
-    return null;
+  // ⚡ 8. PRIORITY HIGH: Send Agent Response to Telegram Customer IMMEDIATELY with Rich Markdown!
+  const sendTelegramPromise = sendTelegramMessage(config.botToken, telegramChatId, replyText, {
+    parseMode: "HTML",
   });
 
   // 9. Store Agent Message in DB
@@ -477,7 +485,7 @@ export const processTelegramUpdate = async (config, update, io) => {
     data: {
       conversationId: conversation.id,
       sender: "AGENT",
-      agentType: "GENERAL_AGENT",
+      agentType: selectedAgent,
       content: replyText,
     },
   });

@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { enqueueReindex } from "../ai/rag/index.js";
 
 export const getBusinessKnowledge = async (req, res) => {
   try {
@@ -48,6 +49,9 @@ export const updateBusinessKnowledge = async (req, res) => {
         reservationInformation: reservationInformation || "",
       },
     });
+
+    // Automatically trigger RAG reindexing in background
+    enqueueReindex(req.businessId);
 
     return res.status(200).json({
       success: true,

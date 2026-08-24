@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { enqueueReindex } from "../ai/rag/index.js";
 
 const DAY_MAP = {
   monday: "MONDAY",
@@ -97,6 +98,9 @@ export const updateBusinessHours = async (req, res) => {
         results.push(updated);
       }
     }
+
+    // Automatically trigger RAG reindexing for HOURS document in background
+    enqueueReindex(req.businessId, "HOURS");
 
     return res.status(200).json({
       success: true,

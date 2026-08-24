@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { enqueueReindex } from "../ai/rag/index.js";
 
 export const getBusinessProfile = async (req, res) => {
   try {
@@ -44,6 +45,9 @@ export const updateBusinessProfile = async (req, res) => {
         ...(imageUrl !== undefined && { imageUrl }),
       },
     });
+
+    // Automatically trigger RAG reindexing for BUSINESS document in background
+    enqueueReindex(req.businessId, "BUSINESS");
 
     return res.status(200).json({
       success: true,
