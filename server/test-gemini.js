@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { GEMINI_API_KEY } from "./config/env.js";
+import { GEMINI_API_KEY, GEMINI_MODEL } from "./config/env.js";
 
 console.log(GEMINI_API_KEY)
 
@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({
 });
 
 const response = await ai.models.generateContent({
-    model: "gemini-3.6-flash",
+    model: GEMINI_MODEL,
     contents: "Say hello in one sentence.",
 });
 
