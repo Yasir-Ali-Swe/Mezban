@@ -69,8 +69,9 @@ export async function getOrCreateAdkSession({
   });
 
   if (existing) {
-    // Update the traceId in state for this request
+    // Update traceId and conversationId in state for this request
     existing.state.traceId = traceId;
+    existing.state.conversationId = conversationId;
     return existing;
   }
 
@@ -78,6 +79,7 @@ export async function getOrCreateAdkSession({
   const initialState = {
     businessId,
     customerId,
+    conversationId,
     restaurantName: restaurantName || "our restaurant",
     customerName: customerName || "",
     customerContextText: customerContextText || "",
