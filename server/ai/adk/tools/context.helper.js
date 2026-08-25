@@ -17,6 +17,7 @@ export function getToolSessionState(tool_context) {
     return {
       businessId: rawState.businessId,
       customerId: rawState.customerId,
+      conversationId: rawState.conversationId,
       restaurantName: rawState.restaurantName,
       customerName: rawState.customerName,
       customerContextText: rawState.customerContextText,
@@ -32,6 +33,7 @@ export function getToolSessionState(tool_context) {
     return {
       businessId: tool_context.state.get("businessId"),
       customerId: tool_context.state.get("customerId"),
+      conversationId: tool_context.state.get("conversationId"),
       restaurantName: tool_context.state.get("restaurantName"),
       customerName: tool_context.state.get("customerName"),
       customerContextText: tool_context.state.get("customerContextText"),
