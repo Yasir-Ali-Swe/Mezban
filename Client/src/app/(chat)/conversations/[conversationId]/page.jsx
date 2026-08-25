@@ -9,10 +9,20 @@ import {
     Send,
     AlertCircle,
     CheckCircle2,
+    XCircle,
     Loader2,
     UserCheck,
     Bot,
     User,
+    Package,
+    AlertTriangle,
+    ShieldAlert,
+    Clock,
+    FileText,
+    Check,
+    X,
+    StickyNote,
+    Plus,
 } from 'lucide-react';
 import {
     Avatar,
@@ -21,6 +31,7 @@ import {
 } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -44,7 +55,12 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { useSocket } from '@/contexts/SocketContext';
-import { useConversation, useSendConversationMessage, useUpdateConversationStatus } from '@/hooks/useApi';
+import {
+    useConversation,
+    useSendConversationMessage,
+    useUpdateConversationStatus,
+    useHandleEscalationAction,
+} from '@/hooks/useApi';
 import { TelegramMessageContent } from '@/components/shared/TelegramMessageContent';
 
 // Helper to get avatar initials
@@ -91,7 +107,7 @@ const formatTime = (dateString) => {
 // ============================================================
 // CONVERSATION HEADER COMPONENT
 // ============================================================
-const ConversationHeader = ({ conversation, onOpenResolveModal }) => {
+const ConversationHeader = ({ conversation, onOpenActionModal }) => {
     const router = useRouter();
     const isEscalated = conversation.status === 'ESCALATED';
     const isResolved = conversation.status === 'RESOLVED';
@@ -124,7 +140,7 @@ const ConversationHeader = ({ conversation, onOpenResolveModal }) => {
                                 {conversation.customer.name}
                             </span>
                             {isEscalated && (
-                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">
                                     <AlertCircle className="h-2.5 w-2.5 mr-1" />
                                     Escalated
                                 </Badge>
@@ -148,11 +164,11 @@ const ConversationHeader = ({ conversation, onOpenResolveModal }) => {
                         <Button
                             variant="default"
                             size="sm"
-                            onClick={onOpenResolveModal}
+                            onClick={() => onOpenActionModal('RESOLVE')}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer h-8 text-xs sm:text-sm font-medium"
                         >
                             <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                            Resolve Conversation
+                            Mark as Resolved
                         </Button>
                     )}
                 </div>
@@ -160,12 +176,141 @@ const ConversationHeader = ({ conversation, onOpenResolveModal }) => {
 
             {/* Resolution Information Banner */}
             {isResolved && conversation.resolvedByName && (
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 border-t border-emerald-200 dark:border-emerald-800/60 px-4 py-1.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                    <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                    <span>
-                        ✓ Resolved by <strong>{conversation.resolvedByName}</strong>
-                        {conversation.resolvedAt ? ` on ${formatTime(conversation.resolvedAt)}` : ''}
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border-t border-emerald-200 dark:border-emerald-800/60 px-4 py-1.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                        <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>
+                            ✓ Solved by <strong>{conversation.resolvedByName}</strong>
+                            {conversation.resolvedAt ? ` on ${formatTime(conversation.resolvedAt)}` : ''}
+                        </span>
+                    </div>
+                    {conversation.escalationData?.resolvedAction && (
+                        <Badge variant="outline" className="text-[10px] bg-background">
+                            Action: {conversation.escalationData.resolvedAction.replace(/_/g, ' ')}
+                        </Badge>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ============================================================
+// CONTEXTUAL ESCALATION ACTION BANNER
+// ============================================================
+const EscalationActionBanner = ({ conversation, onOpenActionModal }) => {
+    if (conversation.status !== 'ESCALATED') return null;
+
+    const { escalationType, escalationReason, escalationData } = conversation;
+    const isCancellation = escalationType === 'ORDER_CANCELLATION';
+    const isComplaint = escalationType === 'COMPLAINT';
+    const isReservation = escalationType === 'RESERVATION_REQUEST';
+    const internalNotes = Array.isArray(escalationData?.internalNotes) ? escalationData.internalNotes : [];
+
+    return (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 p-3.5 sm:p-4 text-xs sm:text-sm">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                    {isCancellation ? (
+                        <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    ) : isComplaint ? (
+                        <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    ) : (
+                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    )}
+
+                    <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-amber-950 dark:text-amber-200">
+                                {isCancellation
+                                    ? '⚠ Escalated Order Cancellation Request'
+                                    : isComplaint
+                                        ? '⚠ Escalated Customer Complaint'
+                                        : isReservation
+                                            ? '⚠ Escalated Reservation Request'
+                                            : '⚠ Escalated Request (Requires Staff Action)'}
+                            </span>
+                            {escalationData?.orderNumber && (
+                                <Badge variant="outline" className="font-mono text-[11px] bg-background">
+                                    #{escalationData.orderNumber}
+                                </Badge>
+                            )}
+                            {escalationData?.orderStatus && (
+                                <Badge variant="secondary" className="capitalize text-[10px]">
+                                    Status: {escalationData.orderStatus.toLowerCase().replace(/_/g, ' ')}
+                                </Badge>
+                            )}
+                        </div>
+
+                        <p className="text-amber-900/80 dark:text-amber-200/80 text-xs leading-relaxed">
+                            {escalationReason || escalationData?.complaintDetails || 'Customer requires human staff assistance.'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Escalation Control Buttons */}
+                <div className="flex items-center flex-wrap gap-2 shrink-0 pt-1 sm:pt-0">
+                    {isCancellation ? (
+                        <>
+                            <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => onOpenActionModal('CANCEL_ORDER')}
+                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 text-xs font-medium cursor-pointer"
+                            >
+                                <Check className="h-3.5 w-3.5 mr-1" />
+                                Cancel Order
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onOpenActionModal('REJECT_REQUEST')}
+                                className="h-8 text-xs font-medium border-amber-400 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-950 cursor-pointer"
+                            >
+                                <X className="h-3.5 w-3.5 mr-1" />
+                                Reject Request
+                            </Button>
+                        </>
+                    ) : null}
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onOpenActionModal('ADD_NOTE')}
+                        className="h-8 text-xs font-medium border-border cursor-pointer bg-background hover:bg-muted"
+                    >
+                        <StickyNote className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                        Add Note
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => onOpenActionModal('RESOLVE')}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-medium cursor-pointer"
+                    >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Mark as Resolved
+                    </Button>
+                </div>
+            </div>
+
+            {/* Internal Staff Notes if any */}
+            {internalNotes.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-amber-500/20 space-y-1.5">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                        <StickyNote className="h-3 w-3" /> Internal Staff Notes ({internalNotes.length}):
                     </span>
+                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                        {internalNotes.map((n, idx) => (
+                            <div key={n.id || idx} className="bg-background/80 rounded px-2.5 py-1 text-xs text-foreground flex items-center justify-between gap-2 border">
+                                <span>{n.note}</span>
+                                <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                                    {n.addedBy} • {formatTime(n.addedAt)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
@@ -319,14 +464,18 @@ const ConversationDetailPage = () => {
     const [inputText, setInputText] = useState('');
     const [newMessages, setNewMessages] = useState([]);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+
+    // Modal state for handling escalation actions
+    const [activeAction, setActiveAction] = useState(null); // 'CANCEL_ORDER' | 'REJECT_REQUEST' | 'ADD_NOTE' | 'RESOLVE' | null
+    const [customActionNote, setCustomActionNote] = useState('');
+    const [internalNoteText, setInternalNoteText] = useState('');
 
     const { socket, isConnected, joinConversation, leaveConversation } = useSocket();
     const { data: responseData, isLoading: loading, refetch } = useConversation(conversationId);
     const conversation = responseData?.data;
 
     const sendMessageMutation = useSendConversationMessage();
-    const updateStatusMutation = useUpdateConversationStatus();
+    const escalationActionMutation = useHandleEscalationAction();
 
     const staffName = user?.fullName || user?.firstName || 'Staff';
 
@@ -409,18 +558,40 @@ const ConversationDetailPage = () => {
         }
     };
 
-    // Handle resolving an escalated conversation
-    const handleConfirmResolve = async () => {
+    // Open Action Modal
+    const handleOpenActionModal = (actionType) => {
+        setActiveAction(actionType);
+        setCustomActionNote('');
+        setInternalNoteText('');
+    };
+
+    // Execute Escalation Action
+    const handleExecuteAction = async () => {
+        if (!activeAction) return;
+
         try {
-            await updateStatusMutation.mutateAsync({
-                id: conversationId,
-                status: 'RESOLVED',
-                resolvedByName: staffName,
-            });
-            setIsResolveModalOpen(false);
+            if (activeAction === 'ADD_NOTE') {
+                await escalationActionMutation.mutateAsync({
+                    id: conversationId,
+                    action: 'ADD_NOTE',
+                    note: internalNoteText.trim(),
+                    senderName: staffName,
+                });
+            } else {
+                await escalationActionMutation.mutateAsync({
+                    id: conversationId,
+                    action: activeAction,
+                    customMessage: customActionNote.trim() || undefined,
+                    senderName: staffName,
+                });
+            }
+
+            setActiveAction(null);
+            setCustomActionNote('');
+            setInternalNoteText('');
             refetch();
         } catch (err) {
-            console.error('Failed to resolve conversation:', err);
+            console.error('Failed to execute escalation action:', err);
         }
     };
 
@@ -465,9 +636,15 @@ const ConversationDetailPage = () => {
                 <div className="shrink-0">
                     <ConversationHeader
                         conversation={conversation}
-                        onOpenResolveModal={() => setIsResolveModalOpen(true)}
+                        onOpenActionModal={handleOpenActionModal}
                     />
                 </div>
+
+                {/* Dedicated Escalation Action Banner */}
+                <EscalationActionBanner
+                    conversation={conversation}
+                    onOpenActionModal={handleOpenActionModal}
+                />
 
                 {/* Messages - Scrollable Area */}
                 <ScrollArea className="min-h-0 flex-1 bg-muted/10">
@@ -519,40 +696,124 @@ const ConversationDetailPage = () => {
 
             </div>
 
-            {/* Resolve Conversation Confirmation Modal */}
-            <Dialog open={isResolveModalOpen} onOpenChange={setIsResolveModalOpen}>
+            {/* Contextual Escalation Action Dialog */}
+            <Dialog open={Boolean(activeAction)} onOpenChange={(open) => !open && setActiveAction(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 className="h-5 w-5" />
-                            Resolve Conversation
-                        </DialogTitle>
-                        <DialogDescription className="pt-2">
-                            Are you sure you want to resolve this conversation with <strong>{conversation.customer.name}</strong>?
-                            <br />
-                            This will record your staff resolution and update the status in analytics and reporting.
-                        </DialogDescription>
+                        {(activeAction === 'CANCEL_ORDER' || activeAction === 'APPROVE_CANCELLATION') && (
+                            <>
+                                <DialogTitle className="flex items-center gap-2 text-destructive">
+                                    <ShieldAlert className="h-5 w-5" />
+                                    Cancel Order
+                                </DialogTitle>
+                                <DialogDescription className="pt-2">
+                                    Are you sure you want to cancel order{' '}
+                                    <strong>#{conversation.escalationData?.orderNumber || 'associated order'}</strong>?
+                                    <br />
+                                    This will atomically set the order status to <strong>CANCELLED</strong> in the database, resolve this conversation, and send a cancellation confirmation to the customer on Telegram.
+                                </DialogDescription>
+                            </>
+                        )}
+
+                        {(activeAction === 'REJECT_REQUEST' || activeAction === 'REJECT_CANCELLATION') && (
+                            <>
+                                <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                                    <XCircle className="h-5 w-5" />
+                                    Reject Cancellation Request
+                                </DialogTitle>
+                                <DialogDescription className="pt-2">
+                                    Decline cancellation for order{' '}
+                                    <strong>#{conversation.escalationData?.orderNumber || 'associated order'}</strong>.
+                                    <br />
+                                    The order will continue in its current status, the conversation will be marked as resolved, and the customer will be notified.
+                                </DialogDescription>
+                            </>
+                        )}
+
+                        {activeAction === 'ADD_NOTE' && (
+                            <>
+                                <DialogTitle className="flex items-center gap-2 text-foreground">
+                                    <StickyNote className="h-5 w-5 text-amber-500" />
+                                    Add Internal Staff Note
+                                </DialogTitle>
+                                <DialogDescription className="pt-2">
+                                    Add a private note for staff reference. This note will <strong>not</strong> be sent to the customer on Telegram.
+                                </DialogDescription>
+                            </>
+                        )}
+
+                        {activeAction === 'RESOLVE' && (
+                            <>
+                                <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                    <CheckCircle2 className="h-5 w-5" />
+                                    Mark as Resolved
+                                </DialogTitle>
+                                <DialogDescription className="pt-2">
+                                    Are you sure you want to resolve this conversation with <strong>{conversation.customer.name}</strong>?
+                                    <br />
+                                    This will mark the conversation as <strong>RESOLVED</strong> and credit <strong>{staffName}</strong> as the resolver.
+                                </DialogDescription>
+                            </>
+                        )}
                     </DialogHeader>
+
+                    {activeAction === 'ADD_NOTE' ? (
+                        <div className="space-y-2 py-2">
+                            <label className="text-xs font-medium text-foreground">
+                                Internal Staff Note:
+                            </label>
+                            <Textarea
+                                value={internalNoteText}
+                                onChange={(e) => setInternalNoteText(e.target.value)}
+                                placeholder="e.g. Customer called by phone, agreed to delivery delay of 10 mins..."
+                                rows={3}
+                                className="text-xs"
+                            />
+                        </div>
+                    ) : (
+                        <div className="space-y-2 py-2">
+                            <label className="text-xs font-medium text-muted-foreground">
+                                Optional custom message to customer on Telegram:
+                            </label>
+                            <Textarea
+                                value={customActionNote}
+                                onChange={(e) => setCustomActionNote(e.target.value)}
+                                placeholder="Leave blank to send standard automated customer response..."
+                                rows={3}
+                                className="text-xs"
+                            />
+                        </div>
+                    )}
+
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button
                             variant="outline"
-                            onClick={() => setIsResolveModalOpen(false)}
-                            disabled={updateStatusMutation.isPending}
+                            onClick={() => setActiveAction(null)}
+                            disabled={escalationActionMutation.isPending}
                         >
                             Cancel
                         </Button>
                         <Button
                             variant="default"
-                            onClick={handleConfirmResolve}
-                            disabled={updateStatusMutation.isPending}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={handleExecuteAction}
+                            disabled={
+                                escalationActionMutation.isPending ||
+                                (activeAction === 'ADD_NOTE' && !internalNoteText.trim())
+                            }
+                            className={
+                                activeAction === 'CANCEL_ORDER' || activeAction === 'APPROVE_CANCELLATION'
+                                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                                    : activeAction === 'REJECT_REQUEST' || activeAction === 'REJECT_CANCELLATION'
+                                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }
                         >
-                            {updateStatusMutation.isPending ? (
+                            {escalationActionMutation.isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
                             ) : (
                                 <CheckCircle2 className="h-4 w-4 mr-1.5" />
                             )}
-                            Confirm & Resolve
+                            {activeAction === 'CANCEL_ORDER' ? 'Confirm Cancellation' : activeAction === 'ADD_NOTE' ? 'Save Note' : 'Confirm & Execute'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
