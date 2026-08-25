@@ -7,6 +7,7 @@ import {
   adkCreateReservationTool,
   adkGetReservationTool,
   adkCancelReservationTool,
+  adkEscalateConversationTool,
 } from "../tools/index.js";
 
 /**
@@ -60,6 +61,7 @@ RESERVATION RULES
     adkCreateReservationTool,
     adkGetReservationTool,
     adkCancelReservationTool,
+    adkEscalateConversationTool,
   ],
   generateContentConfig: {
     temperature: 0.2,
