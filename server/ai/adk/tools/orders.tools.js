@@ -10,28 +10,29 @@ import { getToolSessionState } from "./context.helper.js";
  */
 export const adkCreateOrderTool = new FunctionTool({
   name: "createOrder",
-  description: "Creates a new customer order for menu items or deals.",
+  description:
+    "Creates a new customer food order for menu items or deals. Call this when the customer confirms they want to place an order.",
   parameters: {
     type: "object",
     properties: {
       items: {
         type: "array",
-        description: "List of items to order with name and quantity",
+        description: "List of dishes or deals to order with name and quantity",
         items: {
           type: "object",
           properties: {
-            name: { type: "string", description: "Item or deal name" },
-            quantity: { type: "number", description: "Quantity to order" },
-            menuItemId: { type: "string", description: "Optional menu item ID" },
-            dealId: { type: "string", description: "Optional deal ID" },
+            name: { type: "string", description: "Item or deal name (e.g. 'Chicken Karahi', 'Family Deal')" },
+            quantity: { type: "number", description: "Quantity to order (e.g. 1, 2)" },
+            menuItemId: { type: "string", description: "Optional menu item ID if known" },
+            dealId: { type: "string", description: "Optional deal ID if known" },
           },
           required: ["name"],
         },
       },
       orderType: {
         type: "string",
-        description: "DELIVERY or DINE_IN",
-        enum: ["DELIVERY", "DINE_IN"],
+        description: "Order fulfillment type: DELIVERY, PICKUP, or DINE_IN (default is DELIVERY)",
+        enum: ["DELIVERY", "PICKUP", "DINE_IN"],
       },
       shippingAddress: {
         type: "string",
@@ -39,14 +40,16 @@ export const adkCreateOrderTool = new FunctionTool({
       },
       notes: {
         type: "string",
-        description: "Special instructions for the kitchen or delivery",
+        description: "Special instructions for the kitchen or delivery rider",
       },
     },
     required: ["items"],
   },
   execute: async ({ items, orderType, shippingAddress, notes } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId || !customerId) return { error: "Customer context is required to place an order." };
+    if (!businessId || !customerId) {
+      return { success: false, error: "MISSING_SESSION_CONTEXT", message: "Customer and restaurant context required to place an order." };
+    }
     return createOrderTool.execute({ businessId, customerId, items, orderType, shippingAddress, notes });
   },
 });
@@ -56,24 +59,25 @@ export const adkCreateOrderTool = new FunctionTool({
  */
 export const adkGetOrderTool = new FunctionTool({
   name: "getOrder",
-  description: "Retrieves status, total price, and item breakdown for an existing order by order number or ID.",
+  description:
+    "Retrieves status, total price, and item breakdown for an existing order by order number (e.g. 'ORD-123456') or ID.",
   parameters: {
     type: "object",
     properties: {
       orderNumber: {
         type: "string",
-        description: "Order number (e.g. ORD-123456)",
+        description: "Order number (e.g. 'ORD-123456')",
       },
       orderId: {
         type: "string",
-        description: "Optional order database ID",
+        description: "Optional order database ID if known",
       },
     },
   },
   execute: async ({ orderNumber, orderId } = {}, tool_context) => {
-    const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
-    return getOrderTool.execute({ businessId, orderNumber, orderId });
+    const { businessId, customerId } = getToolSessionState(tool_context);
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
+    return getOrderTool.execute({ businessId, customerId, orderNumber, orderId });
   },
 });
 
@@ -85,12 +89,19 @@ export const adkGetCustomerOrdersTool = new FunctionTool({
   description: "Retrieves recent order history for the current customer.",
   parameters: {
     type: "object",
-    properties: {},
+    properties: {
+      limit: {
+        type: "number",
+        description: "Optional number of past orders to retrieve (default 5)",
+      },
+    },
   },
-  execute: async (_args, tool_context) => {
+  execute: async ({ limit } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId || !customerId) return { error: "Customer context is required to view order history." };
-    return getCustomerOrdersTool.execute({ businessId, customerId });
+    if (!businessId || !customerId) {
+      return { success: false, error: "MISSING_CUSTOMER_CONTEXT", message: "Customer context is required to view order history." };
+    }
+    return getCustomerOrdersTool.execute({ businessId, customerId, limit });
   },
 });
 
@@ -99,20 +110,20 @@ export const adkGetCustomerOrdersTool = new FunctionTool({
  */
 export const adkCancelOrderTool = new FunctionTool({
   name: "cancelOrder",
-  description: "Cancels an order if it is still pending confirmation.",
+  description: "Cancels an order if it is still in PENDING status.",
   parameters: {
     type: "object",
     properties: {
       orderNumber: {
         type: "string",
-        description: "Order number to cancel (e.g. ORD-123456)",
+        description: "Order number to cancel (e.g. 'ORD-123456')",
       },
     },
     required: ["orderNumber"],
   },
   execute: async ({ orderNumber } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
     return cancelOrderTool.execute({ businessId, customerId, orderNumber });
   },
 });
