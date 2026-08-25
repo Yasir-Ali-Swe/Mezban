@@ -28,6 +28,28 @@ const calcPercentageChange = (current, previous) => {
   return Number(change.toFixed(1));
 };
 
+const INTENT_DISPLAY_NAMES = {
+  FOOD_INFORMATION: "Food Variety",
+  PAYMENT_INFORMATION: "Payment Methods",
+  DELIVERY_INFORMATION: "Delivery Info",
+  BUSINESS_HOURS: "Opening Hours",
+  BUSINESS_INFORMATION: "Restaurant Info",
+  MENU_SEARCH: "Menu Search",
+  MENU_ITEM_INFORMATION: "Dish Info",
+  MENU_AVAILABILITY: "Menu Availability",
+  DEAL_SEARCH: "Deals & Combos",
+  CREATE_ORDER: "Place Order",
+  GET_ORDER: "Track Order",
+  CANCEL_ORDER: "Cancel Order",
+  CUSTOMER_ORDERS: "Order History",
+  GREETING: "Greeting",
+  SUPPORT: "Customer Support",
+  CHECK_RESERVATION_AVAILABILITY: "Check Reservation",
+  CREATE_RESERVATION: "Book Table",
+  GET_RESERVATION: "Reservation Status",
+  GENERAL_QUERY: "General Inquiry",
+};
+
 // ============================================================
 // BUSINESS ANALYTICS CONTROLLER
 // ============================================================
@@ -45,7 +67,22 @@ export const getBusinessAnalytics = async (req, res) => {
           businessId,
           createdAt: { gte: currentStart, lte: now },
         },
-        include: { items: true },
+        include: {
+          items: {
+            include: {
+              menuItem: { include: { category: true } },
+              deal: {
+                include: {
+                  items: {
+                    include: {
+                      menuItem: { include: { category: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       }),
       prisma.order.findMany({
         where: {
@@ -164,35 +201,42 @@ export const getBusinessAnalytics = async (req, res) => {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    // 5. Category Performance (revenue per category)
-    const categoriesWithItems = await prisma.category.findMany({
+    // 5. Category Performance (revenue per category derived from real orders & deal items)
+    const allCategories = await prisma.category.findMany({
       where: { businessId },
-      include: {
-        menuItems: {
-          include: {
-            orderItems: {
-              where: {
-                order: {
-                  businessId,
-                  createdAt: { gte: currentStart, lte: now },
-                  status: { not: "CANCELLED" },
-                },
-              },
-            },
-          },
-        },
-      },
+      orderBy: { name: "asc" },
     });
 
-    const categoryPerformance = categoriesWithItems
-      .map((cat) => {
-        const catRevenue = cat.menuItems.reduce((cSum, mItem) => {
-          const itemRev = mItem.orderItems.reduce((iSum, oItem) => iSum + Number(oItem.subtotal || 0), 0);
-          return cSum + itemRev;
-        }, 0);
-        return { name: cat.name, value: Math.round(catRevenue) };
-      })
-      .filter((c) => c.value > 0)
+    const categoryRevenueMap = {};
+    allCategories.forEach((cat) => {
+      categoryRevenueMap[cat.name] = 0;
+    });
+
+    validCurrentOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        const itemSubtotal = Number(item.subtotal || 0);
+
+        if (item.menuItem?.category?.name) {
+          const catName = item.menuItem.category.name;
+          categoryRevenueMap[catName] = (categoryRevenueMap[catName] || 0) + itemSubtotal;
+        } else if (item.deal?.items?.length) {
+          const validDealItems = item.deal.items.filter((di) => di.menuItem?.category?.name);
+          if (validDealItems.length > 0) {
+            const splitShare = itemSubtotal / validDealItems.length;
+            validDealItems.forEach((di) => {
+              const catName = di.menuItem.category.name;
+              categoryRevenueMap[catName] = (categoryRevenueMap[catName] || 0) + splitShare;
+            });
+          }
+        }
+      });
+    });
+
+    const categoryPerformance = allCategories
+      .map((cat) => ({
+        name: cat.name,
+        value: Math.round(categoryRevenueMap[cat.name] || 0),
+      }))
       .sort((a, b) => b.value - a.value);
 
     // 6. Deal Performance
@@ -251,8 +295,10 @@ export const getBusinessAnalytics = async (req, res) => {
         revenueOrders: timeBuckets,
         orderStatus,
         topProducts: topProducts.length > 0 ? topProducts : [{ name: "No items sold yet", value: 0 }],
-        categoryPerformance: categoryPerformance.length > 0 ? categoryPerformance : [{ name: "General", value: 0 }],
-        dealPerformance: dealPerformance.length > 0 ? dealPerformance : [{ name: "No active deals sold", value: 0 }],
+        categoryPerformance:
+          categoryPerformance.length > 0 ? categoryPerformance : [{ name: "General", value: 0 }],
+        dealPerformance:
+          dealPerformance.length > 0 ? dealPerformance : [{ name: "No active deals sold", value: 0 }],
         inventory,
       },
     });
@@ -275,41 +321,87 @@ export const getAiAnalytics = async (req, res) => {
     const { now, days, currentStart, prevStart } = getDateRanges(timeRange);
     const businessId = req.businessId;
 
-    // 1. Fetch Conversations in current & previous periods
-    const [currentConvs, prevConvs, currentOrders] = await Promise.all([
-      prisma.conversation.findMany({
-        where: {
-          businessId,
-          createdAt: { gte: currentStart, lte: now },
-        },
-      }),
-      prisma.conversation.findMany({
-        where: {
-          businessId,
-          createdAt: { gte: prevStart, lt: currentStart },
-        },
-      }),
-      prisma.order.findMany({
-        where: {
-          businessId,
-          createdAt: { gte: currentStart, lte: now },
-          status: { not: "CANCELLED" },
-        },
-      }),
-    ]);
+    // 1. Fetch Conversations, AgentRuns, and Orders in current & previous periods
+    const [currentConvs, prevConvs, currentRuns, prevRuns, currentOrders, prevOrders] =
+      await Promise.all([
+        prisma.conversation.findMany({
+          where: {
+            businessId,
+            OR: [
+              { createdAt: { gte: currentStart, lte: now } },
+              { lastActivity: { gte: currentStart, lte: now } },
+            ],
+          },
+        }),
+        prisma.conversation.findMany({
+          where: {
+            businessId,
+            OR: [
+              { createdAt: { gte: prevStart, lt: currentStart } },
+              { lastActivity: { gte: prevStart, lt: currentStart } },
+            ],
+          },
+        }),
+        prisma.agentRun.findMany({
+          where: {
+            businessId,
+            startedAt: { gte: currentStart, lte: now },
+          },
+          include: { toolExecutions: true },
+        }),
+        prisma.agentRun.findMany({
+          where: {
+            businessId,
+            startedAt: { gte: prevStart, lt: currentStart },
+          },
+        }),
+        prisma.order.findMany({
+          where: {
+            businessId,
+            createdAt: { gte: currentStart, lte: now },
+            status: { not: "CANCELLED" },
+          },
+          include: { customer: true },
+        }),
+        prisma.order.findMany({
+          where: {
+            businessId,
+            createdAt: { gte: prevStart, lt: currentStart },
+            status: { not: "CANCELLED" },
+          },
+          include: { customer: true },
+        }),
+      ]);
 
     const totalConversations = currentConvs.length;
     const prevTotalConversations = prevConvs.length;
 
-    const aiResolved = currentConvs.filter((c) => c.status === "RESOLVED" || c.status === "CLOSED").length;
-    const prevAiResolved = prevConvs.filter((c) => c.status === "RESOLVED" || c.status === "CLOSED").length;
+    // AI Resolved: conversations where AI completed without escalation
+    const aiResolved = currentConvs.filter(
+      (c) => c.status === "RESOLVED" || c.status === "CLOSED" || (c.status === "ACTIVE" && c.status !== "ESCALATED")
+    ).length;
 
-    // AI Orders: Orders associated with customers having conversations
+    const prevAiResolved = prevConvs.filter(
+      (c) => c.status === "RESOLVED" || c.status === "CLOSED" || (c.status === "ACTIVE" && c.status !== "ESCALATED")
+    ).length;
+
+    // AI Orders: Orders placed by customers who have conversation interactions or telegram chat ID
     const customerIdsWithConversations = new Set(currentConvs.map((c) => c.customerId));
-    const aiOrders = currentOrders.filter((o) => customerIdsWithConversations.has(o.customerId)).length;
+    const aiOrders = currentOrders.filter(
+      (o) => Boolean(o.customer?.telegramChatId) || customerIdsWithConversations.has(o.customerId)
+    ).length;
 
-    const resolutionRate = totalConversations > 0 ? Number(((aiResolved / totalConversations) * 100).toFixed(1)) : 0;
-    const prevResolutionRate = prevTotalConversations > 0 ? Number(((prevAiResolved / prevTotalConversations) * 100).toFixed(1)) : 0;
+    const prevCustomerIdsWithConversations = new Set(prevConvs.map((c) => c.customerId));
+    const prevAiOrders = prevOrders.filter(
+      (o) => Boolean(o.customer?.telegramChatId) || prevCustomerIdsWithConversations.has(o.customerId)
+    ).length;
+
+    const resolutionRate =
+      totalConversations > 0 ? Number(((aiResolved / totalConversations) * 100).toFixed(1)) : 0;
+    const prevResolutionRate =
+      prevTotalConversations > 0
+        ? Number(((prevAiResolved / prevTotalConversations) * 100).toFixed(1))
+        : 0;
 
     const aiOverview = {
       totalConversations,
@@ -317,7 +409,7 @@ export const getAiAnalytics = async (req, res) => {
       aiResolved,
       resolvedChange: calcPercentageChange(aiResolved, prevAiResolved),
       aiOrders,
-      ordersChange: calcPercentageChange(aiOrders, 0),
+      ordersChange: calcPercentageChange(aiOrders, prevAiOrders),
       resolutionRate,
       rateChange: Number((resolutionRate - prevResolutionRate).toFixed(1)),
     };
@@ -343,9 +435,11 @@ export const getAiAnalytics = async (req, res) => {
       });
 
       const bucketConvs = currentConvs.filter((c) => {
-        const d = new Date(c.createdAt);
+        const d = new Date(c.lastActivity || c.createdAt);
         if (timeRange === "yearly") {
-          return d.getMonth() === bucketDate.getMonth() && d.getFullYear() === bucketDate.getFullYear();
+          return (
+            d.getMonth() === bucketDate.getMonth() && d.getFullYear() === bucketDate.getFullYear()
+          );
         }
         return d.toDateString() === bucketDate.toDateString();
       });
@@ -353,12 +447,16 @@ export const getAiAnalytics = async (req, res) => {
       const bucketOrders = currentOrders.filter((o) => {
         const d = new Date(o.createdAt);
         if (timeRange === "yearly") {
-          return d.getMonth() === bucketDate.getMonth() && d.getFullYear() === bucketDate.getFullYear();
+          return (
+            d.getMonth() === bucketDate.getMonth() && d.getFullYear() === bucketDate.getFullYear()
+          );
         }
         return d.toDateString() === bucketDate.toDateString();
       });
 
-      const bucketAiOrders = bucketOrders.filter((o) => customerIdsWithConversations.has(o.customerId)).length;
+      const bucketAiOrders = bucketOrders.filter(
+        (o) => Boolean(o.customer?.telegramChatId) || customerIdsWithConversations.has(o.customerId)
+      ).length;
 
       conversationVolume.push({
         date: dateStr,
@@ -370,51 +468,94 @@ export const getAiAnalytics = async (req, res) => {
         date: dateStr,
         fullDate: bucketDate,
         ai: bucketAiOrders,
-        manual: bucketOrders.length - bucketAiOrders,
+        manual: Math.max(0, bucketOrders.length - bucketAiOrders),
       });
     }
 
-    // 3. Intent Distribution
+    // 3. Intent Distribution (from AgentRun and Conversation records)
     const intentCounts = {};
-    currentConvs.forEach((c) => {
-      const intentName = c.intent || "General Inquiry";
-      intentCounts[intentName] = (intentCounts[intentName] || 0) + 1;
+    currentRuns.forEach((r) => {
+      // Extract intent from tool executions if available or infer from agent/query
+      let intentKey = "GENERAL_QUERY";
+      const toolNames = (r.toolExecutions || []).map((t) => t.toolName);
+
+      if (toolNames.includes("createOrder")) intentKey = "CREATE_ORDER";
+      else if (toolNames.includes("getOrder")) intentKey = "GET_ORDER";
+      else if (toolNames.includes("cancelOrder")) intentKey = "CANCEL_ORDER";
+      else if (toolNames.includes("searchMenu") || toolNames.includes("getMenuItem")) intentKey = "MENU_SEARCH";
+      else if (toolNames.includes("searchDeals") || toolNames.includes("getDeal")) intentKey = "DEAL_SEARCH";
+      else if (toolNames.includes("getBusinessHours")) intentKey = "BUSINESS_HOURS";
+      else if (toolNames.includes("searchKnowledgeBase")) intentKey = "FOOD_INFORMATION";
+      else if (r.agent === "ORDER_AGENT") intentKey = "MENU_SEARCH";
+      else if (r.agent === "SUPPORT_AGENT") intentKey = "SUPPORT";
+      else if (r.agent === "RESERVATION_AGENT") intentKey = "CHECK_RESERVATION_AVAILABILITY";
+
+      intentCounts[intentKey] = (intentCounts[intentKey] || 0) + 1;
     });
 
-    const intentDistribution = Object.entries(intentCounts).map(([name, value]) => ({
-      key: name.toLowerCase().replace(/ /g, "_"),
-      name,
-      value,
-    }));
+    // Also include conversation level intents if runs are not recorded
+    if (Object.keys(intentCounts).length === 0) {
+      currentConvs.forEach((c) => {
+        const intentKey = c.intent || "GENERAL_QUERY";
+        intentCounts[intentKey] = (intentCounts[intentKey] || 0) + 1;
+      });
+    }
 
-    // 4. Agent Usage & Performance Table
-    const agentStats = {
-      GENERAL_AGENT: { name: "General Agent", conversations: 0, resolved: 0 },
-      ORDER_AGENT: { name: "Order Agent", conversations: 0, resolved: 0 },
-      SUPPORT_AGENT: { name: "Support Agent", conversations: 0, resolved: 0 },
-      RESERVATION_AGENT: { name: "Reservation Agent", conversations: 0, resolved: 0 },
+    const totalIntentCount = Object.values(intentCounts).reduce((a, b) => a + b, 0) || 1;
+
+    const intentDistribution = Object.entries(intentCounts)
+      .map(([rawIntent, count]) => {
+        const displayName = INTENT_DISPLAY_NAMES[rawIntent] || rawIntent.replace(/_/g, " ");
+        const percent = Math.round((count / totalIntentCount) * 100);
+        return {
+          key: rawIntent.toLowerCase(),
+          name: displayName,
+          value: percent,
+        };
+      })
+      .sort((a, b) => b.value - a.value);
+
+    // 4. Agent Usage (derived directly from real AgentRun records)
+    const agentRunStats = {
+      GENERAL_AGENT: { name: "General Agent", count: 0, resolved: 0 },
+      ORDER_AGENT: { name: "Order Agent", count: 0, resolved: 0 },
+      SUPPORT_AGENT: { name: "Support Agent", count: 0, resolved: 0 },
+      RESERVATION_AGENT: { name: "Reservation Agent", count: 0, resolved: 0 },
     };
 
-    currentConvs.forEach((c) => {
-      const agentKey = c.agent || "GENERAL_AGENT";
-      if (agentStats[agentKey]) {
-        agentStats[agentKey].conversations += 1;
-        if (c.status === "RESOLVED" || c.status === "CLOSED") {
-          agentStats[agentKey].resolved += 1;
+    currentRuns.forEach((r) => {
+      const agentKey = r.agent || "GENERAL_AGENT";
+      if (agentRunStats[agentKey]) {
+        agentRunStats[agentKey].count += 1;
+        if (r.status === "COMPLETED") {
+          agentRunStats[agentKey].resolved += 1;
         }
       }
     });
 
-    const agentUsage = Object.values(agentStats).map((a) => ({
+    // Fallback to conversation agent if no runs in period
+    if (currentRuns.length === 0) {
+      currentConvs.forEach((c) => {
+        const agentKey = c.agent || "GENERAL_AGENT";
+        if (agentRunStats[agentKey]) {
+          agentRunStats[agentKey].count += 1;
+          agentRunStats[agentKey].resolved += 1;
+        }
+      });
+    }
+
+    const agentUsage = Object.values(agentRunStats).map((a) => ({
       name: a.name,
-      value: a.conversations,
+      value: a.count,
     }));
 
-    const agentPerformance = Object.values(agentStats).map((a) => {
-      const resolution = a.conversations > 0 ? Number(((a.resolved / a.conversations) * 100).toFixed(1)) : 100;
+    // 5. Agent Performance Table
+    const agentPerformance = Object.values(agentRunStats).map((a) => {
+      const resolution =
+        a.count > 0 ? Number(((a.resolved / a.count) * 100).toFixed(1)) : 100;
       return {
         agent: a.name,
-        conversations: a.conversations,
+        conversations: a.count,
         resolved: a.resolved,
         resolution,
       };
@@ -425,7 +566,10 @@ export const getAiAnalytics = async (req, res) => {
       data: {
         aiOverview,
         conversationVolume,
-        intentDistribution: intentDistribution.length > 0 ? intentDistribution : [{ key: "general", name: "General Inquiry", value: 0 }],
+        intentDistribution:
+          intentDistribution.length > 0
+            ? intentDistribution
+            : [{ key: "general_inquiry", name: "General Inquiry", value: 100 }],
         agentUsage,
         aiVsManual,
         agentPerformance,

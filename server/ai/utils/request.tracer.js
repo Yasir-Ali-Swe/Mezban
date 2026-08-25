@@ -342,9 +342,16 @@ export function printAndClear(traceId) {
     fastPath: t.fastPath,
   });
 
-  const finalIntent = t.intent || derived.intent;
-  const finalCapability = t.capability || derived.capability;
-  const finalAgent = t.agentType || t.agentName || derived.agent;
+  const finalIntent = derived.intent || t.intent || "GENERAL_QUERY";
+  const finalCapability = derived.capability || t.capability || "NEITHER";
+  let finalAgent = derived.agent;
+  if (!finalAgent || finalAgent === "GENERAL_AGENT") {
+    if (t.agentType && t.agentType !== "GENERAL_AGENT") {
+      finalAgent = t.agentType;
+    } else {
+      finalAgent = derived.agent || "GENERAL_AGENT";
+    }
+  }
 
   console.log(`\n╔══════════════════════════════════════════════════════════════╗`);
   console.log(`║              📡  TELEAGENT REQUEST TRACE                     ║`);
