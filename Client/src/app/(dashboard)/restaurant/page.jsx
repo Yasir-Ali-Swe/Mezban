@@ -89,9 +89,7 @@ const RestaurantDashboard = () => {
                 <Card className="lg:col-span-2 flex flex-col order-2 lg:order-1">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm font-medium">Recent Orders</CardTitle>
-                        <Button variant="ghost" size="sm" asChild>
-                            <Link href="/orders">View All</Link>
-                        </Button>
+                        <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/orders">View All</Link>} />
                     </CardHeader>
                     <CardContent className="p-0 flex-1">
                         <div className="overflow-x-auto">
@@ -130,11 +128,18 @@ const RestaurantDashboard = () => {
                                                     <StatusBadge status={order.status} />
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                                                        <Link href={`/orders/${order._id || order.id}`}>
-                                                            <Eye className="h-3.5 w-3.5" />
-                                                        </Link>
-                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        nativeButton={false}
+                                                        render={
+                                                            <Link href={`/orders/${order._id || order.id}`}>
+                                                                <Eye className="h-3.5 w-3.5" />
+                                                            </Link>
+                                                        }
+                                                    />
+
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -175,9 +180,13 @@ const RestaurantDashboard = () => {
                 <Card className="flex flex-col">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm font-medium">Recent Conversations</CardTitle>
-                        <Button variant="ghost" size="sm" asChild>
-                            <Link href="/conversations">View All</Link>
-                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            nativeButton={false}
+                            render={<Link href="/conversations">View All</Link>}
+                        />
+
                     </CardHeader>
                     <CardContent className="p-0 flex-1">
                         <div className="overflow-x-auto">
@@ -212,10 +221,14 @@ const RestaurantDashboard = () => {
                                                     {formatDate(conv.time)}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                                                        <Link href="/conversations">
-                                                            <Eye className="h-3.5 w-3.5" />
-                                                        </Link>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        nativeButton={false}
+                                                        render={<Link href={`/conversations/${conv.id || index}`} />}
+                                                    >
+                                                        <Eye className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
