@@ -1,9 +1,16 @@
 import prisma from "../../../config/prisma.js";
 
+/**
+ * Upserts customer profile data for phone or email contact details.
+ */
 export const createCustomerTool = {
   name: "createCustomer",
   description: "Upserts customer profile data for phone or email contact details.",
   execute: async ({ businessId, telegramChatId, name, phone, email }) => {
+    if (!businessId || !telegramChatId) {
+      return { success: false, error: "MISSING_IDENTIFIER", message: "Business ID and Telegram chat ID are required." };
+    }
+
     let customer = await prisma.customer.findFirst({
       where: { businessId, telegramChatId },
     });
@@ -31,9 +38,12 @@ export const createCustomerTool = {
 
     return {
       success: true,
-      customerId: customer.id,
-      name: customer.name,
-      phone: customer.phone,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone || "",
+        email: customer.email || "",
+      },
     };
   },
 };
