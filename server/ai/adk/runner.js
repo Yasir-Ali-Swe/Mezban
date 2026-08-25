@@ -296,6 +296,8 @@ function buildContextSummary({ restaurantName, customerContextText, recentMessag
  * used in Prisma AgentRun records and conversation.agent field.
  */
 export function mapAgentNameToType(agentName) {
+  if (!agentName) return "GENERAL_AGENT";
+  const normalized = String(agentName).toLowerCase();
   const map = {
     general_agent: "GENERAL_AGENT",
     order_agent: "ORDER_AGENT",
@@ -303,5 +305,10 @@ export function mapAgentNameToType(agentName) {
     support_agent: "SUPPORT_AGENT",
     root_agent: "GENERAL_AGENT",
   };
-  return map[agentName] || "GENERAL_AGENT";
+  return (
+    map[normalized] ||
+    (["GENERAL_AGENT", "ORDER_AGENT", "RESERVATION_AGENT", "SUPPORT_AGENT"].includes(agentName)
+      ? agentName
+      : "GENERAL_AGENT")
+  );
 }
