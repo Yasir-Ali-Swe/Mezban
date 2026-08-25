@@ -61,6 +61,6 @@ DATABASE RESERVATION TOOL RULES
   ],
   generateContentConfig: {
     temperature: 0.2,
-    maxOutputTokens: 350,
+    maxOutputTokens: 700,
   },
 });
