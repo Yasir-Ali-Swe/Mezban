@@ -159,6 +159,7 @@ export async function runAdkMessage({
 
   let rawReply = "";
   let agentName = "general_agent";
+  const executedToolCalls = [];
 
   // Track tool timing
   const toolStartTimes = new Map();
@@ -196,14 +197,18 @@ export async function runAdkMessage({
           const storedArgs = toolStartTimes.get(`args_${callId}`) || {};
           const storedName = toolStartTimes.get(`name_${callId}`) || toolName;
 
+          const toolRecord = {
+            name: storedName,
+            args: storedArgs,
+            result,
+            timeMs,
+          };
+
+          executedToolCalls.push(toolRecord);
+
           // Record to tracer
           if (traceId) {
-            recordToolCall(traceId, {
-              name: storedName,
-              args: storedArgs,
-              result,
-              timeMs,
-            });
+            recordToolCall(traceId, toolRecord);
           }
         }
 
@@ -254,7 +259,7 @@ export async function runAdkMessage({
     setLlmContext(traceId, contextSummary);
   }
 
-  return { rawReply, agentName };
+  return { rawReply, agentName, executedToolCalls };
 }
 
 /**
