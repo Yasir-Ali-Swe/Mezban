@@ -386,13 +386,14 @@ export const processTelegramUpdate = async (config, update, io) => {
     });
   }
 
-  // 3. Find or Create Active Conversation
+  // 3. Find or Create Active/Escalated Ongoing Conversation
   let conversation = await prisma.conversation.findFirst({
     where: {
       businessId,
       customerId: customer.id,
-      status: "ACTIVE",
+      status: { in: ["ACTIVE", "ESCALATED"] },
     },
+    orderBy: { lastActivity: "desc" },
   });
 
   let isNewConversation = false;
@@ -511,14 +512,20 @@ export const processTelegramUpdate = async (config, update, io) => {
     }
   });
 
-  // 11. Prepare customer & bot avatars for real-time socket events
+  // 11. Fetch latest updated conversation from DB (in case AI tool escalated the status)
+  const freshConversation = await prisma.conversation.findUnique({
+    where: { id: conversation.id },
+  });
+  const currentStatus = freshConversation?.status || conversation.status;
+
+  // 12. Prepare customer & bot avatars for real-time socket events
   const customerAvatar = customer.avatarUrl
     ? `/api/conversations/avatar/${customer.id}`
     : null;
 
   const botAvatar = "/api/conversations/bot-avatar";
 
-  // 12. Emit Real-Time Socket.IO Events
+  // 13. Emit Real-Time Socket.IO Events
   if (io) {
     const customerMessageData = {
       id: customerMessage.id,
@@ -543,8 +550,8 @@ export const processTelegramUpdate = async (config, update, io) => {
       senderType: "agent",
       sender: "AGENT",
       content: agentMessage.content,
-      agentType: "GENERAL_AGENT",
-      agentName: "GENERAL AGENT",
+      agentType: selectedAgent,
+      agentName: selectedAgent.replace(/_/g, " "),
       createdAt: agentMessage.createdAt.toISOString(),
       businessId: businessId,
       botAvatar: botAvatar,
@@ -564,11 +571,22 @@ export const processTelegramUpdate = async (config, update, io) => {
         },
         lastMessage: replyText,
         lastActivity: conversation.lastActivity.toISOString(),
-        status: conversation.status,
-        agent: conversation.agent,
+        status: currentStatus,
+        agent: freshConversation?.agent || conversation.agent,
       };
       emitNewConversation(io, businessId, conversationData);
     }
+
+    // Always emit status update to refresh stats cards on dashboard
+    io.to(`business-${businessId}`).emit("conversation-status-updated", {
+      conversationId: conversation.id,
+      status: currentStatus,
+      escalationType: freshConversation?.escalationType || null,
+      escalationReason: freshConversation?.escalationReason || null,
+      escalationData: freshConversation?.escalationData || null,
+      resolvedByName: freshConversation?.resolvedByName || null,
+      resolvedAt: freshConversation?.resolvedAt || null,
+    });
 
     io.to(`business-${businessId}`).emit("conversation-updated", {
       conversationId: conversation.id,
@@ -576,6 +594,7 @@ export const processTelegramUpdate = async (config, update, io) => {
       lastActivity: new Date().toISOString(),
       customerId: customer.id,
       customerName: customerName,
+      status: currentStatus,
     });
   }
 
