@@ -20,6 +20,8 @@ export const createOrderTool = {
     items = [],
     orderType = "DELIVERY",
     shippingAddress,
+    customerPhone,
+    phone,
     notes,
   }) => {
     if (!businessId) {
@@ -166,6 +168,17 @@ export const createOrderTool = {
     // 4. Atomic Prisma Transaction
     try {
       const order = await prisma.$transaction(async (tx) => {
+        // Persist customer phone if provided or extracted from notes
+        const extractedPhoneFromNotes = (notes || "").match(/(?:03\d{2}[-\s]?\d{7}|\+92[-\s]?3\d{2}[-\s]?\d{7}|\b\d{10,12}\b)/)?.[0];
+        const resolvedPhone = (customerPhone || phone || extractedPhoneFromNotes || "").trim();
+
+        if (resolvedPhone && (!customer.phone || customer.phone !== resolvedPhone)) {
+          await tx.customer.update({
+            where: { id: customerId },
+            data: { phone: resolvedPhone },
+          });
+        }
+
         return tx.order.create({
           data: {
             businessId,
@@ -178,8 +191,8 @@ export const createOrderTool = {
             shipping,
             total,
             notes: notes || null,
-            shippingCity: shippingAddress || customer.name,
             shippingStreet: shippingAddress || null,
+            shippingCity: null,
             items: {
               create: orderItemsData,
             },
