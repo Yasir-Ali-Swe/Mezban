@@ -450,6 +450,8 @@ export function useUpdateConversationStatus() {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversation(variables.id) });
       }
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -466,5 +468,22 @@ export function useSendConversationMessage() {
     },
   });
 }
+
+export function useHandleEscalationAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: conversationsApi.handleEscalationAction,
+    onSuccess: (_, variables) => {
+      if (variables.id) {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversation(variables.id) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversation-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
 
 
