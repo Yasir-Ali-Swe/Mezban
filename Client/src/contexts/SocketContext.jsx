@@ -20,55 +20,42 @@ export const SocketProvider = ({ children }) => {
     const socketRef = useRef(null);
 
     useEffect(() => {
-        // Get the API URL without any path
-        const SOCKET_URL = 'http://localhost:5000';
+        const SOCKET_URL =
+            process.env.NEXT_PUBLIC_SOCKET_URL ||
+            process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, '') ||
+            'http://localhost:5000';
 
-        console.log('🔌 Connecting to socket at:', SOCKET_URL);
-
-        // Initialize socket connection - NO namespace (just the base URL)
         const socketInstance = io(SOCKET_URL, {
-            transports: ['websocket', 'polling'],
+            transports: ['polling', 'websocket'],
             withCredentials: true,
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
             timeout: 10000,
-            // Add these for better debugging
             autoConnect: true,
-            forceNew: true,
         });
 
         socketRef.current = socketInstance;
 
-        // Connection event handlers
         socketInstance.on('connect', () => {
-            console.log('🔌 Socket connected successfully');
             setIsConnected(true);
-
-            // Join business room if businessId exists
-            const businessId = localStorage.getItem('businessId');
+            const businessId = typeof window !== 'undefined' ? localStorage.getItem('businessId') : null;
             if (businessId) {
-                console.log('📢 Joining business room:', businessId);
                 socketInstance.emit('join-business', businessId);
             }
         });
 
         socketInstance.on('disconnect', () => {
-            console.log('🔌 Socket disconnected');
             setIsConnected(false);
         });
 
-        socketInstance.on('connect_error', (error) => {
-            console.error('Socket connection error:', error);
+        socketInstance.on('connect_error', () => {
             setIsConnected(false);
         });
 
         socketInstance.on('reconnect', () => {
-            console.log('🔄 Socket reconnected');
             setIsConnected(true);
-
-            // Re-join business room
-            const businessId = localStorage.getItem('businessId');
+            const businessId = typeof window !== 'undefined' ? localStorage.getItem('businessId') : null;
             if (businessId) {
                 socketInstance.emit('join-business', businessId);
             }
@@ -76,7 +63,6 @@ export const SocketProvider = ({ children }) => {
 
         setSocket(socketInstance);
 
-        // Cleanup on unmount
         return () => {
             if (socketInstance) {
                 socketInstance.disconnect();
@@ -90,19 +76,20 @@ export const SocketProvider = ({ children }) => {
 
         const syncBusinessRoom = async () => {
             try {
-                let businessId = localStorage.getItem('businessId');
+                let businessId = typeof window !== 'undefined' ? localStorage.getItem('businessId') : null;
                 if (!businessId) {
                     const res = await api.get('/business');
                     if (res.data?.success && res.data?.data?.id) {
                         businessId = res.data.data.id;
-                        localStorage.setItem('businessId', businessId);
+                        if (typeof window !== 'undefined') {
+                            localStorage.setItem('businessId', businessId);
+                        }
                     }
                 }
                 if (businessId) {
-                    console.log('📢 Auto-joining business room:', businessId);
                     socket.emit('join-business', businessId);
                 }
-            } catch (e) {
+            } catch {
                 // Ignore if unauthenticated
             }
         };
@@ -115,13 +102,11 @@ export const SocketProvider = ({ children }) => {
         isConnected,
         joinConversation: (conversationId) => {
             if (socket && isConnected) {
-                console.log('💬 Joining conversation:', conversationId);
                 socket.emit('join-conversation', conversationId);
             }
         },
         leaveConversation: (conversationId) => {
             if (socket && isConnected) {
-                console.log('👋 Leaving conversation:', conversationId);
                 socket.emit('leave-conversation', conversationId);
             }
         },
