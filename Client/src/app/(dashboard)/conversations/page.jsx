@@ -175,6 +175,7 @@ const ConversationsPage = () => {
                             ...conv,
                             lastMessage: updatedData.lastMessage || conv.lastMessage,
                             lastActivity: updatedData.lastActivity || conv.lastActivity,
+                            status: updatedData.status || conv.status,
                         };
                     }
                     return conv;
@@ -258,9 +259,16 @@ const ConversationsPage = () => {
             headerClassName: 'min-w-[140px]',
             render: (conversation) => (
                 <div className="flex flex-col">
-                    <span className="font-medium text-sm">
-                        {conversation.customer.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-sm">
+                            {conversation.customer.name}
+                        </span>
+                        {conversation.status === 'ESCALATED' && (
+                            <span className="inline-flex items-center rounded-full border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:text-red-300">
+                                ⚠ Escalated
+                            </span>
+                        )}
+                    </div>
                     <span className="text-xs text-muted-foreground">
                         {conversation.customer.username
                             ? conversation.customer.displayUsername || `@${conversation.customer.username}`
