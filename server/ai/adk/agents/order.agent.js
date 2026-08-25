@@ -12,6 +12,7 @@ import {
   adkGetOrderTool,
   adkGetCustomerOrdersTool,
   adkCancelOrderTool,
+  adkEscalateConversationTool,
 } from "../tools/index.js";
 
 /**
@@ -77,6 +78,7 @@ DATABASE TOOL RULES
     adkGetOrderTool,
     adkGetCustomerOrdersTool,
     adkCancelOrderTool,
+    adkEscalateConversationTool,
   ],
   generateContentConfig: {
     temperature: 0.2,
