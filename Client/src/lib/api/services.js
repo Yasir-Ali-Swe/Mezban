@@ -202,8 +202,15 @@ export const conversationsApi = {
     const res = await api.get(`/conversations/${id}`);
     return res.data;
   },
-  updateStatus: async ({ id, status }) => {
-    const res = await api.patch(`/conversations/${id}/status`, { status });
+  updateStatus: async ({ id, status, resolvedByName }) => {
+    const res = await api.patch(`/conversations/${id}/status`, { status, resolvedByName });
+    return res.data;
+  },
+  sendMessage: async ({ id, content, message, senderName }) => {
+    const res = await api.post(`/conversations/${id}/messages`, {
+      content: content || message,
+      senderName,
+    });
     return res.data;
   },
 };

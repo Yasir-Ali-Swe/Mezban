@@ -11,7 +11,7 @@ import { getToolSessionState } from "./context.helper.js";
 export const adkCreateOrderTool = new FunctionTool({
   name: "createOrder",
   description:
-    "Creates a new customer food order for menu items or deals. Call this when the customer confirms they want to place an order.",
+    "Creates a new customer food order for menu items or deals. Call this when the customer explicitly confirms they want to place an order.",
   parameters: {
     type: "object",
     properties: {
@@ -34,9 +34,13 @@ export const adkCreateOrderTool = new FunctionTool({
         description: "Order fulfillment type: DELIVERY, PICKUP, or DINE_IN (default is DELIVERY)",
         enum: ["DELIVERY", "PICKUP", "DINE_IN"],
       },
+      paymentMethod: {
+        type: "string",
+        description: "Payment method chosen by customer (e.g. 'Cash on Delivery', 'Easypaisa', 'JazzCash', 'Card')",
+      },
       shippingAddress: {
         type: "string",
-        description: "Delivery address (for DELIVERY orders)",
+        description: "Complete delivery address with street and city (for DELIVERY orders)",
       },
       customerPhone: {
         type: "string",
@@ -49,16 +53,18 @@ export const adkCreateOrderTool = new FunctionTool({
     },
     required: ["items"],
   },
-  execute: async ({ items, orderType, shippingAddress, customerPhone, phone, notes } = {}, tool_context) => {
-    const { businessId, customerId } = getToolSessionState(tool_context);
+  execute: async ({ items, orderType, paymentMethod, shippingAddress, customerPhone, phone, notes } = {}, tool_context) => {
+    const { businessId, customerId, conversationId } = getToolSessionState(tool_context);
     if (!businessId || !customerId) {
       return { success: false, error: "MISSING_SESSION_CONTEXT", message: "Customer and restaurant context required to place an order." };
     }
     return createOrderTool.execute({
       businessId,
       customerId,
+      conversationId,
       items,
       orderType,
+      paymentMethod: paymentMethod || "Cash on Delivery",
       shippingAddress,
       customerPhone: customerPhone || phone,
       notes,
@@ -122,7 +128,7 @@ export const adkGetCustomerOrdersTool = new FunctionTool({
  */
 export const adkCancelOrderTool = new FunctionTool({
   name: "cancelOrder",
-  description: "Cancels an order if it is still in PENDING status.",
+  description: "Cancels an order if it is still in PENDING status. Escalates to human staff if order is already in progress.",
   parameters: {
     type: "object",
     properties: {
@@ -134,8 +140,8 @@ export const adkCancelOrderTool = new FunctionTool({
     required: ["orderNumber"],
   },
   execute: async ({ orderNumber } = {}, tool_context) => {
-    const { businessId, customerId } = getToolSessionState(tool_context);
+    const { businessId, customerId, conversationId } = getToolSessionState(tool_context);
     if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
-    return cancelOrderTool.execute({ businessId, customerId, orderNumber });
+    return cancelOrderTool.execute({ businessId, customerId, conversationId, orderNumber });
   },
 });

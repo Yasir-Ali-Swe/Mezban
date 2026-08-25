@@ -7,6 +7,7 @@ import {
   adkGetCustomerOrdersTool,
   adkGetReservationTool,
   adkGetBusinessInfoTool,
+  adkEscalateConversationTool,
 } from "../tools/index.js";
 
 export const supportAgent = new LlmAgent({
@@ -43,7 +44,7 @@ SUPPORT TOOL RULES
    - Use ONLY Telegram HTML tags (<b>bold</b>, <i>italic</i>, <code>code</code>, <blockquote>quote</blockquote>, • bullet items).
    - Do NOT output Markdown (no #, **, *, _, \`\`\`).`;
   },
-  tools: [adkGetOrderTool, adkGetCustomerOrdersTool, adkGetReservationTool, adkGetBusinessInfoTool],
+  tools: [adkGetOrderTool, adkGetCustomerOrdersTool, adkGetReservationTool, adkGetBusinessInfoTool, adkEscalateConversationTool],
   generateContentConfig: {
     temperature: 0.3,
     maxOutputTokens: 700,

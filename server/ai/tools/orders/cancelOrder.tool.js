@@ -2,12 +2,13 @@ import prisma from "../../../config/prisma.js";
 
 /**
  * Cancels a pending customer order.
- * Enforces businessId and customerId isolation and order status checks.
+ * If the order is already CONFIRMED, PREPARING, or OUT_FOR_DELIVERY,
+ * it cannot be cancelled automatically and the conversation is escalated to staff.
  */
 export const cancelOrderTool = {
   name: "cancelOrder",
-  description: "Cancels an order if it is still pending confirmation.",
-  execute: async ({ businessId, customerId, orderNumber }) => {
+  description: "Cancels an order if it is still pending confirmation. Escalates if order is already in progress.",
+  execute: async ({ businessId, customerId, conversationId, orderNumber }) => {
     if (!businessId) {
       return { success: false, error: "MISSING_BUSINESS_ID", message: "Business ID is required." };
     }
@@ -43,11 +44,39 @@ export const cancelOrderTool = {
       };
     }
 
-    if (order.status !== "PENDING") {
+    if (order.status === "COMPLETED") {
       return {
         success: false,
-        error: "CANNOT_CANCEL",
-        message: `Order #${order.orderNumber} cannot be cancelled because its current status is '${order.status}' (only PENDING orders can be cancelled).`,
+        error: "ORDER_COMPLETED",
+        message: `Order #${order.orderNumber} has already been completed/delivered and cannot be cancelled.`,
+      };
+    }
+
+    if (order.status !== "PENDING") {
+      // Escalate conversation to human staff
+      if (conversationId) {
+        try {
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { status: "ESCALATED", intent: "SUPPORT" },
+          });
+        } catch (e) {
+          // ignore error
+        }
+      }
+
+      const friendlyStatusMap = {
+        CONFIRMED: "Confirmed",
+        PREPARING: "Preparing in kitchen",
+        OUT_FOR_DELIVERY: "Out for delivery",
+      };
+      const friendlyStatus = friendlyStatusMap[order.status] || order.status;
+
+      return {
+        success: false,
+        error: "CANNOT_CANCEL_IN_PROGRESS",
+        escalated: true,
+        message: `Order #${order.orderNumber} is currently '${friendlyStatus}' and cannot be cancelled automatically. I have escalated this request to our staff to assist you directly.`,
       };
     }
 

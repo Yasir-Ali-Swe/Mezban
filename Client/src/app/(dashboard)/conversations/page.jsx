@@ -291,14 +291,6 @@ const ConversationsPage = () => {
             ),
         },
         {
-            key: 'status',
-            header: 'Status',
-            headerClassName: 'min-w-[100px]',
-            render: (conversation) => (
-                <StatusBadge status={conversation.status} />
-            ),
-        },
-        {
             key: 'lastMessage',
             header: 'Last Message',
             headerClassName: 'min-w-[150px]',
@@ -420,7 +412,7 @@ const ConversationsPage = () => {
 
             {/* Stats Cards */}
             {stats && (
-                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
                     <StatCard
                         title="Total Conversations"
                         value={stats.total}
@@ -430,14 +422,6 @@ const ConversationsPage = () => {
                         iconClassName="text-chart-1"
                         valueClassName="text-chart-1"
                         caption="All conversations"
-                    />
-                    <StatCard
-                        title="Active"
-                        value={stats.active}
-                        icon={MessageCircle}
-                        iconClassName="text-chart-2"
-                        valueClassName="text-chart-2"
-                        caption="Currently active"
                     />
                     <StatCard
                         title="Resolved"

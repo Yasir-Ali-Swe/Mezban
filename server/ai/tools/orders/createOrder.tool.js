@@ -19,6 +19,7 @@ export const createOrderTool = {
     customerId,
     items = [],
     orderType = "DELIVERY",
+    paymentMethod = "Cash on Delivery",
     shippingAddress,
     customerPhone,
     phone,
@@ -186,6 +187,8 @@ export const createOrderTool = {
             orderNumber,
             status: "PENDING",
             orderType: validOrderType,
+            paymentMethod: paymentMethod || "Cash on Delivery",
+            customerPhone: resolvedPhone || customer.phone || null,
             subtotal,
             tax,
             shipping,
@@ -210,7 +213,9 @@ export const createOrderTool = {
         orderId: order.id,
         status: order.status,
         orderType: order.orderType,
+        paymentMethod: order.paymentMethod || paymentMethod || "Cash on Delivery",
         customerName: order.customer?.name || "Customer",
+        customerPhone: order.customerPhone || order.customer?.phone || "N/A",
         subtotal: Number(order.subtotal),
         shipping: Number(order.shipping),
         tax: Number(order.tax),
@@ -223,7 +228,7 @@ export const createOrderTool = {
           isDeal: Boolean(i.dealId),
         })),
         shippingAddress: order.shippingStreet || order.shippingCity || "N/A",
-        message: `Order #${order.orderNumber} placed successfully! Total: Rs. ${Number(order.total)}. Status is currently PENDING confirmation.`,
+        message: `Order #${order.orderNumber} placed successfully! Total: Rs. ${Number(order.total)}. Payment Method: ${order.paymentMethod || "Cash on Delivery"}. Status is currently PENDING confirmation.`,
       };
     } catch (err) {
       console.error("[createOrder Error]:", err);

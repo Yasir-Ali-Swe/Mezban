@@ -454,3 +454,17 @@ export function useUpdateConversationStatus() {
   });
 }
 
+export function useSendConversationMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: conversationsApi.sendMessage,
+    onSuccess: (_, variables) => {
+      if (variables.id) {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversation(variables.id) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+

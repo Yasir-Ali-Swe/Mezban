@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { sendTelegramMessage } from "../utils/telegram.sender.js";
 
 // Helper function to transform customer avatar
 const transformCustomerAvatar = (customer, businessId, req) => {
@@ -29,8 +30,6 @@ export const getConversationStats = async (req, res) => {
     const businessId = req.businessId;
     const { dateRange = "all" } = req.query;
 
-    // ✅ REMOVED: await syncPendingTelegramUpdates(businessId);
-
     const where = { businessId };
     if (dateRange !== "all") {
       const now = new Date();
@@ -45,9 +44,8 @@ export const getConversationStats = async (req, res) => {
       where.lastActivity = { gte: startDate };
     }
 
-    const [total, active, resolved, escalated] = await Promise.all([
+    const [total, resolved, escalated] = await Promise.all([
       prisma.conversation.count({ where }),
-      prisma.conversation.count({ where: { ...where, status: "ACTIVE" } }),
       prisma.conversation.count({ where: { ...where, status: "RESOLVED" } }),
       prisma.conversation.count({ where: { ...where, status: "ESCALATED" } }),
     ]);
@@ -59,7 +57,6 @@ export const getConversationStats = async (req, res) => {
       success: true,
       data: {
         total,
-        active,
         resolved,
         resolutionRate,
         escalated,
@@ -88,8 +85,6 @@ export const getConversations = async (req, res) => {
       agent,
       dateRange = "all",
     } = req.query;
-
-    // ✅ REMOVED: await syncPendingTelegramUpdates(businessId);
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -173,7 +168,6 @@ export const getConversations = async (req, res) => {
         ? (conv.customer.username.startsWith("@") ? conv.customer.username : `@${conv.customer.username}`)
         : `@${conv.customer.telegramChatId}`;
 
-      // Transform customer avatar using the unified proxy
       const customerAvatar = conv.customer.avatarUrl
         ? `${baseUrl}/api/telegram/avatar/${businessId}?fileId=${conv.customer.avatarUrl}`
         : null;
@@ -256,8 +250,12 @@ export const getConversationById = async (req, res) => {
       const isCustomer = msg.sender === "CUSTOMER";
       let agentName = null;
       if (!isCustomer) {
-        const agentType = msg.agentType || conv.agent || "GENERAL_AGENT";
-        agentName = agentType.replace(/_/g, " ");
+        if (msg.isHuman) {
+          agentName = msg.senderName ? `Staff: ${msg.senderName}` : "Human Support";
+        } else {
+          const agentType = msg.agentType || conv.agent || "GENERAL_AGENT";
+          agentName = agentType.replace(/_/g, " ");
+        }
       }
 
       return {
@@ -265,6 +263,8 @@ export const getConversationById = async (req, res) => {
         conversationId: msg.conversationId,
         senderType: isCustomer ? "customer" : "agent",
         sender: msg.sender,
+        isHuman: Boolean(msg.isHuman),
+        senderName: msg.senderName || null,
         content: msg.content,
         agentType: msg.agentType || conv.agent || "GENERAL_AGENT",
         agentName,
@@ -280,12 +280,10 @@ export const getConversationById = async (req, res) => {
     const protocol = req.protocol || "http";
     const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${protocol}://${host}`;
 
-    // Transform customer avatar using unified proxy
     const customerAvatar = conv.customer.avatarUrl
       ? `${baseUrl}/api/telegram/avatar/${businessId}?fileId=${conv.customer.avatarUrl}`
       : null;
 
-    // Get bot avatar using unified proxy
     const botAvatar = config?.avatarUrl
       ? `${baseUrl}/api/telegram/avatar/${businessId}?fileId=${config.avatarUrl}`
       : null;
@@ -307,6 +305,8 @@ export const getConversationById = async (req, res) => {
         status: conv.status,
         intent: conv.intent,
         agent: conv.agent,
+        resolvedByName: conv.resolvedByName || null,
+        resolvedAt: conv.resolvedAt ? conv.resolvedAt.toISOString() : null,
         lastMessageAt: conv.lastActivity.toISOString(),
         messages: formattedMessages,
       },
@@ -321,8 +321,6 @@ export const getConversationById = async (req, res) => {
   }
 };
 
-// These proxy functions are now deprecated - use the unified /api/telegram/avatar endpoint instead
-// Keeping them for backward compatibility but they should be removed or redirected
 export const getCustomerAvatarProxy = async (req, res) => {
   try {
     const businessId = req.businessId;
@@ -336,11 +334,9 @@ export const getCustomerAvatarProxy = async (req, res) => {
       return res.status(404).send("Avatar not found");
     }
 
-    // Redirect to the unified avatar endpoint
     const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
     const avatarUrl = `${baseUrl}/api/telegram/avatar/${businessId}?fileId=${customer.avatarUrl}`;
 
-    // Fetch the image and return it
     const response = await fetch(avatarUrl);
     if (!response.ok) {
       return res.status(404).send("Avatar not found");
@@ -372,11 +368,9 @@ export const getBotAvatarProxy = async (req, res) => {
       return res.status(404).send("Bot avatar not found");
     }
 
-    // Redirect to the unified avatar endpoint
     const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
     const avatarUrl = `${baseUrl}/api/telegram/avatar/${businessId}?fileId=${config.avatarUrl}`;
 
-    // Fetch the image and return it
     const response = await fetch(avatarUrl);
     if (!response.ok) {
       return res.status(404).send("Avatar not found");
@@ -396,7 +390,7 @@ export const updateConversationStatus = async (req, res) => {
   try {
     const businessId = req.businessId;
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, resolvedByName } = req.body;
 
     const validStatuses = ["ACTIVE", "RESOLVED", "ESCALATED", "CLOSED"];
     if (!status || !validStatuses.includes(status)) {
@@ -406,27 +400,160 @@ export const updateConversationStatus = async (req, res) => {
       });
     }
 
-    const updated = await prisma.conversation.updateMany({
+    const updateData = { status };
+    if (status === "RESOLVED") {
+      updateData.resolvedByName = resolvedByName || req.user?.name || "Staff";
+      updateData.resolvedAt = new Date();
+    }
+
+    const conv = await prisma.conversation.findFirst({
       where: { id, businessId },
-      data: { status },
     });
 
-    if (updated.count === 0) {
+    if (!conv) {
       return res.status(404).json({
         success: false,
         message: "Conversation not found or unauthorized",
       });
     }
 
+    const updated = await prisma.conversation.update({
+      where: { id: conv.id },
+      data: updateData,
+    });
+
+    const io = req.app?.get("io");
+    if (io) {
+      io.to(`business-${businessId}`).emit("conversation-status-updated", {
+        conversationId: updated.id,
+        status: updated.status,
+        resolvedByName: updated.resolvedByName,
+        resolvedAt: updated.resolvedAt,
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "Conversation status updated successfully",
+      data: {
+        status: updated.status,
+        resolvedByName: updated.resolvedByName,
+        resolvedAt: updated.resolvedAt,
+      },
     });
   } catch (error) {
     console.error("updateConversationStatus error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update conversation status",
+      error: error.message,
+    });
+  }
+};
+
+export const sendConversationMessage = async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+    const { content, message, senderName } = req.body;
+
+    const text = (content || message || "").trim();
+    if (!text) {
+      return res.status(400).json({
+        success: false,
+        message: "Message content cannot be empty",
+      });
+    }
+
+    const conv = await prisma.conversation.findFirst({
+      where: { id, businessId },
+      include: { customer: true },
+    });
+
+    if (!conv) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found or unauthorized",
+      });
+    }
+
+    const resolvedSenderName = senderName || req.user?.name || "Staff";
+
+    // 1. Create message in DB
+    const newMessage = await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        sender: "AGENT",
+        agentType: null,
+        isHuman: true,
+        senderName: resolvedSenderName,
+        content: text,
+      },
+    });
+
+    // 2. Update Conversation activity
+    await prisma.conversation.update({
+      where: { id: conv.id },
+      data: {
+        lastMessage: text,
+        lastActivity: new Date(),
+      },
+    });
+
+    // 3. Send message to Telegram customer
+    try {
+      const config = await prisma.telegramConfig.findUnique({
+        where: { businessId },
+      });
+
+      if (config?.botToken && conv.customer?.telegramChatId) {
+        await sendTelegramMessage(config.botToken, conv.customer.telegramChatId, text);
+      }
+    } catch (telegramErr) {
+      console.warn("[Send Telegram Message Error]:", telegramErr.message);
+    }
+
+    // 4. Emit Socket.IO event for real-time dashboard updates
+    const io = req.app?.get("io");
+    if (io) {
+      io.to(`conversation-${conv.id}`).emit("new-message", {
+        id: newMessage.id,
+        conversationId: conv.id,
+        senderType: "agent",
+        sender: "AGENT",
+        isHuman: true,
+        senderName: resolvedSenderName,
+        agentName: `Staff: ${resolvedSenderName}`,
+        content: newMessage.content,
+        createdAt: newMessage.createdAt.toISOString(),
+      });
+
+      io.to(`business-${businessId}`).emit("conversation-updated", {
+        conversationId: conv.id,
+        lastMessage: text,
+        lastActivity: new Date().toISOString(),
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: newMessage.id,
+        conversationId: conv.id,
+        senderType: "agent",
+        sender: "AGENT",
+        isHuman: true,
+        senderName: resolvedSenderName,
+        agentName: `Staff: ${resolvedSenderName}`,
+        content: newMessage.content,
+        createdAt: newMessage.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("sendConversationMessage error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send message",
       error: error.message,
     });
   }

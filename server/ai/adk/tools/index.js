@@ -23,4 +23,5 @@ export {
   adkGetReservationTool,
   adkCancelReservationTool,
 } from "./reservations.tools.js";
+export { adkEscalateConversationTool } from "./support.tools.js";
 export { adkRagTool } from "./rag.tool.js";

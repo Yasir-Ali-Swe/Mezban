@@ -475,7 +475,7 @@ const OrderDetails = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+                            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                                 <div className="flex items-start gap-2.5">
                                     <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                     <div>
@@ -495,6 +495,13 @@ const OrderDetails = () => {
                                     <div>
                                         <p className="text-xs text-muted-foreground">Telegram chat ID</p>
                                         <p className="text-sm font-medium">{order.customer?.telegramChatId || '—'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2.5">
+                                    <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Payment method</p>
+                                        <p className="text-sm font-medium">{order.paymentMethod || 'Cash on Delivery'}</p>
                                     </div>
                                 </div>
                             </div>

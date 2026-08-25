@@ -6,6 +6,7 @@ import {
   getCustomerAvatarProxy,
   getBotAvatarProxy,
   updateConversationStatus,
+  sendConversationMessage,
 } from "../controllers/conversation.controller.js";
 
 const router = Router();
@@ -16,5 +17,6 @@ router.get("/bot-avatar", getBotAvatarProxy);
 router.get("/", getConversations);
 router.get("/:id", getConversationById);
 router.patch("/:id/status", updateConversationStatus);
+router.post("/:id/messages", sendConversationMessage);
 
 export default router;
