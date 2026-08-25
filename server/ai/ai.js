@@ -146,7 +146,7 @@ export async function processMessageWithAi({ businessId, conversationId, custome
     // Record fast-path response
     setRawLlmResponse(traceId, `[FAST-PATH] ${greetingReply}`);
     setTelegramOutput(traceId, finalReplyText);
-    const traceResult = printAndClear(traceId);
+    printAndClear(traceId);
 
     const totalTimeMs = Date.now() - startTime;
 
@@ -186,6 +186,7 @@ export async function processMessageWithAi({ businessId, conversationId, custome
   const t0 = Date.now();
   let rawReply = "";
   let agentName = "general_agent";
+  let executedToolCalls = [];
 
   try {
     const result = await runAdkMessage({
@@ -201,6 +202,7 @@ export async function processMessageWithAi({ businessId, conversationId, custome
     });
     rawReply = result.rawReply;
     agentName = result.agentName;
+    executedToolCalls = result.executedToolCalls || [];
   } catch (adkErr) {
     recordError(traceId, adkErr);
     rawReply = `I can help you with our menu, orders, reservations, delivery, or operating hours. How can I assist you at ${restaurantName}?`;
@@ -230,9 +232,22 @@ export async function processMessageWithAi({ businessId, conversationId, custome
   const finalIntent = traceResult.intent || "GENERAL_QUERY";
   const selectedAgentType = mapAgentNameToType(traceResult.agent || agentName);
 
-  // 8. Async Prisma persistence (fire-and-forget — unchanged pattern)
+  // 8. Async Prisma persistence with ToolExecution tracking
   (async () => {
     try {
+      // Filter out internal transfer_to_agent from database ToolExecution records if desired,
+      // or record all tools with sanitized input/output
+      const toolRecords = executedToolCalls
+        .filter((t) => t.name !== "transfer_to_agent")
+        .map((t) => ({
+          toolName: t.name,
+          input: t.args || {},
+          output: t.result ? (typeof t.result === "object" ? t.result : { text: String(t.result) }) : {},
+          status: "COMPLETED",
+          startedAt: new Date(Date.now() - (t.timeMs || 0)),
+          completedAt: new Date(),
+        }));
+
       await prisma.agentRun.create({
         data: {
           businessId,
@@ -242,6 +257,9 @@ export async function processMessageWithAi({ businessId, conversationId, custome
           finalResponse: finalReplyText,
           status: "COMPLETED",
           completedAt: new Date(),
+          toolExecutions: toolRecords.length > 0 ? {
+            create: toolRecords,
+          } : undefined,
         },
       });
 
