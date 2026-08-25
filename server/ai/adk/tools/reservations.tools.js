@@ -22,17 +22,17 @@ export const adkCheckAvailabilityTool = new FunctionTool({
       },
       time: {
         type: "string",
-        description: "Reservation time in HH:MM format (e.g. '20:00')",
+        description: "Reservation time in HH:MM format (e.g. '19:00', '20:30')",
       },
       guestCount: {
         type: "number",
-        description: "Number of guests (e.g. 4)",
+        description: "Number of guests (e.g. 2, 4, 6)",
       },
     },
   },
   execute: async ({ date, time, guestCount } = {}, tool_context) => {
     const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
     return checkAvailabilityTool.execute({ businessId, date, time, guestCount });
   },
 });
@@ -50,7 +50,7 @@ export const adkCreateReservationTool = new FunctionTool({
     properties: {
       reservationDate: {
         type: "string",
-        description: "Date for the reservation in YYYY-MM-DD format",
+        description: "Date for the reservation in YYYY-MM-DD format (e.g. '2025-05-10')",
       },
       reservationTime: {
         type: "string",
@@ -69,7 +69,9 @@ export const adkCreateReservationTool = new FunctionTool({
   },
   execute: async ({ reservationDate, reservationTime, guestCount, notes } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId || !customerId) return { error: "Customer context is required to create a reservation." };
+    if (!businessId || !customerId) {
+      return { success: false, error: "MISSING_SESSION_CONTEXT", message: "Customer and restaurant context required to book a table." };
+    }
     return createReservationTool.execute({ businessId, customerId, reservationDate, reservationTime, guestCount, notes });
   },
 });
@@ -79,20 +81,20 @@ export const adkCreateReservationTool = new FunctionTool({
  */
 export const adkGetReservationTool = new FunctionTool({
   name: "getReservation",
-  description: "Fetches details, status, and timing of an existing table reservation by reservation number.",
+  description: "Fetches details, status, and timing of an existing table reservation by reservation number or latest booking.",
   parameters: {
     type: "object",
     properties: {
       reservationNumber: {
         type: "string",
-        description: "Reservation number (e.g. RES-123456)",
+        description: "Optional reservation number (e.g. 'RES-123456')",
       },
     },
   },
   execute: async ({ reservationNumber } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
-    return getReservationTool.execute({ businessId, reservationNumber, customerId });
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
+    return getReservationTool.execute({ businessId, customerId, reservationNumber });
   },
 });
 
@@ -107,13 +109,13 @@ export const adkCancelReservationTool = new FunctionTool({
     properties: {
       reservationNumber: {
         type: "string",
-        description: "Reservation number to cancel (e.g. RES-123456)",
+        description: "Reservation number to cancel (e.g. 'RES-123456')",
       },
     },
   },
   execute: async ({ reservationNumber } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
-    return cancelReservationTool.execute({ businessId, reservationNumber, customerId });
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
+    return cancelReservationTool.execute({ businessId, customerId, reservationNumber });
   },
 });
