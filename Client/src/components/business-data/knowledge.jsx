@@ -124,9 +124,11 @@ const KnowledgeTextarea = ({
     name,
     maxLength,
     error,
-    required = true
+    required = true,
+    watch,
 }) => {
-    const [value, setValue] = useState('');
+    const registered = register(name);
+    const currentValue = watch ? (watch(name) || '') : '';
 
     return (
         <div className="space-y-2">
@@ -143,8 +145,7 @@ const KnowledgeTextarea = ({
                 placeholder={placeholder}
                 className="min-h-35 max-h-65 resize-none overflow-y-auto"
                 maxLength={maxLength}
-                {...register(name)}
-                onChange={(e) => setValue(e.target.value)}
+                {...registered}
                 aria-invalid={error ? "true" : "false"}
             />
             <div className="flex justify-between items-center">
@@ -155,9 +156,9 @@ const KnowledgeTextarea = ({
                 )}
                 <span className={cn(
                     "text-sm ml-auto",
-                    value.length > maxLength * 0.9 ? "text-orange-500" : "text-muted-foreground"
+                    currentValue.length > maxLength * 0.9 ? "text-orange-500" : "text-muted-foreground"
                 )}>
-                    {value.length} / {maxLength}
+                    {currentValue.length} / {maxLength}
                 </span>
             </div>
         </div>
@@ -308,6 +309,7 @@ const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
                             description="Tell your AI agent about your restaurant and what makes it special."
                             placeholder="For example, we are Spice House, a family restaurant in Faisalabad serving Pakistani, Chinese, and fast food for dine-in and delivery. We're known for our BBQ, generous portions, and quick service."
                             register={register}
+                            watch={watch}
                             name="data.businessIdentity"
                             maxLength={2000}
                             error={dataErrors.businessIdentity}
@@ -321,6 +323,7 @@ const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
                             description="List your cuisines, popular dishes, and any specialties or must-try items."
                             placeholder="For example, we serve Pakistani BBQ (Seekh Kebab, Chicken Tikka), curries (Chicken Karahi, Chicken Handi, Daal), Chinese (Chicken Chow Mein, Chicken Manchurian), and fast food (Zinger Burger, Loaded Fries, Pizza). We also serve juices, milkshakes, and desserts. Our specialty is Chicken Karahi."
                             register={register}
+                            watch={watch}
                             name="data.foodVariety"
                             maxLength={4000}
                             error={dataErrors.foodVariety}
@@ -334,6 +337,7 @@ const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
                             description="Share your delivery area, minimum order, charges, and typical delivery time."
                             placeholder="For example, we deliver within 10km of D Ground, Faisalabad. Minimum order is Rs. 500, delivery charge is Rs. 150, and orders usually arrive in 30-45 minutes. Free delivery on orders above Rs. 2,000. Delivery may take longer during peak hours or bad weather."
                             register={register}
+                            watch={watch}
                             name="data.deliveryInformation"
                             maxLength={2000}
                             error={dataErrors.deliveryInformation}
@@ -347,6 +351,7 @@ const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
                             description="List accepted payment methods for both delivery and dine-in orders."
                             placeholder="For example, for delivery: Cash on Delivery, Easypaisa (0300-1234567), or card on delivery. For dine-in: Cash, credit card, or debit card at the counter."
                             register={register}
+                            watch={watch}
                             name="data.paymentInformation"
                             maxLength={1000}
                             error={dataErrors.paymentInformation}
@@ -360,6 +365,7 @@ const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
                             description="Tell the AI how to handle table reservation requests, or say if you don't accept them."
                             placeholder="For example, we accept reservations for up to 10 guests, at least 2 hours in advance. Before confirming, collect the customer's name, phone number, date, time, and number of guests. For larger groups, ask them to call the restaurant directly."
                             register={register}
+                            watch={watch}
                             name="data.reservationInformation"
                             maxLength={1000}
                             error={dataErrors.reservationInformation}
