@@ -187,6 +187,11 @@ export const getConversations = async (req, res) => {
         intent: conv.intent || null,
         agent: conv.agent || "GENERAL_AGENT",
         status: conv.status,
+        escalationType: conv.escalationType || null,
+        escalationReason: conv.escalationReason || null,
+        escalationData: conv.escalationData || null,
+        resolvedByName: conv.resolvedByName || null,
+        resolvedAt: conv.resolvedAt ? conv.resolvedAt.toISOString() : null,
         lastMessage: conv.lastMessage || "",
         lastActivity: conv.lastActivity.toISOString(),
       };
@@ -305,6 +310,9 @@ export const getConversationById = async (req, res) => {
         status: conv.status,
         intent: conv.intent,
         agent: conv.agent,
+        escalationType: conv.escalationType || null,
+        escalationReason: conv.escalationReason || null,
+        escalationData: conv.escalationData || null,
         resolvedByName: conv.resolvedByName || null,
         resolvedAt: conv.resolvedAt ? conv.resolvedAt.toISOString() : null,
         lastMessageAt: conv.lastActivity.toISOString(),
@@ -554,6 +562,385 @@ export const sendConversationMessage = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to send message",
+      error: error.message,
+    });
+  }
+};
+
+export const handleEscalationAction = async (req, res) => {
+  try {
+    const businessId = req.businessId;
+    const { id } = req.params;
+    const { action, note, customMessage, senderName } = req.body;
+
+    const validActions = [
+      "CANCEL_ORDER",
+      "APPROVE_CANCELLATION",
+      "REJECT_REQUEST",
+      "REJECT_CANCELLATION",
+      "ADD_NOTE",
+      "SEND_MESSAGE",
+      "RESOLVE",
+    ];
+
+    if (!action || !validActions.includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid escalation action "${action}". Valid actions: ${validActions.join(", ")}`,
+      });
+    }
+
+    const conv = await prisma.conversation.findFirst({
+      where: { id, businessId },
+      include: { customer: true },
+    });
+
+    if (!conv) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found or unauthorized",
+      });
+    }
+
+    const staffName = senderName || req.user?.name || "Staff";
+
+    // Handle ADD_NOTE (Internal note only - does NOT send to customer on Telegram)
+    if (action === "ADD_NOTE") {
+      const noteText = (note || customMessage || "").trim();
+      if (!noteText) {
+        return res.status(400).json({
+          success: false,
+          message: "Internal note content cannot be empty",
+        });
+      }
+
+      const existingData = conv.escalationData && typeof conv.escalationData === "object" ? conv.escalationData : {};
+      const internalNotes = Array.isArray(existingData.internalNotes) ? existingData.internalNotes : [];
+      const newNote = {
+        id: `note-${Date.now()}`,
+        note: noteText,
+        addedBy: staffName,
+        addedAt: new Date().toISOString(),
+      };
+
+      const updatedData = {
+        ...existingData,
+        internalNotes: [...internalNotes, newNote],
+      };
+
+      const updated = await prisma.conversation.update({
+        where: { id: conv.id },
+        data: {
+          escalationData: updatedData,
+          lastActivity: new Date(),
+        },
+      });
+
+      const io = req.app?.get("io");
+      if (io) {
+        io.to(`business-${businessId}`).emit("conversation-updated", {
+          conversationId: conv.id,
+          lastActivity: new Date().toISOString(),
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Internal note added successfully",
+        data: {
+          escalationData: updatedData,
+        },
+      });
+    }
+
+    if (conv.status === "RESOLVED") {
+      return res.status(400).json({
+        success: false,
+        message: `This conversation has already been resolved by ${conv.resolvedByName || "staff"}.`,
+      });
+    }
+
+    let customerReplyText = "";
+    let updatedOrderData = null;
+    const isCancelOrder = action === "CANCEL_ORDER" || action === "APPROVE_CANCELLATION";
+    const isRejectRequest = action === "REJECT_REQUEST" || action === "REJECT_CANCELLATION";
+
+    if (isCancelOrder) {
+      const orderNumber = conv.escalationData?.orderNumber;
+      const orderId = conv.escalationData?.orderId;
+
+      const orderWhere = { businessId };
+      if (orderId) {
+        orderWhere.id = orderId;
+      } else if (orderNumber) {
+        orderWhere.orderNumber = orderNumber;
+      } else {
+        orderWhere.customerId = conv.customerId;
+      }
+
+      const order = await prisma.order.findFirst({
+        where: orderWhere,
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Associated order not found for this cancellation escalation.",
+        });
+      }
+
+      if (order.status === "COMPLETED") {
+        return res.status(400).json({
+          success: false,
+          message: `This order can no longer be cancelled because its status is COMPLETED.`,
+        });
+      }
+
+      if (order.status === "CANCELLED") {
+        return res.status(400).json({
+          success: false,
+          message: `This order is already cancelled.`,
+        });
+      }
+
+      customerReplyText =
+        customMessage ||
+        `<b>Order Cancellation Confirmed</b>\n\nYour order <code>#${order.orderNumber}</code> has been cancelled by our staff.`;
+
+      const existingData = conv.escalationData && typeof conv.escalationData === "object" ? conv.escalationData : {};
+      const auditLog = Array.isArray(existingData.audit) ? existingData.audit : [];
+      const updatedEscalationData = {
+        ...existingData,
+        resolvedAction: "CANCEL_ORDER",
+        resolvedBy: staffName,
+        previousOrderStatus: order.status,
+        newOrderStatus: "CANCELLED",
+        audit: [
+          ...auditLog,
+          {
+            action: "CANCEL_ORDER",
+            staffName,
+            orderNumber: order.orderNumber,
+            previousStatus: order.status,
+            newStatus: "CANCELLED",
+            note: customMessage || "Cancellation approved by staff",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+
+      // Atomic transaction for order cancellation + message + conversation resolution
+      await prisma.$transaction(async (tx) => {
+        updatedOrderData = await tx.order.update({
+          where: { id: order.id },
+          data: { status: "CANCELLED" },
+        });
+
+        await tx.message.create({
+          data: {
+            conversationId: conv.id,
+            sender: "AGENT",
+            isHuman: true,
+            senderName: staffName,
+            content: customerReplyText,
+          },
+        });
+
+        await tx.conversation.update({
+          where: { id: conv.id },
+          data: {
+            status: "RESOLVED",
+            resolvedByName: staffName,
+            resolvedAt: new Date(),
+            escalationData: updatedEscalationData,
+            lastMessage: customerReplyText,
+            lastActivity: new Date(),
+          },
+        });
+      });
+
+      // Emit order-status-updated via Socket.IO
+      const io = req.app?.get("io");
+      if (io) {
+        io.to(`business-${businessId}`).emit("order-status-updated", {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: "cancelled",
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    } else if (isRejectRequest) {
+      const orderNumber = conv.escalationData?.orderNumber;
+      const orderId = conv.escalationData?.orderId;
+
+      const orderWhere = { businessId };
+      if (orderId) {
+        orderWhere.id = orderId;
+      } else if (orderNumber) {
+        orderWhere.orderNumber = orderNumber;
+      } else {
+        orderWhere.customerId = conv.customerId;
+      }
+
+      const order = await prisma.order.findFirst({
+        where: orderWhere,
+        orderBy: { createdAt: "desc" },
+      });
+
+      customerReplyText =
+        customMessage ||
+        `<b>Cancellation Request Declined</b>\n\nYour cancellation request could not be approved by our staff${order ? ` for order <code>#${order.orderNumber}</code>` : ""
+        }. Because your order is already being prepared/delivered by our kitchen team, it remains active.`;
+
+      const existingData = conv.escalationData && typeof conv.escalationData === "object" ? conv.escalationData : {};
+      const auditLog = Array.isArray(existingData.audit) ? existingData.audit : [];
+      const updatedEscalationData = {
+        ...existingData,
+        resolvedAction: "REJECT_REQUEST",
+        resolvedBy: staffName,
+        audit: [
+          ...auditLog,
+          {
+            action: "REJECT_REQUEST",
+            staffName,
+            orderNumber: order?.orderNumber,
+            note: customMessage || "Cancellation request declined by staff",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+
+      await prisma.$transaction(async (tx) => {
+        await tx.message.create({
+          data: {
+            conversationId: conv.id,
+            sender: "AGENT",
+            isHuman: true,
+            senderName: staffName,
+            content: customerReplyText,
+          },
+        });
+
+        await tx.conversation.update({
+          where: { id: conv.id },
+          data: {
+            status: "RESOLVED",
+            resolvedByName: staffName,
+            resolvedAt: new Date(),
+            escalationData: updatedEscalationData,
+            lastMessage: customerReplyText,
+            lastActivity: new Date(),
+          },
+        });
+      });
+    } else if (action === "RESOLVE") {
+      customerReplyText =
+        customMessage || "Your request has been resolved by our staff team. Thank you for contacting us!";
+
+      const existingData = conv.escalationData && typeof conv.escalationData === "object" ? conv.escalationData : {};
+      const auditLog = Array.isArray(existingData.audit) ? existingData.audit : [];
+      const updatedEscalationData = {
+        ...existingData,
+        resolvedAction: "RESOLVE",
+        resolvedBy: staffName,
+        audit: [
+          ...auditLog,
+          {
+            action: "RESOLVE",
+            staffName,
+            note: customMessage || "Resolved by staff",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+
+      await prisma.$transaction(async (tx) => {
+        if (customMessage) {
+          await tx.message.create({
+            data: {
+              conversationId: conv.id,
+              sender: "AGENT",
+              isHuman: true,
+              senderName: staffName,
+              content: customerReplyText,
+            },
+          });
+        }
+
+        await tx.conversation.update({
+          where: { id: conv.id },
+          data: {
+            status: "RESOLVED",
+            resolvedByName: staffName,
+            resolvedAt: new Date(),
+            escalationData: updatedEscalationData,
+            ...(customMessage ? { lastMessage: customerReplyText, lastActivity: new Date() } : {}),
+          },
+        });
+      });
+    }
+
+    // Send notification to customer on Telegram
+    if (customerReplyText && conv.customer?.telegramChatId) {
+      try {
+        const config = await prisma.telegramConfig.findUnique({
+          where: { businessId },
+        });
+        if (config?.botToken) {
+          await sendTelegramMessage(config.botToken, conv.customer.telegramChatId, customerReplyText);
+        }
+      } catch (telegramErr) {
+        console.warn("[Telegram Escalation Action Notify Error]:", telegramErr.message);
+      }
+    }
+
+    // Socket.IO real-time emission
+    const io = req.app?.get("io");
+    if (io) {
+      if (customerReplyText) {
+        io.to(`conversation-${conv.id}`).emit("new-message", {
+          id: `msg-${Date.now()}`,
+          conversationId: conv.id,
+          senderType: "agent",
+          sender: "AGENT",
+          isHuman: true,
+          senderName: staffName,
+          agentName: `Staff: ${staffName}`,
+          content: customerReplyText,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      io.to(`business-${businessId}`).emit("conversation-status-updated", {
+        conversationId: conv.id,
+        status: "RESOLVED",
+        resolvedByName: staffName,
+        resolvedAt: new Date().toISOString(),
+      });
+
+      io.to(`business-${businessId}`).emit("conversation-updated", {
+        conversationId: conv.id,
+        lastMessage: customerReplyText || conv.lastMessage,
+        lastActivity: new Date().toISOString(),
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Escalation action '${action}' completed successfully`,
+      data: {
+        status: "RESOLVED",
+        resolvedByName: staffName,
+        resolvedAt: new Date().toISOString(),
+        order: updatedOrderData,
+      },
+    });
+  } catch (error) {
+    console.error("handleEscalationAction error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process escalation action",
       error: error.message,
     });
   }
