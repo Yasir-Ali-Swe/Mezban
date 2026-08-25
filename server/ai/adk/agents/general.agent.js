@@ -1,0 +1,85 @@
+import { LlmAgent } from "@google/adk";
+import { GEMINI_MODEL } from "../../../config/env.js";
+import { BASE_SYSTEM_PROMPT } from "../../prompts/system.prompt.js";
+import { GENERAL_AGENT_PROMPT } from "../../prompts/general.prompt.js";
+import {
+  adkRagTool,
+  adkGetBusinessInfoTool,
+  adkGetBusinessHoursTool,
+} from "../tools/index.js";
+
+/**
+ * General Information Agent — ADK LlmAgent.
+ *
+ * Responsibilities:
+ * - Greetings & pleasantries
+ * - Food variety, cuisines offered, specialties, signature dishes (via searchKnowledgeBase RAG)
+ * - Delivery coverage, minimum order, fees, delivery timings (via searchKnowledgeBase RAG)
+ * - Accepted payment methods & account details (via searchKnowledgeBase RAG)
+ * - Restaurant identity, story, overview, contact (via searchKnowledgeBase RAG & getBusinessInfo)
+ * - General table reservation policy (via searchKnowledgeBase RAG)
+ * - Operating hours & opening/closing times (via getBusinessHours database tool)
+ * - Polite redirect for off-topic questions
+ */
+export const generalAgent = new LlmAgent({
+  name: "general_agent",
+  model: GEMINI_MODEL || "gemini-2.5-flash",
+  description:
+    "Handles greetings, general restaurant identity/story, food variety and cuisines, delivery policy/areas/fees, payment methods, operating hours, reservation policy, and contact info. Route here for greeting or general restaurant knowledge inquiries.",
+  disallowTransferToParent: true,
+  disallowTransferToPeers: true,
+  instruction: (context) => {
+    const restaurantName =
+      context.session?.state?.restaurantName || "our restaurant";
+    const customerName = context.session?.state?.customerName || "";
+    const customerContextText =
+      context.session?.state?.customerContextText || "";
+
+    return `${BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName)}
+
+${GENERAL_AGENT_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName)}
+
+============================================================
+RESTAURANT
+============================================================
+${restaurantName}
+
+============================================================
+CUSTOMER CONTEXT
+============================================================
+${customerContextText || (customerName ? `Customer Name: ${customerName}` : "No customer context.")}
+
+============================================================
+MANDATORY TOOL EXECUTION RULES (EVERY SINGLE TURN)
+============================================================
+
+1. RAG KNOWLEDGE BASE INVOCATION:
+   You MUST call searchKnowledgeBase before answering questions on:
+   • Food variety, cuisines, specialties, dishes, food recommendations
+   • Delivery coverage, delivery fees, minimum order, delivery timings
+   • Accepted payment methods, payment accounts, payment warnings
+   • Restaurant identity, history, story, background
+   • Table reservation policy (rules, advance notice)
+
+   DO NOT SKIP calling searchKnowledgeBase even if the question was already asked or answered earlier in the chat.
+   Call searchKnowledgeBase ONCE with the user's query topic on EVERY turn.
+
+2. DATABASE TOOLS:
+   • For operating hours, opening time, closing time: MUST call getBusinessHours().
+   • For address, location, phone, email, website: MUST call getBusinessInfo().
+
+3. GREETINGS:
+   • For casual greetings ("hi", "hello", "thanks", "bye"): Respond directly in Telegram HTML without calling tools.
+
+4. RESPONSE PRESENTATION:
+   • Present your answer strictly based on current tool results.
+   • Include <b>⭐ Recommendation</b> ONLY if explicitly in the current RAG result.
+   • Include <b>⚠️ Important</b> ONLY if explicitly in the current RAG result.
+   • Format in Telegram HTML (<b>, <i>, <code>, <blockquote>, •).`;
+  },
+  tools: [adkRagTool, adkGetBusinessInfoTool, adkGetBusinessHoursTool],
+  generateContentConfig: {
+    temperature: 0.1,
+    maxOutputTokens: 1024,
+  },
+});
