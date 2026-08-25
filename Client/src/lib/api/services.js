@@ -213,6 +213,15 @@ export const conversationsApi = {
     });
     return res.data;
   },
+  handleEscalationAction: async ({ id, action, note, customMessage, senderName }) => {
+    const res = await api.post(`/conversations/${id}/escalation/action`, {
+      action,
+      note,
+      customMessage,
+      senderName,
+    });
+    return res.data;
+  },
 };
 
 // Telegram API
