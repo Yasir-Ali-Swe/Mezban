@@ -16,7 +16,7 @@ export const adkSearchDealsTool = new FunctionTool({
   },
   execute: async (_args, tool_context) => {
     const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
     return searchDealsTool.execute({ businessId });
   },
 });
@@ -32,17 +32,17 @@ export const adkGetDealTool = new FunctionTool({
     properties: {
       dealName: {
         type: "string",
-        description: "Name of the deal to look up",
+        description: "Name of the deal to look up (e.g. 'Family Deal', 'Lunch Special')",
       },
       dealId: {
         type: "string",
-        description: "Optional deal ID if known",
+        description: "Optional deal database ID if known",
       },
     },
   },
   execute: async ({ dealName, dealId } = {}, tool_context) => {
     const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
     return getDealTool.execute({ businessId, dealName, dealId });
   },
 });
