@@ -15,7 +15,9 @@ export const adkGetCustomerTool = new FunctionTool({
   },
   execute: async (_args, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
-    if (!businessId || !customerId) return { error: "Missing customer or business context" };
+    if (!businessId || !customerId) {
+      return { success: false, error: "MISSING_CUSTOMER_CONTEXT", message: "Customer and business context required." };
+    }
     return getCustomerTool.execute({ customerId, businessId });
   },
 });
@@ -45,7 +47,9 @@ export const adkCreateCustomerTool = new FunctionTool({
   },
   execute: async ({ name, phone, email } = {}, tool_context) => {
     const { businessId, telegramChatId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId || !telegramChatId) {
+      return { success: false, error: "MISSING_SESSION_CONTEXT", message: "Business ID and Telegram chat ID required." };
+    }
     return createCustomerTool.execute({ businessId, telegramChatId, name, phone, email });
   },
 });
