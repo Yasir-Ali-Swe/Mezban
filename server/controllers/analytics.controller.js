@@ -126,7 +126,7 @@ export const getBusinessAnalytics = async (req, res) => {
     // 3. Order Status Distribution
     const statusCounts = {
       Completed: 0,
-      Ready: 0,
+      "Out for Delivery": 0,
       Preparing: 0,
       Confirmed: 0,
       Pending: 0,
@@ -134,7 +134,12 @@ export const getBusinessAnalytics = async (req, res) => {
     };
 
     currentOrders.forEach((o) => {
-      const key = o.status.charAt(0) + o.status.slice(1).toLowerCase();
+      let key = o.status;
+      if (key === "OUT_FOR_DELIVERY" || key === "out_for_delivery") {
+        key = "Out for Delivery";
+      } else {
+        key = o.status.charAt(0) + o.status.slice(1).toLowerCase();
+      }
       if (statusCounts[key] !== undefined) {
         statusCounts[key] += 1;
       }
