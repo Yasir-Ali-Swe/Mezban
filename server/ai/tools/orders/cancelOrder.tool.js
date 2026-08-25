@@ -53,15 +53,27 @@ export const cancelOrderTool = {
     }
 
     if (order.status !== "PENDING") {
-      // Escalate conversation to human staff
+      // Escalate conversation to human staff with rich metadata
       if (conversationId) {
         try {
           await prisma.conversation.update({
             where: { id: conversationId },
-            data: { status: "ESCALATED", intent: "SUPPORT" },
+            data: {
+              status: "ESCALATED",
+              intent: "ORDER_STATUS",
+              agent: "ORDER_AGENT",
+              escalationType: "ORDER_CANCELLATION",
+              escalationReason: `Customer requested cancellation of order #${order.orderNumber} while status is ${order.status}`,
+              escalationData: {
+                orderNumber: order.orderNumber,
+                orderId: order.id,
+                orderStatus: order.status,
+                orderTotal: Number(order.total),
+              },
+            },
           });
         } catch (e) {
-          // ignore error
+          console.warn("[cancelOrderTool] Escalation update warning:", e.message);
         }
       }
 
