@@ -29,7 +29,7 @@ const STATUS_CONFIG = {
     pending: { label: 'Pending', icon: Clock },
     confirmed: { label: 'Confirmed', icon: Check },
     preparing: { label: 'Preparing', icon: Clock },
-    ready: { label: 'Ready', icon: CheckCircle },
+    out_for_delivery: { label: 'Out for Delivery', icon: Package },
     completed: { label: 'Completed', icon: CheckCircle },
     cancelled: { label: 'Cancelled', icon: XCircle },
 };
