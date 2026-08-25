@@ -58,7 +58,7 @@ const ACTIVE_FLOW = [
     'pending',
     'confirmed',
     'preparing',
-    'ready',
+    'out_for_delivery',
     'completed',
 ];
 
@@ -84,8 +84,8 @@ const STATUS_CONFIG = {
         bg: 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900',
     },
 
-    ready: {
-        label: 'Ready',
+    out_for_delivery: {
+        label: 'Out for Delivery',
         dot: 'bg-orange-500',
         text: 'text-orange-700 dark:text-orange-400',
         bg: 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-900',
@@ -110,7 +110,7 @@ const STATUS_OPTIONS = [
     { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'preparing', label: 'Preparing' },
-    { value: 'ready', label: 'Ready' },
+    { value: 'out_for_delivery', label: 'Out for Delivery' },
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
 ];
@@ -354,6 +354,7 @@ const OrderDetails = () => {
 
     const { data: responseData, isLoading } = useOrder(orderId);
     const order = responseData?.data;
+    const isTerminal = order?.status === 'completed' || order?.status === 'cancelled';
     const updateStatusMutation = useUpdateOrderStatus();
     const isUpdating = updateStatusMutation.isPending;
 
@@ -648,7 +649,11 @@ const OrderDetails = () => {
                                         Updating this notifies the customer and logs the change.
                                     </p>
                                 </div>
-                                <Select value={selectedStatus} onValueChange={handleStatusChange} disabled={isUpdating}>
+                                <Select
+                                    value={selectedStatus}
+                                    onValueChange={handleStatusChange}
+                                    disabled={isUpdating || isTerminal}
+                                >
                                     <SelectTrigger className="w-35">
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
@@ -661,7 +666,7 @@ const OrderDetails = () => {
                                                         <span
                                                             className={cn(
                                                                 'h-1.5 w-1.5 rounded-full',
-                                                                STATUS_CONFIG[option.value].dot
+                                                                STATUS_CONFIG[option.value]?.dot
                                                             )}
                                                         />
                                                         {option.label}
@@ -672,7 +677,12 @@ const OrderDetails = () => {
                                     </SelectContent>
                                 </Select>
 
-                                {isUpdating ? (
+                                {isTerminal ? (
+                                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/40 p-2.5 rounded-md border">
+                                        <Circle className="h-2 w-2 fill-current text-muted-foreground/60" />
+                                        This order has reached a terminal status ({STATUS_CONFIG[order.status]?.label || order.status}) and cannot be changed.
+                                    </div>
+                                ) : isUpdating ? (
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                         Saving change…
