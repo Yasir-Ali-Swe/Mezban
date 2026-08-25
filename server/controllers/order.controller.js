@@ -1,16 +1,17 @@
 import prisma from "../config/prisma.js";
+import { sendTelegramMessage } from "../utils/telegram.sender.js";
 
 const ORDER_STATUS_MAP = {
   pending: "PENDING",
   confirmed: "CONFIRMED",
   preparing: "PREPARING",
-  ready: "READY",
+  out_for_delivery: "OUT_FOR_DELIVERY",
   completed: "COMPLETED",
   cancelled: "CANCELLED",
   PENDING: "PENDING",
   CONFIRMED: "CONFIRMED",
   PREPARING: "PREPARING",
-  READY: "READY",
+  OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
 };
@@ -214,11 +215,62 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
+    // Status transition guards
+    if (existing.status === "CANCELLED" && mappedStatus !== "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Cancelled orders cannot be transitioned to an active status.",
+      });
+    }
+
+    if (existing.status === "COMPLETED" && mappedStatus !== "COMPLETED") {
+      return res.status(400).json({
+        success: false,
+        message: "Completed orders cannot be transitioned to another status.",
+      });
+    }
+
     const updated = await prisma.order.update({
       where: { id: existing.id },
       data: { status: mappedStatus },
       include: { customer: true, items: true },
     });
+
+    const io = req.app?.get("io");
+    if (io) {
+      io.to(`business-${req.businessId}`).emit("order-status-updated", {
+        orderId: updated.id,
+        orderNumber: updated.orderNumber,
+        status: updated.status.toLowerCase(),
+        updatedAt: updated.updatedAt,
+      });
+    }
+
+    // Customer Telegram status notification
+    try {
+      if (updated.customer?.telegramChatId && mappedStatus !== existing.status) {
+        const telegramConfig = await prisma.telegramConfig.findUnique({
+          where: { businessId: req.businessId },
+        });
+
+        if (telegramConfig?.botToken) {
+          const STATUS_NOTIFICATIONS = {
+            CONFIRMED: `<b>✅ Order Confirmed!</b>\n\nYour order <code>#${updated.orderNumber}</code> has been confirmed by the restaurant and will be prepared shortly.`,
+            PREPARING: `<b>🍳 Order Preparing!</b>\n\nYour order <code>#${updated.orderNumber}</code> is now being freshly prepared in the kitchen.`,
+            OUT_FOR_DELIVERY: `<b>🛵 Out for Delivery!</b>\n\nYour order <code>#${updated.orderNumber}</code> is now out for delivery! Our rider is on the way.`,
+            COMPLETED: `<b>🎉 Order Delivered!</b>\n\nYour order <code>#${updated.orderNumber}</code> has been delivered. Thank you for ordering with us! Enjoy your meal.`,
+            CANCELLED: `<b>❌ Order Cancelled</b>\n\nYour order <code>#${updated.orderNumber}</code> has been cancelled.`,
+          };
+
+          const msg = STATUS_NOTIFICATIONS[mappedStatus];
+          if (msg) {
+            await sendTelegramMessage(telegramConfig.botToken, updated.customer.telegramChatId, msg);
+          }
+        }
+      }
+    } catch (notifyErr) {
+      console.warn("[Telegram Order Status Notification Error]:", notifyErr.message);
+    }
 
     return res.status(200).json({
       success: true,
@@ -229,7 +281,7 @@ export const updateOrderStatus = async (req, res) => {
         status: updated.status.toLowerCase(),
         updatedAt: updated.updatedAt,
       },
-      message: `Order status updated to ${mappedStatus.toLowerCase()}`,
+      message: `Order status updated to ${mappedStatus.toLowerCase().replace(/_/g, " ")}`,
     });
   } catch (error) {
     console.error("updateOrderStatus error:", error);
