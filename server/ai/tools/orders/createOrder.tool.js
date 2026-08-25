@@ -1,106 +1,224 @@
 import prisma from "../../../config/prisma.js";
 
+/**
+ * Creates a new customer order with full database validation and Prisma transaction.
+ *
+ * Rules:
+ * 1. Multi-tenant scoped by businessId.
+ * 2. Customer validated by customerId and businessId.
+ * 3. Menu items must be AVAILABLE and Category ACTIVE.
+ * 4. Deals must be ACTIVE.
+ * 5. Prices fetched strictly from database (never LLM supplied).
+ * 6. Executed inside an atomic Prisma $transaction.
+ */
 export const createOrderTool = {
   name: "createOrder",
   description: "Creates a new customer order for menu items or deals.",
-  execute: async ({ businessId, customerId, items = [], orderType = "DELIVERY", shippingAddress, notes }) => {
-    if (!customerId) return { error: "Customer context is required to place an order." };
-    if (!items || items.length === 0) return { error: "Order items list cannot be empty." };
+  execute: async ({
+    businessId,
+    customerId,
+    items = [],
+    orderType = "DELIVERY",
+    shippingAddress,
+    notes,
+  }) => {
+    if (!businessId) {
+      return { success: false, error: "MISSING_BUSINESS_ID", message: "Business ID is required." };
+    }
 
-    // Resolve order items
+    if (!customerId) {
+      return { success: false, error: "MISSING_CUSTOMER_ID", message: "Customer context is required to place an order." };
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return { success: false, error: "EMPTY_ITEMS", message: "Order items list cannot be empty. Please specify dishes to order." };
+    }
+
+    // 1. Verify Customer exists and belongs to business
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, businessId },
+    });
+
+    if (!customer) {
+      return { success: false, error: "CUSTOMER_NOT_FOUND", message: "Customer profile not found for this restaurant." };
+    }
+
+    // Normalize order type (DELIVERY, PICKUP, DINE_IN)
+    const validOrderType = ["DELIVERY", "PICKUP", "DINE_IN"].includes(orderType?.toUpperCase())
+      ? orderType.toUpperCase()
+      : "DELIVERY";
+
+    // 2. Validate all items and build OrderItems data
     let subtotal = 0;
     const orderItemsData = [];
 
-    for (const item of items) {
-      const quantity = Math.max(1, parseInt(item.quantity) || 1);
+    for (const rawItem of items) {
+      const quantity = Math.max(1, parseInt(rawItem.quantity) || 1);
+      const itemName = (rawItem.name || "").trim();
+      const itemId = rawItem.menuItemId || rawItem.id;
+      const dealId = rawItem.dealId;
 
-      // Check menu item
-      if (item.menuItemId || item.name) {
+      let resolved = false;
+
+      // Check Menu Item first
+      if (itemId || itemName) {
         const menuItem = await prisma.menuItem.findFirst({
           where: {
             businessId,
-            ...(item.menuItemId ? { id: item.menuItemId } : { name: { contains: item.name, mode: "insensitive" } }),
+            ...(itemId ? { id: itemId } : { name: { contains: itemName, mode: "insensitive" } }),
           },
+          include: { category: true },
         });
 
         if (menuItem) {
-          const itemSubtotal = Number(menuItem.sellingPrice) * quantity;
-          subtotal += itemSubtotal;
+          // Check availability
+          if (menuItem.status !== "AVAILABLE") {
+            return {
+              success: false,
+              error: "ITEM_UNAVAILABLE",
+              message: `'${menuItem.name}' is currently unavailable/out of stock and cannot be ordered.`,
+            };
+          }
+
+          if (menuItem.category && menuItem.category.status !== "ACTIVE") {
+            return {
+              success: false,
+              error: "CATEGORY_INACTIVE",
+              message: `'${menuItem.name}' belongs to an inactive category and cannot be ordered.`,
+            };
+          }
+
+          const price = Number(menuItem.sellingPrice);
+          const lineSubtotal = price * quantity;
+          subtotal += lineSubtotal;
+
           orderItemsData.push({
             menuItemId: menuItem.id,
             name: menuItem.name,
             imageUrl: menuItem.imageUrl,
             quantity,
-            unitPrice: menuItem.sellingPrice,
-            subtotal: itemSubtotal,
+            unitPrice: price,
+            subtotal: lineSubtotal,
           });
-          continue;
+
+          resolved = true;
         }
       }
 
-      // Check deal
-      if (item.dealId || item.name) {
+      // Check Deal if not resolved as menu item
+      if (!resolved && (dealId || itemName)) {
         const deal = await prisma.deal.findFirst({
           where: {
             businessId,
-            ...(item.dealId ? { id: item.dealId } : { name: { contains: item.name, mode: "insensitive" } }),
+            ...(dealId ? { id: dealId } : { name: { contains: itemName, mode: "insensitive" } }),
           },
         });
 
         if (deal) {
-          const dealSubtotal = Number(deal.sellingPrice) * quantity;
-          subtotal += dealSubtotal;
+          if (deal.status !== "ACTIVE") {
+            return {
+              success: false,
+              error: "DEAL_INACTIVE",
+              message: `Deal '${deal.name}' is currently inactive and cannot be ordered.`,
+            };
+          }
+
+          const price = Number(deal.sellingPrice);
+          const lineSubtotal = price * quantity;
+          subtotal += lineSubtotal;
+
           orderItemsData.push({
             dealId: deal.id,
             name: deal.name,
             imageUrl: deal.imageUrl,
             quantity,
-            unitPrice: deal.sellingPrice,
-            subtotal: dealSubtotal,
+            unitPrice: price,
+            subtotal: lineSubtotal,
           });
-          continue;
+
+          resolved = true;
         }
+      }
+
+      if (!resolved) {
+        return {
+          success: false,
+          error: "ITEM_NOT_FOUND",
+          message: `Item or deal '${itemName || itemId || dealId}' is not found on the menu.`,
+        };
       }
     }
 
     if (orderItemsData.length === 0) {
-      return { error: "Could not find requested items on the menu." };
+      return { success: false, error: "NO_VALID_ITEMS", message: "No valid items could be added to the order." };
     }
 
-    const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
+    // 3. Compute totals
+    const shipping = validOrderType === "DELIVERY" ? 150 : 0;
     const tax = 0;
-    const shipping = orderType === "DELIVERY" ? 150 : 0;
-    const total = subtotal + tax + shipping;
+    const total = subtotal + shipping + tax;
 
-    const order = await prisma.order.create({
-      data: {
-        businessId,
-        customerId,
-        orderNumber,
-        status: "PENDING",
-        orderType,
-        subtotal,
-        tax,
-        shipping,
-        total,
-        notes: notes || null,
-        shippingCity: shippingAddress || "Lahore",
-        items: {
-          create: orderItemsData,
-        },
-      },
-      include: { items: true },
-    });
+    // Generate unique order number (e.g. ORD-M1AB2-5432)
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const timePart = Date.now().toString(36).toUpperCase().slice(-5);
+    const orderNumber = `ORD-${timePart}-${randomSuffix}`;
 
-    return {
-      success: true,
-      orderNumber: order.orderNumber,
-      orderId: order.id,
-      total: Number(order.total),
-      subtotal: Number(order.subtotal),
-      shipping: Number(order.shipping),
-      status: order.status,
-      items: order.items.map((i) => `${i.quantity}x ${i.name} (Rs. ${Number(i.subtotal)})`),
-    };
+    // 4. Atomic Prisma Transaction
+    try {
+      const order = await prisma.$transaction(async (tx) => {
+        return tx.order.create({
+          data: {
+            businessId,
+            customerId,
+            orderNumber,
+            status: "PENDING",
+            orderType: validOrderType,
+            subtotal,
+            tax,
+            shipping,
+            total,
+            notes: notes || null,
+            shippingCity: shippingAddress || customer.name,
+            shippingStreet: shippingAddress || null,
+            items: {
+              create: orderItemsData,
+            },
+          },
+          include: {
+            items: true,
+            customer: true,
+          },
+        });
+      });
+
+      return {
+        success: true,
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        status: order.status,
+        orderType: order.orderType,
+        customerName: order.customer?.name || "Customer",
+        subtotal: Number(order.subtotal),
+        shipping: Number(order.shipping),
+        tax: Number(order.tax),
+        total: Number(order.total),
+        items: order.items.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+          subtotal: Number(i.subtotal),
+          isDeal: Boolean(i.dealId),
+        })),
+        shippingAddress: order.shippingStreet || order.shippingCity || "N/A",
+        message: `Order #${order.orderNumber} placed successfully! Total: Rs. ${Number(order.total)}. Status is currently PENDING confirmation.`,
+      };
+    } catch (err) {
+      console.error("[createOrder Error]:", err);
+      return {
+        success: false,
+        error: "ORDER_CREATION_FAILED",
+        message: "Failed to place the order due to a system error. Please try again.",
+      };
+    }
   },
 };
