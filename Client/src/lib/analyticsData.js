@@ -127,7 +127,7 @@ const yearlyAIVsManual = generateYearlyData(0, 0).map((item, index) => ({
 // Categorical Data
 const orderStatusCategories = [
   "Completed",
-  "Ready",
+  "Out for Delivery",
   "Preparing",
   "Confirmed",
   "Pending",
