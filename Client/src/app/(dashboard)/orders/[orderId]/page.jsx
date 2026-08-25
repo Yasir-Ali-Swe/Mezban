@@ -116,6 +116,7 @@ const STATUS_OPTIONS = [
 ];
 
 import { formatCurrency } from '@/lib/formatters';
+import { useOrder, useUpdateOrderStatus } from '@/hooks/useApi';
 
 const currency = (value) => formatCurrency(value);
 
@@ -128,6 +129,43 @@ const formatDate = (dateString, opts = {}) =>
         minute: '2-digit',
         ...opts,
     });
+
+function formatShippingAddress(address) {
+    if (!address) return null;
+    if (typeof address === 'string') {
+        const trimmed = address.trim();
+        return trimmed || null;
+    }
+
+    const { street, city, state, zipCode, country } = address;
+    const rawParts = [street, city, state, zipCode, country]
+        .map((part) => (typeof part === 'string' ? part.trim() : ''))
+        .filter(Boolean);
+
+    if (rawParts.length === 0) return null;
+
+    const uniqueParts = [];
+    for (const part of rawParts) {
+        const lowerPart = part.toLowerCase();
+        const alreadyExists = uniqueParts.some((existing) => {
+            const lowerExisting = existing.toLowerCase();
+            return lowerExisting === lowerPart || lowerExisting.includes(lowerPart);
+        });
+
+        if (!alreadyExists) {
+            const containedIndex = uniqueParts.findIndex((existing) =>
+                lowerPart.includes(existing.toLowerCase())
+            );
+            if (containedIndex !== -1) {
+                uniqueParts[containedIndex] = part;
+            } else {
+                uniqueParts.push(part);
+            }
+        }
+    }
+
+    return uniqueParts.length > 0 ? uniqueParts.join(', ') : null;
+}
 
 // ---------------------------------------------------------------------------
 // Status pill — small, quiet, used next to the order number in the header
@@ -282,8 +320,8 @@ function OrderDetailsSkeleton() {
                             <Skeleton className="h-4 w-32" />
                         </CardHeader>
                         <CardContent>
-                            <div className="grid gap-5 grid-cols-2">
-                                {[...Array(4)].map((_, i) => (
+                            <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
+                                {[...Array(3)].map((_, i) => (
                                     <div key={i} className="flex items-start gap-2.5">
                                         <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
                                         <div className="space-y-1.5">
@@ -299,8 +337,6 @@ function OrderDetailsSkeleton() {
                                 <div className="space-y-1.5">
                                     <Skeleton className="h-3 w-24" />
                                     <Skeleton className="h-4 w-48" />
-                                    <Skeleton className="h-4 w-32" />
-                                    <Skeleton className="h-4 w-24" />
                                 </div>
                             </div>
                         </CardContent>
@@ -311,42 +347,37 @@ function OrderDetailsSkeleton() {
     );
 }
 
-import { useOrder, useUpdateOrderStatus } from '@/hooks/useApi';
-
 const OrderDetails = () => {
     const router = useRouter();
     const params = useParams();
     const orderId = params.orderId || params.id;
 
     const { data: responseData, isLoading } = useOrder(orderId);
-    const updateStatusMutation = useUpdateOrderStatus();
-
     const order = responseData?.data;
-    const [selectedStatus, setSelectedStatus] = useState('');
-    const [copied, setCopied] = useState(false);
+    const updateStatusMutation = useUpdateOrderStatus();
+    const isUpdating = updateStatusMutation.isPending;
 
-    useEffect(() => {
-        if (order) {
-            setSelectedStatus(order.status);
-        }
-    }, [order]);
+    const [overrideStatus, setOverrideStatus] = useState(null);
+    const selectedStatus = overrideStatus ?? (order?.status || '');
+    const [copied, setCopied] = useState(false);
 
     const handleStatusChange = async (newStatus) => {
         if (!order || newStatus === selectedStatus) return;
 
         try {
-            setSelectedStatus(newStatus);
+            setOverrideStatus(newStatus);
             await updateStatusMutation.mutateAsync({
-                id: order._id || order.id,
+                id: order._id || order.id || orderId,
                 status: newStatus,
             });
+            setOverrideStatus(null);
             toast.add({
                 type: 'success',
                 title: 'Status Updated',
                 description: `Order is now ${STATUS_CONFIG[newStatus]?.label || newStatus}.`,
             });
         } catch (error) {
-            setSelectedStatus(order.status);
+            setOverrideStatus(null);
             toast.add({
                 type: 'error',
                 title: 'Update Failed',
@@ -354,6 +385,7 @@ const OrderDetails = () => {
             });
         }
     };
+
     if (isLoading) {
         return <OrderDetailsSkeleton />;
     }
@@ -378,7 +410,12 @@ const OrderDetails = () => {
         );
     }
 
-    const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalItems = (order.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const customerPhone =
+        order.customer?.phone ||
+        order.notes?.match(/(?:03\d{2}[-\s]?\d{7}|\+92[-\s]?3\d{2}[-\s]?\d{7}|\b\d{10,12}\b)/)?.[0] ||
+        '—';
+    const formattedAddress = formatShippingAddress(order.shippingAddress);
 
     return (
         <div className="space-y-6 pb-8 flex flex-col justify-center max-w-2xl mx-auto">
@@ -437,38 +474,31 @@ const OrderDetails = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid gap-5 grid-cols-2">
+                            <div className="grid gap-5 grid-cols-1 sm:grid-cols-3">
                                 <div className="flex items-start gap-2.5">
                                     <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                     <div>
                                         <p className="text-xs text-muted-foreground">Full name</p>
-                                        <p className="text-sm font-medium">{order.customer.name}</p>
+                                        <p className="text-sm font-medium">{order.customer?.name || '—'}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5">
                                     <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                     <div>
                                         <p className="text-xs text-muted-foreground">Phone</p>
-                                        <p className="text-sm font-medium">{order.customer.phone}</p>
+                                        <p className="text-sm font-medium">{customerPhone}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5">
                                     <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                                     <div>
                                         <p className="text-xs text-muted-foreground">Telegram chat ID</p>
-                                        <p className="text-sm font-medium">{order.customer.telegramChatId}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-2.5">
-                                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">Email</p>
-                                        <p className="text-sm font-medium">{order.customer.email || '—'}</p>
+                                        <p className="text-sm font-medium">{order.customer?.telegramChatId || '—'}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            {order.shippingAddress && (
+                            {formattedAddress && (
                                 <>
                                     <Separator className="my-5" />
                                     <div className="flex items-start gap-2.5">
@@ -476,12 +506,22 @@ const OrderDetails = () => {
                                         <div>
                                             <p className="text-xs text-muted-foreground">Shipping address</p>
                                             <p className="text-sm font-medium leading-relaxed">
-                                                {order.shippingAddress.street}
-                                                <br />
-                                                {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
-                                                {order.shippingAddress.zipCode}
-                                                <br />
-                                                {order.shippingAddress.country}
+                                                {formattedAddress}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {order.notes && order.notes.trim() !== '' && (
+                                <>
+                                    <Separator className="my-5" />
+                                    <div className="flex items-start gap-2.5">
+                                        <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Notes</p>
+                                            <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">
+                                                {order.notes}
                                             </p>
                                         </div>
                                     </div>
@@ -512,17 +552,21 @@ const OrderDetails = () => {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {order.items.map((item) => (
-                                            <TableRow key={item._id}>
+                                        {(order.items || []).map((item) => (
+                                            <TableRow key={item._id || item.id}>
                                                 <TableCell>
-                                                    <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted">
-                                                        <Image
-                                                            src={item.productImage}
-                                                            alt={item.productName}
-                                                            fill
-                                                            className="object-cover"
-                                                            sizes="40px"
-                                                        />
+                                                    <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
+                                                        {item.productImage ? (
+                                                            <Image
+                                                                src={item.productImage}
+                                                                alt={item.productName || 'Product'}
+                                                                fill
+                                                                className="object-cover"
+                                                                sizes="40px"
+                                                            />
+                                                        ) : (
+                                                            <Package className="h-5 w-5 text-muted-foreground" />
+                                                        )}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-sm font-medium">
