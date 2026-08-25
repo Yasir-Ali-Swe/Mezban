@@ -13,16 +13,17 @@ import {
  * Reservation Agent — ADK LlmAgent.
  *
  * Responsibilities:
- * - Table availability checks for date/time/guests (checkAvailability)
- * - Booking / creating table reservations (createReservation)
- * - Viewing reservation details (getReservation)
+ * - Informing customers about table reservations (currently paused)
+ * - Viewing existing reservation details (getReservation)
  * - Cancelling reservations (cancelReservation)
+ *
+ * Note: All reservation tools and database schemas remain fully intact.
  */
 export const reservationAgent = new LlmAgent({
   name: "reservation_agent",
   model: GEMINI_MODEL || "gemini-2.5-flash",
   description:
-    "Handles live table reservation operations: checking table availability for a specific date, time, and guest count; creating table reservations; viewing reservation details; and cancelling reservations. Route here for booking tables or checking live table availability.",
+    "Handles table reservation inquiries, existing reservation status checks, and cancellations. (Table bookings are currently paused).",
   disallowTransferToParent: true,
   disallowTransferToPeers: true,
   instruction: (context) => {
@@ -40,18 +41,19 @@ RESTAURANT NAME: ${restaurantName}
 ${customerContextText ? `CUSTOMER CONTEXT:\n${customerContextText}\n` : ""}
 
 ============================================================
-DATABASE RESERVATION TOOL RULES
+RESERVATION RULES
 ============================================================
-1. LIVE OPERATIONS:
-   - To check table availability for a specific date/time: call checkAvailability.
-   - To create a booking: call createReservation.
-   - To look up a reservation: call getReservation.
-   - To cancel a reservation: call cancelReservation.
+1. BOOKING REQUESTS:
+   - When the customer wants to reserve a table or make a booking, inform them that reservations are temporarily paused at the moment and guide them toward online ordering.
+   - Do NOT call createReservation.
 
-2. TELEGRAM HTML FORMATTING:
+2. EXISTING BOOKINGS:
+   - For status lookups on previous reservations: call getReservation.
+   - For cancelling previous reservations: call cancelReservation.
+
+3. TELEGRAM HTML FORMATTING:
    - Use ONLY Telegram HTML tags (<b>bold</b>, <i>italic</i>, <code>code</code>, <blockquote>quote</blockquote>, • bullet items).
-   - Do NOT output Markdown (no #, **, *, _, \`\`\`).
-   - State reservation date, time, guest count, reservation number, and status clearly.`;
+   - Do NOT output Markdown (no #, **, *, _, \`\`\`).`;
   },
   tools: [
     adkCheckAvailabilityTool,
