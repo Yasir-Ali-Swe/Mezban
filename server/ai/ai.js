@@ -1,57 +1,99 @@
 import prisma from "../config/prisma.js";
 import { getConversationMemory } from "./memory/memory.manager.js";
-import { runOrchestrator } from "./agents/orchestrator.js";
-import { retrieveKnowledge } from "./rag/index.js";
-import { logAiDiagnostic } from "./utils/ai.logger.js";
 import { formatAiResponse } from "./response/formatter.js";
+import { runAdkMessage, mapAgentNameToType } from "./adk/runner.js";
+import {
+  initTrace,
+  setQuery,
+  setAgentRouting,
+  setTelegramOutput,
+  setRawLlmResponse,
+  recordError,
+  printAndClear,
+} from "./utils/request.tracer.js";
 
-// Agents
-import { runGeneralAgent } from "./agents/general.agent.js";
-import { runOrderAgent } from "./agents/order.agent.js";
-import { runReservationAgent } from "./agents/reservation.agent.js";
-import { runSupportAgent } from "./agents/support.agent.js";
+// ============================================================
+// GREETING FAST-PATH (preserved from original orchestrator)
+// Returns true if the query is a simple greeting/closing that
+// should receive an immediate hardcoded response without an LLM call.
+// ============================================================
 
-// Tools Registry
-import { getBusinessInfoTool } from "./tools/business/getBusinessInfo.tool.js";
-import { getBusinessHoursTool } from "./tools/business/getBusinessHours.tool.js";
-import { getCustomerTool } from "./tools/customer/getCustomer.tool.js";
-import { createCustomerTool } from "./tools/customer/createCustomer.tool.js";
-import { searchDealsTool } from "./tools/deals/searchDeals.tool.js";
-import { getDealTool } from "./tools/deals/getDeal.tool.js";
-import { searchMenuTool } from "./tools/menu/searchMenu.tool.js";
-import { getMenuItemTool } from "./tools/menu/getMenuItem.tool.js";
-import { checkMenuAvailabilityTool } from "./tools/menu/checkMenuAvailability.tool.js";
-import { createOrderTool } from "./tools/orders/createOrder.tool.js";
-import { getOrderTool } from "./tools/orders/getOrder.tool.js";
-import { getCustomerOrdersTool } from "./tools/orders/getCustomerOrders.tool.js";
-import { cancelOrderTool } from "./tools/orders/cancelOrder.tool.js";
-import { checkAvailabilityTool } from "./tools/reservations/checkAvailability.tool.js";
-import { createReservationTool } from "./tools/reservations/createReservation.tool.js";
-import { getReservationTool } from "./tools/reservations/getReservation.tool.js";
-import { cancelReservationTool } from "./tools/reservations/cancelReservation.tool.js";
+const GREETING_WORDS = new Set([
+  "hello", "hi", "hey",
+  "good morning", "good afternoon", "good evening",
+  "/start",
+  "assalam o alaikum", "aoa", "slm",
+]);
 
-const toolRegistry = {
-  getBusinessInfo: getBusinessInfoTool,
-  getBusinessHours: getBusinessHoursTool,
-  getCustomer: getCustomerTool,
-  createCustomer: createCustomerTool,
-  searchDeals: searchDealsTool,
-  getDeal: getDealTool,
-  searchMenu: searchMenuTool,
-  getMenuItem: getMenuItemTool,
-  checkMenuAvailability: checkMenuAvailabilityTool,
-  createOrder: createOrderTool,
-  getOrder: getOrderTool,
-  getCustomerOrders: getCustomerOrdersTool,
-  cancelOrder: cancelOrderTool,
-  checkAvailability: checkAvailabilityTool,
-  createReservation: createReservationTool,
-  getReservation: getReservationTool,
-  cancelReservation: cancelReservationTool,
-};
+const CLOSING_WORDS = new Set([
+  "thanks", "thank you", "bye", "goodbye", "ok", "okay",
+]);
+
+function isSimpleGreeting(query) {
+  const clean = query.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "");
+  return GREETING_WORDS.has(clean) || CLOSING_WORDS.has(clean);
+}
+
+function buildGreetingResponse(restaurantName, isNewConversation, conversationHistoryText, isClosing) {
+  if (isClosing) {
+    return `<b>You're welcome!</b> 😊\n\nFeel free to reach out anytime. Is there anything else I can help you with?`;
+  }
+
+  const hasHistory =
+    typeof conversationHistoryText === "string" &&
+    conversationHistoryText.trim().length > 0;
+
+  if (isNewConversation || !hasHistory) {
+    const safeName = escapeHtml(restaurantName || "our restaurant");
+    return `<b>Hello! 👋</b>
+
+I'm the AI assistant for <b>${safeName}</b>.
+
+I can help you with:
+
+• 🍽️ <b>Menu & Food</b> — dishes, prices, and availability
+• 🚚 <b>Delivery</b> — delivery areas, fees, and timings
+• 💳 <b>Payments</b> — available payment methods
+• 🕐 <b>Opening Hours</b> — restaurant timings
+• 🪑 <b>Reservations</b> — table availability and bookings
+• 🛒 <b>Orders</b> — placing, tracking, and managing orders
+
+<b>How can I help you today?</b>`;
+  }
+
+  return `<b>Hi! 👋</b>
+
+How can I help you today?`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ============================================================
+// MAIN AI PIPELINE ENTRY POINT
+// ============================================================
 
 /**
- * Main AI Pipeline Entry Point
+ * Processes a customer Telegram message through the Google ADK pipeline.
+ *
+ * Full request trace is printed to the terminal for every request, showing:
+ *   - User query
+ *   - Agent routing / intent
+ *   - RAG chunks retrieved (if RAG was used)
+ *   - Tool calls and their results (if tools were used)
+ *   - LLM context assembled
+ *   - Raw LLM response
+ *   - Final output sent to Telegram
+ *   - Any errors (API key, quota, network, etc.)
+ *
+ * @param {{ businessId: string, conversationId: string, customerId: string, messageText: string }}
+ * @returns {Promise<{ replyText: string, intent: string, agent: string, executionTimeMs: number }>}
  */
 export async function processMessageWithAi({ businessId, conversationId, customerId, messageText }) {
   const startTime = Date.now();
@@ -60,139 +102,142 @@ export async function processMessageWithAi({ businessId, conversationId, custome
     throw new Error("businessId, conversationId, and messageText are required for AI processing");
   }
 
-  // 1. Fetch Business Profile for authentic restaurant name
+  // ── Init request trace
+  const traceId = `${conversationId}_${startTime}`;
+  initTrace(traceId);
+  setQuery(traceId, messageText);
+
+  // 1. Fetch Business name
   const business = await prisma.business.findUnique({
     where: { id: businessId },
   });
   const restaurantName = business?.name || "our restaurant";
 
-  // 2. Load Short-term conversation history and Long-term customer context
+  // 2. Load short-term conversation history and long-term customer context
   const memory = await getConversationMemory({ conversationId, customerId, businessId });
   const isNewConversation = !memory.messages || memory.messages.length <= 1;
 
-  // 3. Orchestration & Intent Classification
-  const t0 = Date.now();
-  const orchestration = await runOrchestrator({
-    userQuery: messageText,
-    restaurantName,
-    conversationHistoryText: memory.conversationHistoryText,
-    customerContextText: memory.customerContextText,
-    isNewConversation,
-  });
-  const intentTimeMs = Date.now() - t0;
+  // 3. GREETING FAST-PATH — return immediately for simple greetings (0ms LLM latency)
+  const clean = messageText.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "");
+  const isClosing = CLOSING_WORDS.has(clean);
 
-  // 4. Capability Execution (RAG / Tool / Both / Neither)
-  let ragResult = { chunks: [], contextText: "", chunkCount: 0, primaryDocumentType: null, embeddingTimeMs: 0, vectorSearchTimeMs: 0 };
-  let ragTimeMs = 0;
-  if (orchestration.ragRequired) {
-    const t1 = Date.now();
-    ragResult = await retrieveKnowledge(messageText, businessId, { topK: 4, threshold: 0.25 });
-    ragTimeMs = Date.now() - t1;
+  if (isSimpleGreeting(messageText)) {
+    setAgentRouting(traceId, {
+      agentName: "GENERAL_AGENT",
+      agentType: "GENERAL_AGENT",
+      intent: "GREETING",
+      capability: "NEITHER",
+      fastPath: true,
+    });
+
+    const greetingReply = buildGreetingResponse(
+      restaurantName,
+      isNewConversation,
+      memory.conversationHistoryText,
+      isClosing
+    );
+
+    const finalReplyText = formatAiResponse(greetingReply, {
+      customerName: memory.customerProfile?.customerName,
+      restaurantName,
+      isGreeting: true,
+    });
+
+    // Record fast-path response
+    setRawLlmResponse(traceId, `[FAST-PATH] ${greetingReply}`);
+    setTelegramOutput(traceId, finalReplyText);
+    const traceResult = printAndClear(traceId);
+
+    const totalTimeMs = Date.now() - startTime;
+
+    // Async Prisma logging (fire-and-forget)
+    (async () => {
+      try {
+        await prisma.agentRun.create({
+          data: {
+            businessId,
+            conversationId,
+            agent: "GENERAL_AGENT",
+            userMessage: messageText,
+            finalResponse: finalReplyText,
+            status: "COMPLETED",
+            completedAt: new Date(),
+          },
+        });
+        await prisma.conversation.update({
+          where: { id: conversationId },
+          data: { intent: "GREETING", agent: "GENERAL_AGENT" },
+        });
+      } catch (dbErr) {
+        console.warn("[AI DB Logging Warning]:", dbErr.message);
+      }
+    })();
+
+    return {
+      replyText: finalReplyText,
+      intent: "GREETING",
+      agent: "GENERAL_AGENT",
+      executionTimeMs: totalTimeMs,
+      timings: { intentTimeMs: 0, embeddingTimeMs: 0, vectorSearchTimeMs: 0, toolTimeMs: 0, llmTimeMs: 0 },
+    };
   }
 
-  let toolResult = null;
-  let toolInputData = null;
-  let toolTimeMs = 0;
-  if (orchestration.toolRequired && orchestration.toolName && toolRegistry[orchestration.toolName]) {
-    const t2 = Date.now();
-    const toolObj = toolRegistry[orchestration.toolName];
-    toolInputData = {
+  // 4. ADK PIPELINE — run the full agent execution
+  const t0 = Date.now();
+  let rawReply = "";
+  let agentName = "general_agent";
+
+  try {
+    const result = await runAdkMessage({
       businessId,
       customerId,
-      ...(orchestration.toolArgs || {}),
-    };
-    try {
-      toolResult = await toolObj.execute(toolInputData);
-    } catch (toolErr) {
-      console.error(`[Tool Execution Error] ${orchestration.toolName}:`, toolErr.message);
-      toolResult = { error: toolErr.message };
-    }
-    toolTimeMs = Date.now() - t2;
-  }
-
-  const toolResultText = toolResult ? JSON.stringify(toolResult, null, 2) : "";
-
-  // 5. Agent Execution
-  let rawReply = "";
-  const t3 = Date.now();
-  if (orchestration.ragRequired && ragResult.chunkCount === 0 && !toolResult) {
-    if (orchestration.intent === "OFF_TOPIC") {
-      rawReply = `I'm here to help with ${restaurantName}'s menu, orders, reservations, delivery, and restaurant information. What can I help you with?`;
-    } else {
-      rawReply = `I can help you with our menu, orders, reservations, delivery, or operating hours. How can I assist you at ${restaurantName}?`;
-    }
-  } else {
-    const agentPayload = {
-      userQuery: messageText,
+      conversationId,
       restaurantName,
-      conversationHistoryText: memory.conversationHistoryText,
+      customerName: memory.customerProfile?.customerName || "",
       customerContextText: memory.customerContextText,
-      ragContextText: ragResult.contextText,
-      toolResultText,
-      intent: orchestration.intent,
-      isNewConversation,
-    };
-
-    switch (orchestration.agent) {
-      case "ORDER_AGENT":
-        rawReply = await runOrderAgent(agentPayload);
-        break;
-      case "RESERVATION_AGENT":
-        rawReply = await runReservationAgent(agentPayload);
-        break;
-      case "SUPPORT_AGENT":
-        rawReply = await runSupportAgent(agentPayload);
-        break;
-      case "GENERAL_AGENT":
-      default:
-        rawReply = await runGeneralAgent(agentPayload);
-        break;
-    }
+      recentMessages: memory.messages,
+      messageText,
+      traceId,
+    });
+    rawReply = result.rawReply;
+    agentName = result.agentName;
+  } catch (adkErr) {
+    recordError(traceId, adkErr);
+    rawReply = `I can help you with our menu, orders, reservations, delivery, or operating hours. How can I assist you at ${restaurantName}?`;
+    agentName = "general_agent";
   }
-  const llmTimeMs = Date.now() - t3;
 
-  // 6. Response Formatting & Sanitization
+  const llmTimeMs = Date.now() - t0;
+
+  // 5. Fallback if ADK returned empty
+  if (!rawReply || !rawReply.trim()) {
+    rawReply = `I can help you with our menu, orders, reservations, delivery, or operating hours. How can I assist you at ${restaurantName}?`;
+  }
+
+  // 6. Response Formatting & Sanitization (unchanged)
   const finalReplyText = formatAiResponse(rawReply, {
     customerName: memory.customerProfile?.customerName,
     restaurantName,
-    isGreeting: orchestration.intent === "GREETING",
+    isGreeting: false,
   });
 
   const totalTimeMs = Date.now() - startTime;
 
-  // 7. Terminal Diagnostic Output Block
-  logAiDiagnostic({
-    userQuery: messageText,
-    intent: orchestration.intent,
-    selectedAgent: orchestration.agent,
-    capability: orchestration.capability,
-    ragUsed: orchestration.ragRequired && ragResult.chunkCount > 0,
-    ragDocument: ragResult.primaryDocumentType,
-    retrievedChunksCount: ragResult.chunkCount,
-    toolName: orchestration.toolName || "none",
-    toolInput: toolInputData,
-    toolResult,
-    finalResponse: finalReplyText,
-    executionTimeMs: totalTimeMs,
-    timings: {
-      intentTimeMs,
-      embeddingTimeMs: ragResult.embeddingTimeMs || 0,
-      vectorSearchTimeMs: ragResult.vectorSearchTimeMs || 0,
-      toolTimeMs,
-      llmTimeMs,
-    },
-    businessId,
-    conversationId,
-  });
+  // 7. Record final Telegram output and print trace
+  setTelegramOutput(traceId, finalReplyText);
+  const traceResult = printAndClear(traceId) || {};
 
-  // 8. Record AgentRun and ToolExecution in Prisma asynchronously
+  const finalIntent = traceResult.intent || "GENERAL_QUERY";
+  const selectedAgentType = mapAgentNameToType(traceResult.agent || agentName);
+
+  // 8. Async Prisma persistence (fire-and-forget — unchanged pattern)
   (async () => {
     try {
-      const agentRun = await prisma.agentRun.create({
+      await prisma.agentRun.create({
         data: {
           businessId,
           conversationId,
-          agent: orchestration.agent,
+          agent: selectedAgentType,
           userMessage: messageText,
           finalResponse: finalReplyText,
           status: "COMPLETED",
@@ -200,24 +245,11 @@ export async function processMessageWithAi({ businessId, conversationId, custome
         },
       });
 
-      if (orchestration.toolName && orchestration.toolName !== "NONE") {
-        await prisma.toolExecution.create({
-          data: {
-            agentRunId: agentRun.id,
-            toolName: orchestration.toolName,
-            input: toolInputData || {},
-            output: toolResult || {},
-            status: "COMPLETED",
-            completedAt: new Date(),
-          },
-        });
-      }
-
       await prisma.conversation.update({
         where: { id: conversationId },
         data: {
-          intent: orchestration.intent,
-          agent: orchestration.agent,
+          intent: finalIntent,
+          agent: selectedAgentType,
         },
       });
     } catch (dbErr) {
@@ -227,14 +259,14 @@ export async function processMessageWithAi({ businessId, conversationId, custome
 
   return {
     replyText: finalReplyText,
-    intent: orchestration.intent,
-    agent: orchestration.agent,
+    intent: finalIntent,
+    agent: selectedAgentType,
     executionTimeMs: totalTimeMs,
     timings: {
-      intentTimeMs,
-      embeddingTimeMs: ragResult.embeddingTimeMs || 0,
-      vectorSearchTimeMs: ragResult.vectorSearchTimeMs || 0,
-      toolTimeMs,
+      intentTimeMs: 0,
+      embeddingTimeMs: 0,
+      vectorSearchTimeMs: 0,
+      toolTimeMs: 0,
       llmTimeMs,
     },
   };
