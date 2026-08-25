@@ -76,12 +76,12 @@ const STATUS_CONFIG = {
         iconClassName: 'h-3 w-3',
         label: 'Preparing',
     },
-    ready: {
+    out_for_delivery: {
         variant: 'default',
         className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-        icon: CheckCircle,
+        icon: Package,
         iconClassName: 'h-3 w-3',
-        label: 'Ready',
+        label: 'Out for Delivery',
     },
     processing: {
         variant: 'default',
@@ -180,7 +180,7 @@ const getConfigKey = (status) => {
         if (lowerStatus === 'pending') return 'pending';
         if (lowerStatus === 'confirmed') return 'confirmed';
         if (lowerStatus === 'preparing') return 'preparing';
-        if (lowerStatus === 'ready') return 'ready';
+        if (lowerStatus === 'out_for_delivery' || lowerStatus === 'out for delivery' || lowerStatus === 'ready') return 'out_for_delivery';
         if (lowerStatus === 'processing') return 'processing';
         if (lowerStatus === 'completed') return 'completed';
         if (lowerStatus === 'cancelled') return 'cancelled';
