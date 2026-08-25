@@ -481,6 +481,10 @@ model Conversation {
 
   status ConversationStatus @default(ACTIVE)
 
+  escalationReason String?
+  escalationType   String?
+  escalationData   Json?
+
   resolvedByName String?
   resolvedAt     DateTime?
 
