@@ -8,19 +8,6 @@ import {
   adkGetBusinessHoursTool,
 } from "../tools/index.js";
 
-/**
- * General Information Agent — ADK LlmAgent.
- *
- * Responsibilities:
- * - Greetings & pleasantries
- * - Food variety, cuisines offered, specialties, signature dishes (via searchKnowledgeBase RAG)
- * - Delivery coverage, minimum order, fees, delivery timings (via searchKnowledgeBase RAG)
- * - Accepted payment methods & account details (via searchKnowledgeBase RAG)
- * - Restaurant identity, story, overview, contact (via searchKnowledgeBase RAG & getBusinessInfo)
- * - General table reservation policy (via searchKnowledgeBase RAG)
- * - Operating hours & opening/closing times (via getBusinessHours database tool)
- * - Polite redirect for off-topic questions
- */
 export const generalAgent = new LlmAgent({
   name: "general_agent",
   model: GEMINI_MODEL || "gemini-2.5-flash",

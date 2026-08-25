@@ -5,18 +5,7 @@ import { orderAgent } from "./order.agent.js";
 import { reservationAgent } from "./reservation.agent.js";
 import { supportAgent } from "./support.agent.js";
 
-/**
- * Root Orchestrator Agent — ADK LlmAgent.
- *
- * Analyzes the user's message and immediately transfers to the single
- * appropriate specialized agent:
- * - general_agent: greetings, food variety/cuisines, delivery info, payment info,
- *                  hours, reservation policy, business story/contact, off-topic.
- * - order_agent: browsing menu items, dish pricing, dish availability, deals,
- *                placing orders, tracking orders, order history, cancellation.
- * - reservation_agent: live table availability checks, table bookings, reservation status/cancellation.
- * - support_agent: complaints, human escalation, order problem resolution.
- */
+
 export const rootAgent = new LlmAgent({
   name: "root_agent",
   model: GEMINI_MODEL || "gemini-2.5-flash",
@@ -58,6 +47,13 @@ ROUTING RULES (RAG VS DATABASE TOOLS VS AGENTS)
 
 4. TRANSFER TO support_agent FOR:
    • SUPPORT & COMPLAINTS: "my food was cold", "I have a complaint about my order", "talk to a manager", "need customer support"
+
+============================================================
+DISAMBIGUATION RULES
+============================================================
+• AMBIGUOUS FOLLOW-UPS: If the message is a short follow-up like "cancel it", "where is it", or "check it" with no explicit subject, use the conversation history to see what was last discussed (an order, a reservation, or a complaint) and route to the matching agent. If the history genuinely gives no clue, route to general_agent so the customer can be asked to clarify — do not guess between order_agent and reservation_agent.
+• MULTI-INTENT MESSAGES: If a single message clearly combines two categories (e.g. "book a table and also order 2 burgers"), route to the agent for whichever request is primary or comes first in the message. That agent will handle its part; the customer can ask about the remaining part in their next message. Never attempt to split one message across two agents.
+• A complaint about an order or reservation problem (food quality, wrong item, late delivery, rude behavior) always goes to support_agent, even if it also mentions an order number — do not route it to order_agent just because an order number is present.
 
 ============================================================
 CRITICAL DIRECTIVES

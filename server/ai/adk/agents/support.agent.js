@@ -9,16 +9,6 @@ import {
   adkGetBusinessInfoTool,
 } from "../tools/index.js";
 
-/**
- * Support Agent — ADK LlmAgent.
- *
- * Responsibilities:
- * - Handling customer complaints and order issues
- * - Order status lookups (getOrder, getCustomerOrders)
- * - Reservation lookups (getReservation)
- * - Restaurant contact and assistance (getBusinessInfo)
- * - Empathetic customer support and staff escalation
- */
 export const supportAgent = new LlmAgent({
   name: "support_agent",
   model: GEMINI_MODEL || "gemini-2.5-flash",
