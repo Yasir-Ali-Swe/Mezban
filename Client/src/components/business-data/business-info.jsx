@@ -14,7 +14,6 @@ import {
     FieldError,
     FieldGroup,
     FieldContent,
-    FieldDescription,
 } from '@/components/ui/field';
 import {
     Select,
@@ -25,27 +24,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Camera, Loader2, Building2, Mail, Phone, MapPin, Globe, ArrowLeft } from 'lucide-react';
+import { Camera, Loader2, Building2, Mail, Phone, MapPin, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from "@/components/ui/toast";
 import { useRouter } from 'next/navigation';
 import { useBusinessProfile, useUpdateBusinessProfile } from '@/hooks/useApi';
 
-// Dummy business profile data
-const DUMMY_BUSINESS_PROFILE = {
-    _id: 'business_123456789',
-    name: 'Pizza Palace',
-    email: 'info@pizzapalace.com',
-    phone: '+92 300 1234567',
-    address: '123 Main Boulevard, Gulberg III',
-    city: 'Lahore',
-    country: 'Pakistan',
-    website: 'https://pizzapalace.com',
-    imageUrl: 'https://ui-avatars.com/api/?name=Pizza+Palace&background=EF4444&color=fff&size=128',
-};
-
-// Dummy cities for dropdown
-const DUMMY_CITIES = [
+const CITIES_LIST = [
     { _id: '1', name: 'Lahore' },
     { _id: '2', name: 'Karachi' },
     { _id: '3', name: 'Islamabad' },
@@ -54,17 +39,18 @@ const DUMMY_CITIES = [
     { _id: '6', name: 'Faisalabad' },
     { _id: '7', name: 'Peshawar' },
     { _id: '8', name: 'Quetta' },
+    { _id: '9', name: 'Sialkot' },
+    { _id: '10', name: 'Gujranwala' },
 ];
 
-const DUMMY_COUNTRIES = [
+const COUNTRIES_LIST = [
     { _id: '1', name: 'Pakistan' },
-    { _id: '2', name: 'India' },
-    { _id: '3', name: 'United Arab Emirates' },
-    { _id: '4', name: 'Saudi Arabia' },
-    { _id: '5', name: 'United Kingdom' },
-    { _id: '6', name: 'United States' },
-    { _id: '7', name: 'Canada' },
-    { _id: '8', name: 'Australia' },
+    { _id: '2', name: 'United Arab Emirates' },
+    { _id: '3', name: 'Saudi Arabia' },
+    { _id: '4', name: 'United Kingdom' },
+    { _id: '5', name: 'United States' },
+    { _id: '6', name: 'Canada' },
+    { _id: '7', name: 'Australia' },
 ];
 
 // Zod schema for validation
@@ -170,14 +156,6 @@ const BusinessInfo = ({ mode = "dashboard" }) => {
         }
     };
 
-    const handleRemoveImage = () => {
-        setSelectedFile(null);
-        setPreviewImage(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-
     // Handle image click to trigger file input
     const handleImageClick = () => {
         fileInputRef.current?.click();
@@ -219,11 +197,6 @@ const BusinessInfo = ({ mode = "dashboard" }) => {
         }
     };
 
-    // Handle back navigation
-    const handleBack = () => {
-        router.push('/onboarding/business-type');
-    };
-
     if (isLoading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
@@ -232,9 +205,10 @@ const BusinessInfo = ({ mode = "dashboard" }) => {
         );
     }
 
-    const avatarImage = previewImage || DUMMY_BUSINESS_PROFILE.imageUrl || '';
-    const initials = DUMMY_BUSINESS_PROFILE.name
-        ?.split(' ')
+    const currentProfile = profileResponse?.data;
+    const avatarImage = previewImage || currentProfile?.imageUrl || '';
+    const initials = (currentProfile?.name || watchedName || 'B')
+        .split(' ')
         .map((n) => n[0])
         .join('')
         .toUpperCase()
@@ -402,7 +376,7 @@ const BusinessInfo = ({ mode = "dashboard" }) => {
                                         <SelectContent>
                                             <SelectGroup>
                                                 <SelectLabel>Cities</SelectLabel>
-                                                {DUMMY_CITIES.map((city) => (
+                                                {CITIES_LIST.map((city) => (
                                                     <SelectItem key={city._id} value={city.name}>
                                                         {city.name}
                                                     </SelectItem>
@@ -431,7 +405,7 @@ const BusinessInfo = ({ mode = "dashboard" }) => {
                                         <SelectContent>
                                             <SelectGroup>
                                                 <SelectLabel>Countries</SelectLabel>
-                                                {DUMMY_COUNTRIES.map((country) => (
+                                                {COUNTRIES_LIST.map((country) => (
                                                     <SelectItem key={country._id} value={country.name}>
                                                         {country.name}
                                                     </SelectItem>
