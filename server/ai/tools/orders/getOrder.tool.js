@@ -38,6 +38,15 @@ export const getOrderTool = {
       };
     }
 
+    const friendlyStatus = {
+      PENDING: "Pending Confirmation",
+      CONFIRMED: "Confirmed",
+      PREPARING: "Preparing",
+      OUT_FOR_DELIVERY: "Out for Delivery",
+      COMPLETED: "Completed",
+      CANCELLED: "Cancelled",
+    }[order.status] || order.status;
+
     return {
       success: true,
       order: {
@@ -61,7 +70,7 @@ export const getOrderTool = {
           isDeal: Boolean(i.dealId),
         })),
       },
-      message: `Order #${order.orderNumber} is currently '${order.status}'. Total: Rs. ${Number(order.total)}.`,
+      message: `Order #${order.orderNumber} is currently '${friendlyStatus}'. Total: Rs. ${Number(order.total)}.`,
     };
   },
 };
