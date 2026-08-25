@@ -38,6 +38,10 @@ export const adkCreateOrderTool = new FunctionTool({
         type: "string",
         description: "Delivery address (for DELIVERY orders)",
       },
+      customerPhone: {
+        type: "string",
+        description: "Customer contact phone number for delivery (e.g. '0300-1234567')",
+      },
       notes: {
         type: "string",
         description: "Special instructions for the kitchen or delivery rider",
@@ -45,12 +49,20 @@ export const adkCreateOrderTool = new FunctionTool({
     },
     required: ["items"],
   },
-  execute: async ({ items, orderType, shippingAddress, notes } = {}, tool_context) => {
+  execute: async ({ items, orderType, shippingAddress, customerPhone, phone, notes } = {}, tool_context) => {
     const { businessId, customerId } = getToolSessionState(tool_context);
     if (!businessId || !customerId) {
       return { success: false, error: "MISSING_SESSION_CONTEXT", message: "Customer and restaurant context required to place an order." };
     }
-    return createOrderTool.execute({ businessId, customerId, items, orderType, shippingAddress, notes });
+    return createOrderTool.execute({
+      businessId,
+      customerId,
+      items,
+      orderType,
+      shippingAddress,
+      customerPhone: customerPhone || phone,
+      notes,
+    });
   },
 });
 
