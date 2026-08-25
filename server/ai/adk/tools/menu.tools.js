@@ -17,18 +17,22 @@ export const adkSearchMenuTool = new FunctionTool({
     properties: {
       query: {
         type: "string",
-        description: "Search query for dish name or ingredients (e.g. 'burger', 'karahi')",
+        description: "Search query for dish name or ingredients (e.g. 'burger', 'karahi', 'biryani')",
       },
       categoryName: {
         type: "string",
         description: "Optional category name to filter by (e.g. 'Desi', 'Fast Food', 'Beverages')",
       },
+      limit: {
+        type: "number",
+        description: "Optional maximum number of menu items to return (default 10)",
+      },
     },
   },
-  execute: async ({ query, categoryName } = {}, tool_context) => {
+  execute: async ({ query, categoryName, limit } = {}, tool_context) => {
     const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
-    return searchMenuTool.execute({ businessId, query, categoryName });
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
+    return searchMenuTool.execute({ businessId, query, categoryName, limit });
   },
 });
 
@@ -39,13 +43,13 @@ export const adkSearchMenuTool = new FunctionTool({
 export const adkGetMenuItemTool = new FunctionTool({
   name: "getMenuItem",
   description:
-    "Gets exact pricing, category, and details for a specific menu item from the restaurant database. Use this when the user asks 'how much is [dish]?' or asks for details on a specific item.",
+    "Gets exact pricing, category, and availability details for a specific menu item from the restaurant database. Use this when the user asks 'how much is [dish]?' or asks for details on a specific item.",
   parameters: {
     type: "object",
     properties: {
       itemName: {
         type: "string",
-        description: "Name of the menu item to look up (e.g. 'Chicken Karahi')",
+        description: "Name of the menu item to look up (e.g. 'Chicken Karahi', 'Beef Burger')",
       },
       itemId: {
         type: "string",
@@ -55,7 +59,7 @@ export const adkGetMenuItemTool = new FunctionTool({
   },
   execute: async ({ itemName, itemId } = {}, tool_context) => {
     const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
     return getMenuItemTool.execute({ businessId, itemName, itemId });
   },
 });
@@ -80,7 +84,7 @@ export const adkCheckMenuAvailabilityTool = new FunctionTool({
   },
   execute: async ({ itemName } = {}, tool_context) => {
     const { businessId } = getToolSessionState(tool_context);
-    if (!businessId) return { error: "Missing restaurant context" };
+    if (!businessId) return { success: false, error: "MISSING_BUSINESS_ID", message: "Restaurant session context missing." };
     return checkMenuAvailabilityTool.execute({ businessId, itemName });
   },
 });
