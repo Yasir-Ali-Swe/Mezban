@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment } from "react";
 import {
     Card,
     CardContent,
@@ -21,28 +20,16 @@ import {
 import {
     ShoppingCart,
     DollarSign,
-    Clock,
-    Utensils,
     Gift,
     Users,
     Eye,
     AlertTriangle,
     PackagePlus,
     ShoppingBag,
-    UserPlus,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import StatCard from '@/components/shared/StatCard';
-import { formatCurrency } from '@/lib/formatters';
-
-// Dummy data kept per specification
-const DUMMY_CONVERSATIONS = [
-    { customer: 'Alice', lastMessage: 'When will my order arrive?', agent: 'AI Agent', time: '5 min ago' },
-    { customer: 'Bob', lastMessage: 'I want to change my address', agent: 'AI Agent', time: '20 min ago' },
-    { customer: 'Charlie', lastMessage: 'Do you have this in size L?', agent: 'Human', time: '1 hour ago' },
-    { customer: 'Diana', lastMessage: 'Thanks for the quick delivery!', agent: 'AI Agent', time: '2 hours ago' },
-    { customer: 'Eve', lastMessage: 'Can I get a refund?', agent: 'AI Agent', time: '3 hours ago' },
-];
+import { formatCurrency, formatDate } from '@/lib/formatters';
+import { useDashboardStats } from '@/hooks/useApi';
 
 const QUICK_ACTIONS = [
     { icon: PackagePlus, label: 'Add Menu Item', href: '/menu/new' },
@@ -51,14 +38,13 @@ const QUICK_ACTIONS = [
     { icon: Users, label: 'View Customers', href: '/customers' },
 ];
 
-import { useDashboardStats } from '@/hooks/useApi';
-
 const RestaurantDashboard = () => {
     const { data: responseData, isLoading } = useDashboardStats();
     const statsData = responseData?.data?.stats || { todayOrders: 0, todayRevenue: 0, activeDeals: 0 };
     const recentOrdersData = responseData?.data?.recentOrders || [];
+    const recentConversationsData = responseData?.data?.recentConversations || [];
     const alertsData = responseData?.data?.alerts || [];
-    console.log(alertsData)
+
     return (
         <div className="space-y-6 pb-8">
             {/* Page Header */}
@@ -103,7 +89,7 @@ const RestaurantDashboard = () => {
                 <Card className="lg:col-span-2 flex flex-col order-2 lg:order-1">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm font-medium">Recent Orders</CardTitle>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" asChild>
                             <Link href="/orders">View All</Link>
                         </Button>
                     </CardHeader>
@@ -126,7 +112,7 @@ const RestaurantDashboard = () => {
                                             <TableRow>
                                                 <TableCell colSpan={6} className="text-center py-8">
                                                     <div className="flex flex-col items-center justify-center gap-2">
-                                                        <span className="text-muted-foreground">No recent orders</span>
+                                                        <span className="text-muted-foreground text-sm">No recent orders</span>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -144,7 +130,7 @@ const RestaurantDashboard = () => {
                                                     <StatusBadge status={order.status} />
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
                                                         <Link href={`/orders/${order._id || order.id}`}>
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </Link>
@@ -189,7 +175,7 @@ const RestaurantDashboard = () => {
                 <Card className="flex flex-col">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-sm font-medium">Recent Conversations</CardTitle>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" asChild>
                             <Link href="/conversations">View All</Link>
                         </Button>
                     </CardHeader>
@@ -206,27 +192,35 @@ const RestaurantDashboard = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {DUMMY_CONVERSATIONS.map((conv, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{conv.customer}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground truncate max-w-32">
-                                                {conv.lastMessage}
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                <StatusBadge status="intent" label={conv.agent} />
-                                            </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">
-                                                {conv.time}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                    <Link href="/conversations">
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Link>
-                                                </Button>
+                                    {recentConversationsData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-8">
+                                                <span className="text-muted-foreground text-sm">No recent conversations</span>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    ) : (
+                                        recentConversationsData.map((conv, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{conv.customer}</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground truncate max-w-32">
+                                                    {conv.lastMessage}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    <StatusBadge status="intent" label={conv.agent} />
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">
+                                                    {formatDate(conv.time)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                                                        <Link href="/conversations">
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
@@ -249,12 +243,10 @@ const RestaurantDashboard = () => {
                         ) : (
                             alertsData.map((alert, index) => {
                                 const content = (
-                                    <>
-                                        <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                                            <StatusBadge status={alert.priority || 'medium'} />
-                                            <span className="text-sm truncate block">{alert.message}</span>
-                                        </div>
-                                    </>
+                                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                                        <StatusBadge status={alert.priority || 'medium'} />
+                                        <span className="text-sm truncate block">{alert.message}</span>
+                                    </div>
                                 );
 
                                 return alert.href ? (
