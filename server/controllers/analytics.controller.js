@@ -376,13 +376,13 @@ export const getAiAnalytics = async (req, res) => {
     const totalConversations = currentConvs.length;
     const prevTotalConversations = prevConvs.length;
 
-    // AI Resolved: conversations where AI completed without escalation
+    // AI Resolved: conversations where status is RESOLVED or CLOSED
     const aiResolved = currentConvs.filter(
-      (c) => c.status === "RESOLVED" || c.status === "CLOSED" || (c.status === "ACTIVE" && c.status !== "ESCALATED")
+      (c) => c.status === "RESOLVED" || c.status === "CLOSED"
     ).length;
 
     const prevAiResolved = prevConvs.filter(
-      (c) => c.status === "RESOLVED" || c.status === "CLOSED" || (c.status === "ACTIVE" && c.status !== "ESCALATED")
+      (c) => c.status === "RESOLVED" || c.status === "CLOSED"
     ).length;
 
     // AI Orders: Orders placed by customers who have conversation interactions or telegram chat ID
