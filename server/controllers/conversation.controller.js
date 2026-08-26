@@ -574,9 +574,12 @@ export const handleEscalationAction = async (req, res) => {
     const { action, note, customMessage, senderName } = req.body;
 
     const validActions = [
+      "ACCEPT_REQUEST",
+      "ACCEPT_ESCALATION",
       "CANCEL_ORDER",
       "APPROVE_CANCELLATION",
       "REJECT_REQUEST",
+      "REJECT_ESCALATION",
       "REJECT_CANCELLATION",
       "ADD_NOTE",
       "SEND_MESSAGE",
@@ -662,80 +665,92 @@ export const handleEscalationAction = async (req, res) => {
 
     let customerReplyText = "";
     let updatedOrderData = null;
-    const isCancelOrder = action === "CANCEL_ORDER" || action === "APPROVE_CANCELLATION";
-    const isRejectRequest = action === "REJECT_REQUEST" || action === "REJECT_CANCELLATION";
+    const isAcceptRequest =
+      action === "ACCEPT_REQUEST" ||
+      action === "ACCEPT_ESCALATION" ||
+      action === "CANCEL_ORDER" ||
+      action === "APPROVE_CANCELLATION";
+    const isRejectRequest =
+      action === "REJECT_REQUEST" ||
+      action === "REJECT_ESCALATION" ||
+      action === "REJECT_CANCELLATION";
 
-    if (isCancelOrder) {
+    if (isAcceptRequest || isRejectRequest) {
+      const messageText = (customMessage || note || "").trim();
+      if (!messageText) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a message for the customer before accepting/rejecting this request.",
+        });
+      }
+      customerReplyText = messageText;
+    }
+
+    if (isAcceptRequest) {
       const orderNumber = conv.escalationData?.orderNumber;
       const orderId = conv.escalationData?.orderId;
 
-      const orderWhere = { businessId };
-      if (orderId) {
-        orderWhere.id = orderId;
-      } else if (orderNumber) {
-        orderWhere.orderNumber = orderNumber;
-      } else {
-        orderWhere.customerId = conv.customerId;
-      }
+      let order = null;
+      if (orderId || orderNumber || conv.escalationType === "ORDER_CANCELLATION") {
+        const orderWhere = { businessId };
+        if (orderId) {
+          orderWhere.id = orderId;
+        } else if (orderNumber) {
+          orderWhere.orderNumber = orderNumber;
+        } else {
+          orderWhere.customerId = conv.customerId;
+        }
 
-      const order = await prisma.order.findFirst({
-        where: orderWhere,
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Associated order not found for this cancellation escalation.",
+        order = await prisma.order.findFirst({
+          where: orderWhere,
+          orderBy: { createdAt: "desc" },
         });
-      }
 
-      if (order.status === "COMPLETED") {
-        return res.status(400).json({
-          success: false,
-          message: `This order can no longer be cancelled because its status is COMPLETED.`,
-        });
-      }
+        if (order) {
+          if (order.status === "COMPLETED") {
+            return res.status(400).json({
+              success: false,
+              message: `This order can no longer be cancelled because its status is COMPLETED.`,
+            });
+          }
 
-      if (order.status === "CANCELLED") {
-        return res.status(400).json({
-          success: false,
-          message: `This order is already cancelled.`,
-        });
+          if (order.status === "CANCELLED") {
+            return res.status(400).json({
+              success: false,
+              message: `This order is already cancelled.`,
+            });
+          }
+        }
       }
-
-      customerReplyText =
-        customMessage ||
-        `<b>Order Cancellation Confirmed</b>\n\nYour order <code>#${order.orderNumber}</code> has been cancelled by our staff.`;
 
       const existingData = conv.escalationData && typeof conv.escalationData === "object" ? conv.escalationData : {};
       const auditLog = Array.isArray(existingData.audit) ? existingData.audit : [];
       const updatedEscalationData = {
         ...existingData,
-        resolvedAction: "CANCEL_ORDER",
+        resolvedAction: "ACCEPT_REQUEST",
         resolvedBy: staffName,
-        previousOrderStatus: order.status,
-        newOrderStatus: "CANCELLED",
+        decision: "Accepted",
+        ...(order ? { previousOrderStatus: order.status, newOrderStatus: "CANCELLED" } : {}),
         audit: [
           ...auditLog,
           {
-            action: "CANCEL_ORDER",
+            action: "ACCEPT_REQUEST",
             staffName,
-            orderNumber: order.orderNumber,
-            previousStatus: order.status,
-            newStatus: "CANCELLED",
-            note: customMessage || "Cancellation approved by staff",
+            ...(order ? { orderNumber: order.orderNumber, previousStatus: order.status, newStatus: "CANCELLED" } : {}),
+            note: customMessage || "Request accepted by staff",
             timestamp: new Date().toISOString(),
           },
         ],
       };
 
-      // Atomic transaction for order cancellation + message + conversation resolution
+      // Atomic transaction for order cancellation (if applicable) + message + conversation resolution
       await prisma.$transaction(async (tx) => {
-        updatedOrderData = await tx.order.update({
-          where: { id: order.id },
-          data: { status: "CANCELLED" },
-        });
+        if (order) {
+          updatedOrderData = await tx.order.update({
+            where: { id: order.id },
+            data: { status: "CANCELLED" },
+          });
+        }
 
         await tx.message.create({
           data: {
@@ -760,38 +775,42 @@ export const handleEscalationAction = async (req, res) => {
         });
       });
 
-      // Emit order-status-updated via Socket.IO
-      const io = req.app?.get("io");
-      if (io) {
-        io.to(`business-${businessId}`).emit("order-status-updated", {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          status: "cancelled",
-          updatedAt: new Date().toISOString(),
-        });
+      // Emit order-status-updated via Socket.IO if order changed
+      if (order && updatedOrderData) {
+        const io = req.app?.get("io");
+        if (io) {
+          io.to(`business-${businessId}`).emit("order-status-updated", {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            status: "cancelled",
+            updatedAt: new Date().toISOString(),
+          });
+        }
       }
     } else if (isRejectRequest) {
       const orderNumber = conv.escalationData?.orderNumber;
       const orderId = conv.escalationData?.orderId;
 
-      const orderWhere = { businessId };
-      if (orderId) {
-        orderWhere.id = orderId;
-      } else if (orderNumber) {
-        orderWhere.orderNumber = orderNumber;
-      } else {
-        orderWhere.customerId = conv.customerId;
+      let order = null;
+      if (orderId || orderNumber || conv.escalationType === "ORDER_CANCELLATION") {
+        const orderWhere = { businessId };
+        if (orderId) {
+          orderWhere.id = orderId;
+        } else if (orderNumber) {
+          orderWhere.orderNumber = orderNumber;
+        } else {
+          orderWhere.customerId = conv.customerId;
+        }
+
+        order = await prisma.order.findFirst({
+          where: orderWhere,
+          orderBy: { createdAt: "desc" },
+        });
       }
 
-      const order = await prisma.order.findFirst({
-        where: orderWhere,
-        orderBy: { createdAt: "desc" },
-      });
-
-      customerReplyText =
-        customMessage ||
-        `<b>Cancellation Request Declined</b>\n\nYour cancellation request could not be approved by our staff${order ? ` for order <code>#${order.orderNumber}</code>` : ""
-        }. Because your order is already being prepared/delivered by our kitchen team, it remains active.`;
+      if (!customerReplyText) {
+        customerReplyText = customMessage || "Your request has been reviewed and declined by staff.";
+      }
 
       const existingData = conv.escalationData && typeof conv.escalationData === "object" ? conv.escalationData : {};
       const auditLog = Array.isArray(existingData.audit) ? existingData.audit : [];
@@ -799,13 +818,14 @@ export const handleEscalationAction = async (req, res) => {
         ...existingData,
         resolvedAction: "REJECT_REQUEST",
         resolvedBy: staffName,
+        decision: "Rejected",
         audit: [
           ...auditLog,
           {
             action: "REJECT_REQUEST",
             staffName,
-            orderNumber: order?.orderNumber,
-            note: customMessage || "Cancellation request declined by staff",
+            ...(order ? { orderNumber: order?.orderNumber } : {}),
+            note: customMessage || "Request rejected by staff",
             timestamp: new Date().toISOString(),
           },
         ],
