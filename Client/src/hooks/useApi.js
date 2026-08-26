@@ -480,7 +480,10 @@ export function useHandleEscalationAction() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversation-stats'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['business-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-analytics'] });
     },
   });
 }
