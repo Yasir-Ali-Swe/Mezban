@@ -66,7 +66,7 @@ MANDATORY TOOL EXECUTION RULES (EVERY SINGLE TURN)
   },
   tools: [adkRagTool, adkGetBusinessInfoTool, adkGetBusinessHoursTool],
   generateContentConfig: {
-    temperature: 0.1,
+    temperature: 0.5,
     maxOutputTokens: 1024,
   },
 });

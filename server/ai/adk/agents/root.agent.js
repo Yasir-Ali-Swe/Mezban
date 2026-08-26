@@ -64,6 +64,6 @@ CRITICAL DIRECTIVES
   },
   subAgents: [generalAgent, orderAgent, reservationAgent, supportAgent],
   generateContentConfig: {
-    temperature: 0.1,
+    temperature: 0.2,
   },
 });
