@@ -25,8 +25,6 @@ export const reservationAgent = new LlmAgent({
   model: GEMINI_MODEL || "gemini-2.5-flash",
   description:
     "Handles table reservation inquiries, existing reservation status checks, and cancellations. (Table bookings are currently paused).",
-  disallowTransferToParent: true,
-  disallowTransferToPeers: true,
   instruction: (context) => {
     const restaurantName =
       context.session?.state?.restaurantName || "our restaurant";
@@ -64,7 +62,7 @@ RESERVATION RULES
     adkEscalateConversationTool,
   ],
   generateContentConfig: {
-    temperature: 0.2,
+    temperature: 0.3,
     maxOutputTokens: 700,
   },
 });
