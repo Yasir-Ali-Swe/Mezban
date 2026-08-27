@@ -41,10 +41,9 @@ const IntentDistributionChart = ({ data }) => {
     });
 
     // Calculate total
-    const total = sortedData.reduce(
-        (sum, item) => sum + Number(item.value),
-        0
-    );
+    const total = sortedData.length > 0
+        ? sortedData.reduce((sum, item) => sum + Number(item.value), 0)
+        : 0;
 
     return (
         <Card>
