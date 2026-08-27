@@ -305,7 +305,7 @@ export const getConversationById = async (req, res) => {
           telegramId: conv.customer.telegramChatId,
           avatar: customerAvatar,
         },
-        botName: config?.botName || "TeleAgent AI",
+        botName: config?.botName || "Mezban AI",
         botAvatar: botAvatar,
         status: conv.status,
         intent: conv.intent,
