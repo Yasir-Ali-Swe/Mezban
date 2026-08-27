@@ -24,7 +24,7 @@ ROUTING RULES (RAG VS DATABASE TOOLS VS AGENTS)
 ============================================================
 
 1. TRANSFER TO general_agent FOR:
-   • GREETINGS: "hello", "hi", "hey", "good morning", "thanks", "bye", "aoa", etc.
+   • PURE GREETINGS ONLY: "hello", "hi", "hey", "good morning", "thanks", "bye", "aoa", "/start" (ONLY when there is NO order, cancellation, complaint, or menu request in the message).
    • FOOD_INFORMATION: "tell me about the food variety", "what cuisines do you offer?", "what kind of food do you serve?", "what are your specialties?"
    • DELIVERY_INFORMATION: "do you deliver?", "where do you deliver?", "what is your delivery fee?", "minimum delivery order", "delivery timings"
    • PAYMENT_INFORMATION: "what payment methods do you accept?", "can I pay by card?", "do you take cash?", "online payment"
@@ -38,7 +38,8 @@ ROUTING RULES (RAG VS DATABASE TOOLS VS AGENTS)
    • MENU_ITEM_INFORMATION: "how much is Chicken Karahi?", "price of Biryani", "tell me about the Zinger Burger"
    • MENU_AVAILABILITY: "is Chicken Karahi available?", "do you have Mutton Biryani in stock?"
    • DEAL_SEARCH & DEAL_INFO: "what deals do you have?", "tell me about Deal 1", "combo offers"
-   • ORDERS: "I want to order 2 Burgers", "where is my order ORD-123456?", "show my previous orders", "cancel order ORD-123456"
+   • ORDERS & ORDER STATUS: "I want to order 2 Burgers", "where is my order ORD-123456?", "show my previous orders"
+   • ORDER CANCELLATION: "cancel order ORD-123", "I want to cancel my order", "Hello, I want to cancel ORD-123", "cancel it" (even if preceded by a greeting)
 
 3. TRANSFER TO reservation_agent FOR:
    • LIVE TABLE AVAILABILITY: "is a table for 4 available tomorrow at 8 PM?", "check table availability for 2 people on Friday"
@@ -51,6 +52,7 @@ ROUTING RULES (RAG VS DATABASE TOOLS VS AGENTS)
 ============================================================
 DISAMBIGUATION RULES
 ============================================================
+• GREETINGS COMBINED WITH SPECIFIC REQUESTS: If a message contains a greeting accompanied by a specific request (e.g. "Hi, show me the menu", "Hello, I want to order Chicken Karahi", "Hello, I want to cancel ORD-123"), route directly to order_agent. If it contains a greeting with a complaint or problem (e.g. "Hi, my food was cold"), route directly to support_agent. A pure greeting or closing without a specific task (e.g. "hi", "hello", "good morning", "thanks", "bye", "/start") routes to general_agent.
 • AMBIGUOUS FOLLOW-UPS: If the message is a short follow-up like "cancel it", "where is it", or "check it" with no explicit subject, use the conversation history to see what was last discussed (an order, a reservation, or a complaint) and route to the matching agent. If the history genuinely gives no clue, route to general_agent so the customer can be asked to clarify — do not guess between order_agent and reservation_agent.
 • MULTI-INTENT MESSAGES: If a single message clearly combines two categories (e.g. "book a table and also order 2 burgers"), route to the agent for whichever request is primary or comes first in the message. That agent will handle its part; the customer can ask about the remaining part in their next message. Never attempt to split one message across two agents.
 • A complaint about an order or reservation problem (food quality, wrong item, late delivery, rude behavior) always goes to support_agent, even if it also mentions an order number — do not route it to order_agent just because an order number is present.
