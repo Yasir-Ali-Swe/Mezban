@@ -77,7 +77,7 @@ const AiAnalyticsPage = () => {
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">AI Analytics</h1>
                     <p className="text-sm text-muted-foreground">
-                        See TeleAgent in action.
+                        See Mezban in action.
                     </p>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -164,10 +164,10 @@ const AiAnalyticsPage = () => {
             </div>
 
             {/* AI vs Manual Orders */}
-            <AiVsManualChart
+            {/* <AiVsManualChart
                 data={aiVsManualData}
                 timeRange={timeRange}
-            />
+            /> */}
 
             {/* AI Resolution & Agent Performance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
