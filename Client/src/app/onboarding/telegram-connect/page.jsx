@@ -106,7 +106,7 @@ const TelegramConnectPage = () => {
                 <div className="text-left space-y-2 mb-6">
                     <h1 className="text-2xl font-bold tracking-tight">Connect your Telegram bot</h1>
                     <p className="text-sm text-muted-foreground">
-                        Connect your Telegram bot to TeleAgent so your AI agents can communicate with your customers through Telegram.
+                        Connect your Telegram bot to Mezban so your AI agents can communicate with your customers through Telegram.
                     </p>
                 </div>
 
@@ -237,7 +237,7 @@ const TelegramConnectPage = () => {
                                         Telegram connected successfully
                                     </h3>
                                     <p className="text-sm text-muted-foreground">
-                                        Your Telegram bot is now connected to TeleAgent.
+                                        Your Telegram bot is now connected to Mezban.
                                     </p>
                                 </div>
                             </div>
