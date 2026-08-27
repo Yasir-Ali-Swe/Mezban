@@ -55,8 +55,7 @@ export async function getConversationMemory({ conversationId, customerId, busine
       const ordersStr = customerProfile.recentOrders
         .map(
           (o) =>
-            `#${o.orderNumber} (${o.status}, Rs. ${o.total}, Type: ${o.orderType}${
-              o.shippingAddress ? `, Address: ${o.shippingAddress}` : ""
+            `#${o.orderNumber} (${o.status}, Rs. ${o.total}, Type: ${o.orderType}${o.shippingAddress ? `, Address: ${o.shippingAddress}` : ""
             }): ${o.items.join(", ")}`
         )
         .join("; ");
