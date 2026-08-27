@@ -1,6 +1,6 @@
 /**
  * Global Reusable Number Formatter
- * Centralized formatting utility for TeleAgent application.
+ * Centralized formatting utility for Mezban application.
  * Formats numbers into clean, human-readable K, M, B notation with up to 2 decimal places.
  *
  * Rules:
