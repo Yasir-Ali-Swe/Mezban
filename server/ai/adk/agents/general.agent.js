@@ -13,8 +13,6 @@ export const generalAgent = new LlmAgent({
   model: GEMINI_MODEL || "gemini-2.5-flash",
   description:
     "Handles greetings, general restaurant identity/story, food variety and cuisines, delivery policy/areas/fees, payment methods, operating hours, reservation policy, and contact info. Route here for greeting or general restaurant knowledge inquiries.",
-  disallowTransferToParent: true,
-  disallowTransferToPeers: true,
   instruction: (context) => {
     const restaurantName =
       context.session?.state?.restaurantName || "our restaurant";
@@ -66,7 +64,7 @@ MANDATORY TOOL EXECUTION RULES (EVERY SINGLE TURN)
   },
   tools: [adkRagTool, adkGetBusinessInfoTool, adkGetBusinessHoursTool],
   generateContentConfig: {
-    temperature: 0.5,
+    temperature: 0.4,
     maxOutputTokens: 1024,
   },
 });
