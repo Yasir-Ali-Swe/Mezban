@@ -62,16 +62,24 @@ export async function getOrCreateAdkSession({
   const sessionId = conversationId;
 
   // Try to get an existing session first
-  const existing = await sessionService.getSession({
-    appName: APP_NAME,
-    userId,
-    sessionId,
-  });
+  let existing = null;
+  try {
+    existing = await sessionService.getSession({
+      appName: APP_NAME,
+      userId,
+      sessionId,
+    });
+  } catch (err) {
+    existing = null;
+  }
 
   if (existing) {
-    // Update traceId and conversationId in state for this request
+    // Update traceId, conversationId, customerContextText, customerName, and restaurantName
     existing.state.traceId = traceId;
     existing.state.conversationId = conversationId;
+    existing.state.restaurantName = restaurantName || existing.state.restaurantName || "our restaurant";
+    if (customerName !== undefined) existing.state.customerName = customerName;
+    if (customerContextText !== undefined) existing.state.customerContextText = customerContextText;
     return existing;
   }
 
@@ -97,12 +105,29 @@ export async function getOrCreateAdkSession({
   }
 
   // Create a new session with seeded state
-  const session = await sessionService.createSession({
-    appName: APP_NAME,
-    userId,
-    sessionId,
-    state: initialState,
-  });
+  let session = null;
+  try {
+    session = await sessionService.createSession({
+      appName: APP_NAME,
+      userId,
+      sessionId,
+      state: initialState,
+    });
+  } catch (err) {
+    try {
+      session = await sessionService.getSession({
+        appName: APP_NAME,
+        userId,
+        sessionId,
+      });
+    } catch {
+      session = null;
+    }
+  }
+
+  if (!session) {
+    return null;
+  }
 
   // Seed history events (best-effort)
   for (const content of historyContents) {
@@ -186,6 +211,17 @@ export async function runAdkMessage({
           toolStartTimes.set(callId, Date.now());
           toolStartTimes.set(`args_${callId}`, toolArgs);
           toolStartTimes.set(`name_${callId}`, toolName);
+
+          if (toolName === "transfer_to_agent" && toolArgs.agentName) {
+            agentName = toolArgs.agentName;
+            if (traceId) {
+              setAgentRouting(traceId, {
+                agentName: toolArgs.agentName,
+                agentType: mapAgentNameToType(toolArgs.agentName),
+                fastPath: false,
+              });
+            }
+          }
         }
 
         // Tool result (tool execution completed)
@@ -215,29 +251,33 @@ export async function runAdkMessage({
         }
 
         // Model text response
-        if (part.text && typeof part.text === "string" && !event.partial) {
-          const text = part.text.trim();
-          if (text) {
-            rawReply = text;
-            if (author && author !== "user" && author !== rootAgent.name) {
-              agentName = author;
-            } else if (author && author !== "user") {
-              agentName = author;
-            }
+        if (part.text && typeof part.text === "string") {
+          const text = part.text;
+          if (event.partial) {
+            rawReply += text;
+          } else {
+            rawReply = text.trim();
+          }
 
-            if (traceId) {
-              setRawLlmResponse(traceId, text);
-            }
+          if (author && author !== "user" && author !== rootAgent.name) {
+            agentName = author;
+          }
+
+          if (traceId && rawReply) {
+            setRawLlmResponse(traceId, rawReply);
           }
         }
       }
 
-      // Determine agent routing from event author
-      if (author && author !== "user" && author !== rootAgent.name && !event.partial) {
+      // Determine agent routing from event author (only if no explicit transfer occurred or if author is specialized)
+      if (author && author !== "user" && author !== rootAgent.name) {
+        if (!agentName || agentName === "general_agent" || agentName === rootAgent.name) {
+          agentName = author;
+        }
         if (traceId) {
           setAgentRouting(traceId, {
-            agentName: author,
-            agentType: mapAgentNameToType(author),
+            agentName: agentName || author,
+            agentType: mapAgentNameToType(agentName || author),
             fastPath: false,
           });
         }
