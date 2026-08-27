@@ -15,8 +15,6 @@ export const supportAgent = new LlmAgent({
   model: GEMINI_MODEL || "gemini-2.5-flash",
   description:
     "Handles customer complaints, order issues, human assistance escalation, order tracking, reservation lookups, and support requests. Route here for customer support requests, problems, or complaints.",
-  disallowTransferToParent: true,
-  disallowTransferToPeers: true,
   instruction: (context) => {
     const restaurantName =
       context.session?.state?.restaurantName || "our restaurant";
