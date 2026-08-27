@@ -312,6 +312,60 @@ export const getBusinessAnalytics = async (req, res) => {
   }
 };
 
+// Helper for exact integer percentage calculation using Largest Remainder Method (Hare-Niemeyer)
+const calculateExactDistribution = (rawCounts, displayNames = INTENT_DISPLAY_NAMES) => {
+  const total = Object.values(rawCounts).reduce((a, b) => a + b, 0);
+  if (total === 0) {
+    return [{ key: "general_query", name: "General Inquiry", value: 100 }];
+  }
+
+  const items = Object.entries(rawCounts).map(([rawKey, count]) => {
+    const exact = (count / total) * 100;
+    const integer = Math.floor(exact);
+    const remainder = exact - integer;
+    const displayName = displayNames[rawKey] || rawKey.replace(/_/g, " ");
+    return {
+      key: rawKey.toLowerCase(),
+      rawKey,
+      name: displayName,
+      count,
+      exact,
+      integer,
+      remainder,
+    };
+  });
+
+  const sumInteger = items.reduce((sum, item) => sum + item.integer, 0);
+  let difference = 100 - sumInteger;
+
+  // Sort by remainder descending to distribute remaining units
+  const sortedByRemainder = [...items].sort((a, b) => b.remainder - a.remainder);
+  for (let i = 0; i < difference; i++) {
+    sortedByRemainder[i % sortedByRemainder.length].integer += 1;
+  }
+
+  return items
+    .map((item) => ({
+      key: item.key,
+      name: item.name,
+      value: item.integer,
+    }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value);
+};
+
+// Helper to determine if a conversation required human escalation
+const isConversationEscalated = (conv) => {
+  if (!conv) return false;
+  if (conv.status === "ESCALATED") return true;
+  if (Boolean(conv.escalationReason)) return true;
+  if (Boolean(conv.resolvedByName)) return true;
+  if (conv.messages && Array.isArray(conv.messages)) {
+    if (conv.messages.some((m) => m.isHuman)) return true;
+  }
+  return false;
+};
+
 // ============================================================
 // AI ANALYTICS CONTROLLER
 // ============================================================
@@ -327,19 +381,21 @@ export const getAiAnalytics = async (req, res) => {
         prisma.conversation.findMany({
           where: {
             businessId,
-            OR: [
-              { createdAt: { gte: currentStart, lte: now } },
-              { lastActivity: { gte: currentStart, lte: now } },
-            ],
+            createdAt: { gte: currentStart, lte: now },
+          },
+          include: {
+            messages: { select: { isHuman: true } },
+            agentRuns: { select: { id: true, agent: true } },
           },
         }),
         prisma.conversation.findMany({
           where: {
             businessId,
-            OR: [
-              { createdAt: { gte: prevStart, lt: currentStart } },
-              { lastActivity: { gte: prevStart, lt: currentStart } },
-            ],
+            createdAt: { gte: prevStart, lt: currentStart },
+          },
+          include: {
+            messages: { select: { isHuman: true } },
+            agentRuns: { select: { id: true, agent: true } },
           },
         }),
         prisma.agentRun.findMany({
@@ -354,12 +410,12 @@ export const getAiAnalytics = async (req, res) => {
             businessId,
             startedAt: { gte: prevStart, lt: currentStart },
           },
+          include: { toolExecutions: true },
         }),
         prisma.order.findMany({
           where: {
             businessId,
             createdAt: { gte: currentStart, lte: now },
-            status: { not: "CANCELLED" },
           },
           include: { customer: true },
         }),
@@ -367,7 +423,6 @@ export const getAiAnalytics = async (req, res) => {
           where: {
             businessId,
             createdAt: { gte: prevStart, lt: currentStart },
-            status: { not: "CANCELLED" },
           },
           include: { customer: true },
         }),
@@ -376,26 +431,71 @@ export const getAiAnalytics = async (req, res) => {
     const totalConversations = currentConvs.length;
     const prevTotalConversations = prevConvs.length;
 
-    // AI Resolved: conversations where status is RESOLVED or CLOSED
-    const aiResolved = currentConvs.filter(
-      (c) => c.status === "RESOLVED" || c.status === "CLOSED"
-    ).length;
+    // AI Resolved: conversations handled by AI without escalation to human staff
+    const currentEscalations = currentConvs.filter(isConversationEscalated).length;
+    const aiResolved = Math.max(0, totalConversations - currentEscalations);
 
-    const prevAiResolved = prevConvs.filter(
-      (c) => c.status === "RESOLVED" || c.status === "CLOSED"
-    ).length;
+    const prevEscalations = prevConvs.filter(isConversationEscalated).length;
+    const prevAiResolved = Math.max(0, prevTotalConversations - prevEscalations);
 
-    // AI Orders: Orders placed by customers who have conversation interactions or telegram chat ID
-    const customerIdsWithConversations = new Set(currentConvs.map((c) => c.customerId));
-    const aiOrders = currentOrders.filter(
-      (o) => Boolean(o.customer?.telegramChatId) || customerIdsWithConversations.has(o.customerId)
-    ).length;
+    // AI Orders Attribution
+    const currentAiOrderIds = new Set();
+    const currentAiOrderNumbers = new Set();
 
-    const prevCustomerIdsWithConversations = new Set(prevConvs.map((c) => c.customerId));
-    const prevAiOrders = prevOrders.filter(
-      (o) => Boolean(o.customer?.telegramChatId) || prevCustomerIdsWithConversations.has(o.customerId)
-    ).length;
+    currentRuns.forEach((r) => {
+      (r.toolExecutions || []).forEach((t) => {
+        if (t.toolName === "createOrder" && t.output && typeof t.output === "object") {
+          if (t.output.orderId) currentAiOrderIds.add(t.output.orderId);
+          if (t.output.orderNumber) currentAiOrderNumbers.add(t.output.orderNumber);
+        }
+      });
+    });
 
+    currentOrders.forEach((o) => {
+      if (o.conversationId) {
+        currentAiOrderIds.add(o.id);
+        currentAiOrderNumbers.add(o.orderNumber);
+      }
+    });
+
+    const isCurrentAiOrder = (order) => {
+      if (!order) return false;
+      if (order.conversationId) return true;
+      if (currentAiOrderIds.has(order.id) || currentAiOrderNumbers.has(order.orderNumber)) return true;
+      return false;
+    };
+
+    const validCurrentOrders = currentOrders.filter((o) => o.status !== "CANCELLED");
+    const aiOrders = validCurrentOrders.filter(isCurrentAiOrder).length;
+
+    const prevAiOrderIds = new Set();
+    const prevAiOrderNumbers = new Set();
+    prevRuns.forEach((r) => {
+      (r.toolExecutions || []).forEach((t) => {
+        if (t.toolName === "createOrder" && t.output && typeof t.output === "object") {
+          if (t.output.orderId) prevAiOrderIds.add(t.output.orderId);
+          if (t.output.orderNumber) prevAiOrderNumbers.add(t.output.orderNumber);
+        }
+      });
+    });
+    prevOrders.forEach((o) => {
+      if (o.conversationId) {
+        prevAiOrderIds.add(o.id);
+        prevAiOrderNumbers.add(o.orderNumber);
+      }
+    });
+
+    const isPrevAiOrder = (order) => {
+      if (!order) return false;
+      if (order.conversationId) return true;
+      if (prevAiOrderIds.has(order.id) || prevAiOrderNumbers.has(order.orderNumber)) return true;
+      return false;
+    };
+
+    const validPrevOrders = prevOrders.filter((o) => o.status !== "CANCELLED");
+    const prevAiOrders = validPrevOrders.filter(isPrevAiOrder).length;
+
+    // AI Resolution Rate
     const resolutionRate =
       totalConversations > 0 ? Number(((aiResolved / totalConversations) * 100).toFixed(1)) : 0;
     const prevResolutionRate =
@@ -414,7 +514,7 @@ export const getAiAnalytics = async (req, res) => {
       rateChange: Number((resolutionRate - prevResolutionRate).toFixed(1)),
     };
 
-    // 2. Time series data for conversation volume
+    // 2. Time series data for conversation volume & AI vs Manual
     const conversationVolume = [];
     const aiVsManual = [];
 
@@ -435,7 +535,7 @@ export const getAiAnalytics = async (req, res) => {
       });
 
       const bucketConvs = currentConvs.filter((c) => {
-        const d = new Date(c.lastActivity || c.createdAt);
+        const d = new Date(c.createdAt);
         if (timeRange === "yearly") {
           return (
             d.getMonth() === bucketDate.getMonth() && d.getFullYear() === bucketDate.getFullYear()
@@ -444,7 +544,7 @@ export const getAiAnalytics = async (req, res) => {
         return d.toDateString() === bucketDate.toDateString();
       });
 
-      const bucketOrders = currentOrders.filter((o) => {
+      const bucketOrders = validCurrentOrders.filter((o) => {
         const d = new Date(o.createdAt);
         if (timeRange === "yearly") {
           return (
@@ -454,9 +554,7 @@ export const getAiAnalytics = async (req, res) => {
         return d.toDateString() === bucketDate.toDateString();
       });
 
-      const bucketAiOrders = bucketOrders.filter(
-        (o) => Boolean(o.customer?.telegramChatId) || customerIdsWithConversations.has(o.customerId)
-      ).length;
+      const bucketAiOrders = bucketOrders.filter(isCurrentAiOrder).length;
 
       conversationVolume.push({
         date: dateStr,
@@ -472,10 +570,10 @@ export const getAiAnalytics = async (req, res) => {
       });
     }
 
-    // 3. Intent Distribution (from AgentRun and Conversation records)
+    // 3. Intent Distribution (exact 100% normalized)
     const intentCounts = {};
+
     currentRuns.forEach((r) => {
-      // Extract intent from tool executions if available or infer from agent/query
       let intentKey = "GENERAL_QUERY";
       const toolNames = (r.toolExecutions || []).map((t) => t.toolName);
 
@@ -493,7 +591,6 @@ export const getAiAnalytics = async (req, res) => {
       intentCounts[intentKey] = (intentCounts[intentKey] || 0) + 1;
     });
 
-    // Also include conversation level intents if runs are not recorded
     if (Object.keys(intentCounts).length === 0) {
       currentConvs.forEach((c) => {
         const intentKey = c.intent || "GENERAL_QUERY";
@@ -501,62 +598,60 @@ export const getAiAnalytics = async (req, res) => {
       });
     }
 
-    const totalIntentCount = Object.values(intentCounts).reduce((a, b) => a + b, 0) || 1;
+    const intentDistribution = calculateExactDistribution(intentCounts);
 
-    const intentDistribution = Object.entries(intentCounts)
-      .map(([rawIntent, count]) => {
-        const displayName = INTENT_DISPLAY_NAMES[rawIntent] || rawIntent.replace(/_/g, " ");
-        const percent = Math.round((count / totalIntentCount) * 100);
-        return {
-          key: rawIntent.toLowerCase(),
-          name: displayName,
-          value: percent,
-        };
-      })
-      .sort((a, b) => b.value - a.value);
+    // 4. Agent Usage
+    const AGENT_DEFINITIONS = [
+      { key: "GENERAL_AGENT", name: "General Agent" },
+      { key: "ORDER_AGENT", name: "Order Agent" },
+      { key: "SUPPORT_AGENT", name: "Support Agent" },
+      { key: "RESERVATION_AGENT", name: "Reservation Agent" },
+    ];
 
-    // 4. Agent Usage (derived directly from real AgentRun records)
-    const agentRunStats = {
-      GENERAL_AGENT: { name: "General Agent", count: 0, resolved: 0 },
-      ORDER_AGENT: { name: "Order Agent", count: 0, resolved: 0 },
-      SUPPORT_AGENT: { name: "Support Agent", count: 0, resolved: 0 },
-      RESERVATION_AGENT: { name: "Reservation Agent", count: 0, resolved: 0 },
+    const agentRunCounts = {
+      GENERAL_AGENT: 0,
+      ORDER_AGENT: 0,
+      SUPPORT_AGENT: 0,
+      RESERVATION_AGENT: 0,
     };
 
     currentRuns.forEach((r) => {
       const agentKey = r.agent || "GENERAL_AGENT";
-      if (agentRunStats[agentKey]) {
-        agentRunStats[agentKey].count += 1;
-        if (r.status === "COMPLETED") {
-          agentRunStats[agentKey].resolved += 1;
-        }
+      if (agentRunCounts[agentKey] !== undefined) {
+        agentRunCounts[agentKey] += 1;
       }
     });
 
-    // Fallback to conversation agent if no runs in period
     if (currentRuns.length === 0) {
       currentConvs.forEach((c) => {
         const agentKey = c.agent || "GENERAL_AGENT";
-        if (agentRunStats[agentKey]) {
-          agentRunStats[agentKey].count += 1;
-          agentRunStats[agentKey].resolved += 1;
+        if (agentRunCounts[agentKey] !== undefined) {
+          agentRunCounts[agentKey] += 1;
         }
       });
     }
 
-    const agentUsage = Object.values(agentRunStats).map((a) => ({
-      name: a.name,
-      value: a.count,
+    const agentUsage = AGENT_DEFINITIONS.map(({ key, name }) => ({
+      name,
+      value: agentRunCounts[key] || 0,
     }));
 
     // 5. Agent Performance Table
-    const agentPerformance = Object.values(agentRunStats).map((a) => {
-      const resolution =
-        a.count > 0 ? Number(((a.resolved / a.count) * 100).toFixed(1)) : 100;
+    const agentPerformance = AGENT_DEFINITIONS.map(({ key, name }) => {
+      const convsForAgent = currentConvs.filter((c) => {
+        const hasRun = (c.agentRuns || []).some((r) => r.agent === key);
+        const isPrimary = c.agent === key;
+        return hasRun || isPrimary;
+      });
+
+      const count = convsForAgent.length;
+      const resolvedCount = convsForAgent.filter((c) => !isConversationEscalated(c)).length;
+      const resolution = count > 0 ? Number(((resolvedCount / count) * 100).toFixed(1)) : 100;
+
       return {
-        agent: a.name,
-        conversations: a.count,
-        resolved: a.resolved,
+        agent: name,
+        conversations: count,
+        resolved: resolvedCount,
         resolution,
       };
     });
@@ -566,10 +661,7 @@ export const getAiAnalytics = async (req, res) => {
       data: {
         aiOverview,
         conversationVolume,
-        intentDistribution:
-          intentDistribution.length > 0
-            ? intentDistribution
-            : [{ key: "general_inquiry", name: "General Inquiry", value: 100 }],
+        intentDistribution,
         agentUsage,
         aiVsManual,
         agentPerformance,
