@@ -9,7 +9,7 @@ import {
 } from "../utils/request.tracer.js";
 
 /**
- * TeleAgent ADK Runner
+ * Mezban ADK Runner
  *
  * Singleton pattern: one Runner and one InMemorySessionService per process.
  * Sessions are keyed by: userId = `${businessId}::${customerId}`, sessionId = conversationId
@@ -21,7 +21,7 @@ import {
  * ADK session holds the in-context conversation turn history for the LLM.
  */
 
-const APP_NAME = "teleagent";
+const APP_NAME = "mezban";
 
 // Singleton session service — persists across all requests in this process
 const sessionService = new InMemorySessionService();
