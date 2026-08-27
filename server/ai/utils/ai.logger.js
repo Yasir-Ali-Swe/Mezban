@@ -1,5 +1,5 @@
 /**
- * Structured terminal diagnostic logger for TeleAgent AI Requests
+ * Structured terminal diagnostic logger for Mezban AI Requests
  */
 export const logAiDiagnostic = ({
   userQuery,
