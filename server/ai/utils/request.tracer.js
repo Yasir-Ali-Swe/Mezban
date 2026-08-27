@@ -1,5 +1,5 @@
 /**
- * TeleAgent Request Tracer & Intent Classifier
+ * Mezban Request Tracer & Intent Classifier
  *
  * Provides accurate intent classification, RAG verification, tool tracking,
  * and diagnostic telemetry for every Telegram message.
@@ -318,7 +318,7 @@ function classifyError(error) {
 
 function _printError({ type, message }) {
   console.error(`\n╔══════════════════════════════════════════════════════════════╗`);
-  console.error(`║  ❌ TELEAGENT ERROR — ${type.padEnd(37)}║`);
+  console.error(`║  ❌ MEZBAN ERROR — ${type.padEnd(40)}║`);
   console.error(`╚══════════════════════════════════════════════════════════════╝`);
   console.error(`  ${message}`);
   console.error(`════════════════════════════════════════════════════════════════\n`);
@@ -354,7 +354,7 @@ export function printAndClear(traceId) {
   }
 
   console.log(`\n╔══════════════════════════════════════════════════════════════╗`);
-  console.log(`║              📡  TELEAGENT REQUEST TRACE                     ║`);
+  console.log(`║              📡  MEZBAN REQUEST TRACE                        ║`);
   console.log(`╚══════════════════════════════════════════════════════════════╝`);
 
   // 1. User Query
