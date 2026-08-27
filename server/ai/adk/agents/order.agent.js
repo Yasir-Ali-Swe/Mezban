@@ -15,28 +15,11 @@ import {
   adkEscalateConversationTool,
 } from "../tools/index.js";
 
-/**
- * Order Agent — ADK LlmAgent.
- *
- * Responsibilities:
- * - Menu browsing (searchMenu)
- * - Menu item pricing & details (getMenuItem)
- * - Stock availability check (checkMenuAvailability)
- * - Deals & combo offers (searchDeals, getDeal)
- * - Placing customer orders (createOrder)
- * - Order tracking (getOrder)
- * - Order history (getCustomerOrders)
- * - Order cancellation (cancelOrder)
- *
- * All operations use live database tools as the sole source of truth.
- */
 export const orderAgent = new LlmAgent({
   name: "order_agent",
   model: GEMINI_MODEL || "gemini-2.5-flash",
   description:
     "Handles all live menu and order operations: menu browsing, dish prices, item availability in stock, promotional deals and combo offers, placing food orders, tracking order status, order history, and cancelling orders. Route here for live menu or order tasks.",
-  disallowTransferToParent: true,
-  disallowTransferToPeers: true,
   instruction: (context) => {
     const restaurantName =
       context.session?.state?.restaurantName || "our restaurant";
@@ -81,7 +64,7 @@ DATABASE TOOL RULES
     adkEscalateConversationTool,
   ],
   generateContentConfig: {
-    temperature: 0.2,
+    temperature: 0.3,
     maxOutputTokens: 1024,
   },
 });
