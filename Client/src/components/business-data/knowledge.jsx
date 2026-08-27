@@ -73,7 +73,7 @@ const BusinessHoursSection = ({ register, watch, setValue }) => {
             <div className="space-y-2">
                 <h4 className="text-sm font-medium">Weekly Schedule</h4>
                 <p className="text-sm text-muted-foreground max-w-lg">
-                    These hours describe when your business is operating. TeleAgent remains available 24/7.
+                    These hours describe when your business is operating. Mezban remains available 24/7.
                 </p>
             </div>
             <div className="space-y-3">
@@ -296,7 +296,7 @@ const BusinessKnowledgePage = ({ mode = "dashboard" }) => {
                 <div className="text-left space-y-2 mb-6">
                     <h1 className="text-2xl font-bold tracking-tight">Business Knowledge</h1>
                     <p className="text-sm text-muted-foreground">
-                        Help TeleAgent understand your business so its AI agents can answer customers accurately.
+                        Help Mezban understand your business so its AI agents can answer customers accurately.
                     </p>
                 </div>
 
