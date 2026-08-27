@@ -7,7 +7,7 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { SocketProvider } from '@/contexts/SocketContext';
 
 export const metadata = {
-  title: "TeleAgent - SaaS Dashboard",
+  title: "Mezban - SaaS Dashboard",
   description: "Restaurant Management SaaS Application",
 };
 
