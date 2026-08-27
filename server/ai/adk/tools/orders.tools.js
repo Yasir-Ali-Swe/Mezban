@@ -104,7 +104,8 @@ export const adkGetOrderTool = new FunctionTool({
  */
 export const adkGetCustomerOrdersTool = new FunctionTool({
   name: "getCustomerOrders",
-  description: "Retrieves recent order history for the current customer.",
+  description:
+    "Retrieves recent order history, previous delivery address, contact phone, and previous payment method for the current customer. Call this to check previous orders when a customer wants to place a new order or view past orders.",
   parameters: {
     type: "object",
     properties: {
