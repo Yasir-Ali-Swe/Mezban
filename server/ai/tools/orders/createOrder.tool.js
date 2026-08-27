@@ -17,6 +17,7 @@ export const createOrderTool = {
   execute: async ({
     businessId,
     customerId,
+    conversationId,
     items = [],
     orderType = "DELIVERY",
     paymentMethod = "Cash on Delivery",
@@ -184,6 +185,7 @@ export const createOrderTool = {
           data: {
             businessId,
             customerId,
+            conversationId: conversationId || null,
             orderNumber,
             status: "PENDING",
             orderType: validOrderType,
