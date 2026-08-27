@@ -43,6 +43,7 @@ import {
     Database,
     Send,
     BotMessageSquare,
+    ChefHat,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -344,12 +345,12 @@ export const Sidebar = () => {
         <SidebarContainer collapsible="icon" variant="sidebar">
             <SidebarHeader className="border-b border-sidebar-border">
                 <div className="flex items-center gap-2 px-2 py-1">
-                    <BotMessageSquare className="h-6 w-6 text-primary" />
                     {!isCollapsed && (
                         <span className="text-lg font-semibold text-sidebar-foreground">
-                            TeleAgent
+                            Mezban
                         </span>
                     )}
+                    <Utensils className="h-6 w-6 text-primary" />
                 </div>
             </SidebarHeader>
 
