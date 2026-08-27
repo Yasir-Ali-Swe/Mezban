@@ -564,7 +564,7 @@ const MessageGroupRenderer = ({
         ? null
         : lastMessage.isHuman
             ? (lastMessage.senderName ? `Staff: ${lastMessage.senderName}` : 'Human Staff')
-            : (lastMessage.agentName || 'TeleAgent AI');
+            : (lastMessage.agentName || 'Mezban AI');
 
     return (
         <MessageGroup>
@@ -579,7 +579,7 @@ const MessageGroupRenderer = ({
                                 <Avatar className="h-8 w-8">
                                     <AvatarImage
                                         src={isCustomer ? customerAvatar : botAvatar}
-                                        alt={isCustomer ? customerName : 'TeleAgent'}
+                                        alt={isCustomer ? customerName : 'Mezban'}
                                     />
                                     <AvatarFallback>
                                         {isCustomer ? (
