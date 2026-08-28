@@ -38,14 +38,14 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
   if (toolNames.includes("getBusinessHours")) {
     return { intent: "BUSINESS_HOURS", capability, agent: "GENERAL_AGENT" };
   }
-  if (toolNames.includes("searchMenu")) {
-    return { intent: "MENU_SEARCH", capability, agent: "ORDER_AGENT" };
-  }
   if (toolNames.includes("getMenuItem")) {
     return { intent: "MENU_ITEM_INFORMATION", capability, agent: "ORDER_AGENT" };
   }
   if (toolNames.includes("checkMenuAvailability")) {
     return { intent: "MENU_AVAILABILITY", capability, agent: "ORDER_AGENT" };
+  }
+  if (toolNames.includes("searchMenu")) {
+    return { intent: "MENU_SEARCH", capability, agent: "ORDER_AGENT" };
   }
   if (toolNames.includes("searchDeals") || toolNames.includes("getDeal")) {
     return { intent: "DEAL_SEARCH", capability, agent: "ORDER_AGENT" };
@@ -98,172 +98,133 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
 
   // 2. Semantic query matching for RAG, DB tools, and general intents
 
+  // Cancel Order (DB TOOL)
+  if (/\b(cancel\s+(my\s+)?order|cancel\s+ord-\d+|cancel\s+it)\b/i.test(clean)) {
+    return { intent: "CANCEL_ORDER", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Order Status & Tracking (DB TOOL)
+  if (/\b(where('?s|\s+is)\s+(my\s+)?order|track\s+(my\s+)?order|order\s+status)\b/i.test(clean)) {
+    return { intent: "GET_ORDER", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Customer Order History (DB TOOL)
+  if (/\b(previous\s+orders?|my\s+orders?|past\s+orders?|order\s+history)\b/i.test(clean)) {
+    return { intent: "CUSTOMER_ORDERS", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Place / Create Order (DB TOOL)
+  if (/\b(i\s+want\s+to\s+order|place\s+(an?\s+)?order|order\s+\d+|reorder)\b/i.test(clean)) {
+    return { intent: "CREATE_ORDER", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Specific Item Pricing (DB TOOL)
+  if (/\b(price\s+of|cost\s+of|how\s+much\s+is|rate\s+of)\b/i.test(clean)) {
+    return { intent: "MENU_ITEM_INFORMATION", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Item Availability (DB TOOL)
+  if (/\b(is\s+.*?\s+available|do\s+you\s+have\s+.*?\s+in\s+stock|available\s+today|in\s+stock)\b/i.test(clean)) {
+    return { intent: "MENU_AVAILABILITY", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
   // Menu Search & Browsing (DB TOOL)
   if (
-    clean.includes("menu") ||
-    clean.includes("menu items") ||
-    clean.includes("what dishes") ||
-    clean.includes("what burgers") ||
-    clean.includes("what pizzas") ||
-    clean.includes("what items") ||
-    clean.includes("available items") ||
-    clean.includes("food items") ||
-    clean.includes("dish list") ||
-    clean.includes("burger") ||
-    clean.includes("pizza") ||
-    clean.includes("pasta") ||
-    clean.includes("fries") ||
-    clean.includes("karahi") ||
-    clean.includes("biryani") ||
-    clean.includes("price") ||
-    clean.includes("cost") ||
-    clean.includes("rate") ||
-    clean.includes("available") ||
-    clean.includes("what can i order") ||
-    clean.includes("what to order") ||
-    clean.includes("order items")
+    /\b(menu|menu\s+items?|dishes|what\s+dishes|burgers?|pizzas?|pastas?|karahi|biryani|fries|available\s+items?|food\s+items?|what\s+can\s+i\s+order|what\s+to\s+order|list\s+(the\s+)?menu)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "MENU_SEARCH", capability: "TOOL", agent: "ORDER_AGENT" };
   }
 
   // Deals & Combos (DB TOOL)
-  if (
-    clean.includes("deal") ||
-    clean.includes("deals") ||
-    clean.includes("combo") ||
-    clean.includes("offer") ||
-    clean.includes("discount")
-  ) {
+  if (/\b(deals?|combos?|promotions?|discounts?|family\s+deal|deal\s+\d+|special\s+offers?|active\s+offers?|current\s+offers?|latest\s+offers?)\b/i.test(clean)) {
     return { intent: "DEAL_SEARCH", capability: "TOOL", agent: "ORDER_AGENT" };
   }
 
   // Food Variety & Cuisines (RAG)
   if (
-    clean.includes("food variety") ||
-    clean.includes("variat") ||
-    clean.includes("variety") ||
-    clean.includes("cuisine") ||
-    clean.includes("cuisines") ||
-    clean.includes("specialt") ||
-    clean.includes("specialties") ||
-    clean.includes("what kind of food do you serve") ||
-    clean.includes("what are you known for") ||
-    clean.includes("food type") ||
-    clean.includes("types of food")
+    /\b(food\s+variety|cuisines?|specialt(y|ies)|what\s+kind\s+of\s+food|what\s+type\s+of\s+food|what\s+food\s+do\s+you\s+(serve|specialize|recommend)|food\s+recommendations?|recommend|known\s+for)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "FOOD_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
   // Payment Information (RAG)
   if (
-    clean.includes("payment") ||
-    clean.includes("pay") ||
-    clean.includes("easypaisa") ||
-    clean.includes("jazzcash") ||
-    clean.includes("card") ||
-    clean.includes("cash") ||
-    clean.includes("account") ||
-    clean.includes("bank")
+    /\b(payment\s+(methods?|options?|policy|details)|how\s+can\s+i\s+pay|accepted\s+payment|pay\s+by\s+(cash|card|online)|easypaisa|jazzcash|bank\s+transfer|cash\s+on\s+delivery)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "PAYMENT_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
   // Delivery Information (RAG)
   if (
-    clean.includes("deliver") ||
-    clean.includes("delivery") ||
-    clean.includes("shipping") ||
-    clean.includes("minimum order") ||
-    clean.includes("delivery fee") ||
-    clean.includes("rider")
+    /\b(delivery\s+(policy|charges?|fees?|areas?|timings?|rules?)|do\s+you\s+deliver|where\s+do\s+you\s+deliver|minimum\s+delivery|minimum\s+order|delivery\s+fee|delivery\s+to\s+)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "DELIVERY_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
   // Reservation Policy (RAG)
   if (
-    clean.includes("reservation policy") ||
-    clean.includes("book in advance") ||
-    clean.includes("reservation rules") ||
-    clean.includes("booking policy") ||
-    clean.includes("policy for reservation")
+    /\b(reservation\s+policy|booking\s+policy|book\s+in\s+advance|reservation\s+rules|how\s+does\s+reservation\s+work)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "RESERVATION_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
   // Live Table Booking (DB TOOL)
-  if (
-    clean.includes("book a table") ||
-    clean.includes("reserve a table") ||
-    clean.includes("table for") ||
-    clean.includes("table booking")
-  ) {
+  if (/\b(book\s+(a\s+)?table|reserve\s+(a\s+)?table|table\s+for\s+\d+|table\s+booking|reservation\s+for)\b/i.test(clean)) {
     return { intent: "CHECK_RESERVATION_AVAILABILITY", capability: "TOOL", agent: "RESERVATION_AGENT" };
   }
 
   // Operating Hours (DB TOOL)
   if (
-    clean.includes("hour") ||
-    clean.includes("open") ||
-    clean.includes("close") ||
-    clean.includes("timing") ||
-    clean.includes("schedule") ||
-    clean.includes("opening time") ||
-    clean.includes("closing time")
+    /\b(opening\s+hours?|closing\s+hours?|what\s+time\s+do\s+you\s+(open|close)|are\s+you\s+open|are\s+you\s+closed|timings?|schedule|today'?s\s+hours?|open\s+on\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday))\b/i.test(
+      clean
+    )
   ) {
     return { intent: "BUSINESS_HOURS", capability: "TOOL", agent: "GENERAL_AGENT" };
   }
 
   // Business Information (RAG / DB TOOL)
   if (
-    clean.includes("about the restaurant") ||
-    clean.includes("restaurant story") ||
-    clean.includes("who are you") ||
-    clean.includes("address") ||
-    clean.includes("located") ||
-    clean.includes("location") ||
-    clean.includes("contact") ||
-    clean.includes("phone") ||
-    clean.includes("restaurant name")
+    /\b(where\s+are\s+you\s+located|what\s+is\s+your\s+(address|location|phone|number|email|website)|contact\s+(number|info)|about\s+the\s+restaurant|restaurant\s+story|who\s+are\s+you)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "BUSINESS_INFORMATION", capability: ragUsed ? "RAG" : "TOOL", agent: "GENERAL_AGENT" };
   }
 
-  // Greetings
-  if (
-    clean.includes("hello") ||
-    clean.includes("hi") ||
-    clean.includes("hey") ||
-    clean.includes("good morning") ||
-    clean.includes("good afternoon") ||
-    clean.includes("good evening") ||
-    clean.includes("salam") ||
-    clean.includes("aoa") ||
-    clean.includes("thanks") ||
-    clean.includes("thank you") ||
-    clean.includes("bye") ||
-    clean.includes("start")
-  ) {
-    return { intent: "GREETING", capability: "NEITHER", agent: "GENERAL_AGENT" };
-  }
-
   // Support & Complaints
   if (
-    clean.includes("complaint") ||
-    clean.includes("bad") ||
-    clean.includes("cold") ||
-    clean.includes("manager") ||
-    clean.includes("wrong") ||
-    clean.includes("issue") ||
-    clean.includes("problem")
+    /\b(complaint|cold\s+food|food\s+(was|is)\s+cold|bad\s+food|wrong\s+order|wrong\s+item|talk\s+to\s+(a\s+)?manager|human\s+agent|customer\s+support|refund|problem\s+with\s+(my\s+)?order)\b/i.test(
+      clean
+    )
   ) {
     return { intent: "SUPPORT", capability: "NEITHER", agent: "SUPPORT_AGENT" };
   }
 
+  // Pure Greetings ONLY (e.g. "hi", "hello", "hey", "good morning", "thanks", "bye", "/start", "how are you?", "السلام علیکم")
+  const isPureGreeting =
+    /^(hi|hello|hey|good\s*(morning|afternoon|evening|night)|aoa|salam|assalam(\s*u\s*alaikum)?|slm|greetings|thanks|thank\s*you|bye|goodbye|cya|see\s*you|ok|okay|k|how\s*are\s*you\??|how\s*r\s*u\??|\/start|السلام\s*علیکم)[!.,?\s]*$/i.test(
+      clean
+    );
+
+  if (isPureGreeting) {
+    return { intent: "GREETING", capability: "NEITHER", agent: "GENERAL_AGENT" };
+  }
+
+  // Off-Topic / Non-Restaurant query fallback
   return {
-    intent: "GENERAL_QUERY",
-    capability,
-    agent: agentName || "GENERAL_AGENT",
+    intent: "OFF_TOPIC",
+    capability: "NEITHER",
+    agent: "GENERAL_AGENT",
   };
 }
 
