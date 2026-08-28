@@ -458,24 +458,20 @@ export const processTelegramUpdate = async (config, update, io) => {
   let replyText = "";
   let selectedAgent = "GENERAL_AGENT";
 
-  if (messageText.toLowerCase() === "/start") {
-    replyText = `<b>Hello! 👋</b>\n\nWelcome to <b>${config.botName || "our restaurant"}</b>.\n\nI can help you with:\n\n• 🍽️ Menu and food information\n• 🚚 Delivery information\n• 💳 Payment methods\n• 🕐 Opening hours\n• 🪑 Table reservations\n• 🛒 Orders and order status\n\n<b>How can I help you today?</b>`;
-  } else {
-    try {
-      const aiResult = await processMessageWithAi({
-        businessId,
-        conversationId: conversation.id,
-        customerId: customer.id,
-        messageText,
-      });
-      replyText = aiResult.replyText;
-      selectedAgent = aiResult.agent || "GENERAL_AGENT";
-      console.log("[Selected Agent]:", selectedAgent);
-      console.log("[Reply Text]:", replyText);
-    } catch (aiErr) {
-      console.error("[Telegram Process] AI Error:", aiErr.message);
-      replyText = `Thank you for your message! How else can we assist you today at ${config.botName || "our restaurant"}?`;
-    }
+  try {
+    const aiResult = await processMessageWithAi({
+      businessId,
+      conversationId: conversation.id,
+      customerId: customer.id,
+      messageText,
+    });
+    replyText = aiResult.replyText;
+    selectedAgent = aiResult.agent || "GENERAL_AGENT";
+    console.log("[Selected Agent]:", selectedAgent);
+    console.log("[Reply Text]:", replyText);
+  } catch (aiErr) {
+    console.error("[Telegram Process] AI Error:", aiErr.message);
+    replyText = `Thank you for your message! How else can we assist you today at ${config.botName || "our restaurant"}?`;
   }
 
   // ⚡ 8. PRIORITY HIGH: Send Agent Response to Telegram Customer IMMEDIATELY with Rich Markdown!
