@@ -7,6 +7,7 @@ import {
   adkGetBusinessInfoTool,
   adkGetBusinessHoursTool,
 } from "../tools/index.js";
+import { getToolSessionState } from "../tools/context.helper.js";
 
 export const generalAgent = new LlmAgent({
   name: "general_agent",
@@ -14,11 +15,10 @@ export const generalAgent = new LlmAgent({
   description:
     "Handles greetings, general restaurant identity/story, food variety and cuisines, delivery policy/areas/fees, payment methods, operating hours, reservation policy, and contact info. Route here for greeting or general restaurant knowledge inquiries.",
   instruction: (context) => {
-    const restaurantName =
-      context.session?.state?.restaurantName || "our restaurant";
-    const customerName = context.session?.state?.customerName || "";
-    const customerContextText =
-      context.session?.state?.customerContextText || "";
+    const sessionState = getToolSessionState(context);
+    const restaurantName = sessionState.restaurantName || "our restaurant";
+    const customerName = sessionState.customerName || "";
+    const customerContextText = sessionState.customerContextText || "";
 
     return `${BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName)}
 
