@@ -62,7 +62,7 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
   if (toolNames.includes("getCustomerOrders")) {
     return { intent: "CUSTOMER_ORDERS", capability, agent: "ORDER_AGENT" };
   }
-  if (toolNames.includes("checkAvailability")) {
+  if (toolNames.includes("checkAvailability") || toolNames.includes("checkReservationAvailability")) {
     return { intent: "CHECK_RESERVATION_AVAILABILITY", capability, agent: "RESERVATION_AGENT" };
   }
   if (toolNames.includes("createReservation")) {
@@ -74,23 +74,87 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
   if (toolNames.includes("getBusinessInfo")) {
     return { intent: "BUSINESS_INFORMATION", capability, agent: "GENERAL_AGENT" };
   }
+  if (toolNames.includes("escalateConversation")) {
+    return { intent: "SUPPORT", capability, agent: "SUPPORT_AGENT" };
+  }
+  if (toolNames.includes("searchKnowledgeBase") || ragUsed) {
+    if (clean.includes("food") || clean.includes("variat") || clean.includes("variety") || clean.includes("cuisine") || clean.includes("specialt")) {
+      return { intent: "FOOD_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
+    }
+    if (clean.includes("deliver") || clean.includes("shipping") || clean.includes("area") || clean.includes("fee")) {
+      return { intent: "DELIVERY_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
+    }
+    if (clean.includes("payment") || clean.includes("pay") || clean.includes("card") || clean.includes("cash") || clean.includes("account")) {
+      return { intent: "PAYMENT_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
+    }
+    if (clean.includes("reservation") || clean.includes("book") || clean.includes("policy")) {
+      return { intent: "RESERVATION_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
+    }
+    if (clean.includes("about the restaurant") || clean.includes("story") || clean.includes("who are you") || clean.includes("history") || clean.includes("about you")) {
+      return { intent: "BUSINESS_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
+    }
+    return { intent: "FOOD_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
+  }
 
-  // 2. Semantic query matching for RAG and general intents
+  // 2. Semantic query matching for RAG, DB tools, and general intents
+
+  // Menu Search & Browsing (DB TOOL)
   if (
-    clean.includes("food") ||
+    clean.includes("menu") ||
+    clean.includes("menu items") ||
+    clean.includes("what dishes") ||
+    clean.includes("what burgers") ||
+    clean.includes("what pizzas") ||
+    clean.includes("what items") ||
+    clean.includes("available items") ||
+    clean.includes("food items") ||
+    clean.includes("dish list") ||
+    clean.includes("burger") ||
+    clean.includes("pizza") ||
+    clean.includes("pasta") ||
+    clean.includes("fries") ||
+    clean.includes("karahi") ||
+    clean.includes("biryani") ||
+    clean.includes("price") ||
+    clean.includes("cost") ||
+    clean.includes("rate") ||
+    clean.includes("available") ||
+    clean.includes("what can i order") ||
+    clean.includes("what to order") ||
+    clean.includes("order items")
+  ) {
+    return { intent: "MENU_SEARCH", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Deals & Combos (DB TOOL)
+  if (
+    clean.includes("deal") ||
+    clean.includes("deals") ||
+    clean.includes("combo") ||
+    clean.includes("offer") ||
+    clean.includes("discount")
+  ) {
+    return { intent: "DEAL_SEARCH", capability: "TOOL", agent: "ORDER_AGENT" };
+  }
+
+  // Food Variety & Cuisines (RAG)
+  if (
+    clean.includes("food variety") ||
     clean.includes("variat") ||
     clean.includes("variety") ||
     clean.includes("cuisine") ||
+    clean.includes("cuisines") ||
     clean.includes("specialt") ||
-    clean.includes("recommend") ||
-    clean.includes("dish") ||
-    clean.includes("dishes") ||
-    clean.includes("serve") ||
-    clean.includes("what to eat")
+    clean.includes("specialties") ||
+    clean.includes("what kind of food do you serve") ||
+    clean.includes("what are you known for") ||
+    clean.includes("food type") ||
+    clean.includes("types of food")
   ) {
-    return { intent: "FOOD_INFORMATION", capability: ragUsed ? "RAG" : capability, agent: "GENERAL_AGENT" };
+    return { intent: "FOOD_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
+  // Payment Information (RAG)
   if (
     clean.includes("payment") ||
     clean.includes("pay") ||
@@ -101,9 +165,10 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
     clean.includes("account") ||
     clean.includes("bank")
   ) {
-    return { intent: "PAYMENT_INFORMATION", capability: ragUsed ? "RAG" : capability, agent: "GENERAL_AGENT" };
+    return { intent: "PAYMENT_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
+  // Delivery Information (RAG)
   if (
     clean.includes("deliver") ||
     clean.includes("delivery") ||
@@ -112,9 +177,10 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
     clean.includes("delivery fee") ||
     clean.includes("rider")
   ) {
-    return { intent: "DELIVERY_INFORMATION", capability: ragUsed ? "RAG" : capability, agent: "GENERAL_AGENT" };
+    return { intent: "DELIVERY_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
+  // Reservation Policy (RAG)
   if (
     clean.includes("reservation policy") ||
     clean.includes("book in advance") ||
@@ -122,33 +188,33 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
     clean.includes("booking policy") ||
     clean.includes("policy for reservation")
   ) {
-    return { intent: "RESERVATION_INFORMATION", capability: ragUsed ? "RAG" : capability, agent: "GENERAL_AGENT" };
+    return { intent: "RESERVATION_INFORMATION", capability: "RAG", agent: "GENERAL_AGENT" };
   }
 
+  // Live Table Booking (DB TOOL)
+  if (
+    clean.includes("book a table") ||
+    clean.includes("reserve a table") ||
+    clean.includes("table for") ||
+    clean.includes("table booking")
+  ) {
+    return { intent: "CHECK_RESERVATION_AVAILABILITY", capability: "TOOL", agent: "RESERVATION_AGENT" };
+  }
+
+  // Operating Hours (DB TOOL)
   if (
     clean.includes("hour") ||
     clean.includes("open") ||
     clean.includes("close") ||
     clean.includes("timing") ||
-    clean.includes("schedule")
+    clean.includes("schedule") ||
+    clean.includes("opening time") ||
+    clean.includes("closing time")
   ) {
     return { intent: "BUSINESS_HOURS", capability: "TOOL", agent: "GENERAL_AGENT" };
   }
 
-  if (
-    clean.includes("menu") ||
-    clean.includes("burger") ||
-    clean.includes("pizza") ||
-    clean.includes("karahi") ||
-    clean.includes("biryani") ||
-    clean.includes("price") ||
-    clean.includes("cost") ||
-    clean.includes("rate") ||
-    clean.includes("available")
-  ) {
-    return { intent: "MENU_SEARCH", capability: "TOOL", agent: "ORDER_AGENT" };
-  }
-
+  // Business Information (RAG / DB TOOL)
   if (
     clean.includes("about the restaurant") ||
     clean.includes("restaurant story") ||
@@ -160,13 +226,19 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
     clean.includes("phone") ||
     clean.includes("restaurant name")
   ) {
-    return { intent: "BUSINESS_INFORMATION", capability: ragUsed ? "RAG" : capability, agent: "GENERAL_AGENT" };
+    return { intent: "BUSINESS_INFORMATION", capability: ragUsed ? "RAG" : "TOOL", agent: "GENERAL_AGENT" };
   }
 
+  // Greetings
   if (
     clean.includes("hello") ||
     clean.includes("hi") ||
     clean.includes("hey") ||
+    clean.includes("good morning") ||
+    clean.includes("good afternoon") ||
+    clean.includes("good evening") ||
+    clean.includes("salam") ||
+    clean.includes("aoa") ||
     clean.includes("thanks") ||
     clean.includes("thank you") ||
     clean.includes("bye") ||
@@ -175,7 +247,16 @@ export function determineIntentAndCapability({ query, agentName, tools = [], rag
     return { intent: "GREETING", capability: "NEITHER", agent: "GENERAL_AGENT" };
   }
 
-  if (clean.includes("complaint") || clean.includes("bad") || clean.includes("cold") || clean.includes("manager")) {
+  // Support & Complaints
+  if (
+    clean.includes("complaint") ||
+    clean.includes("bad") ||
+    clean.includes("cold") ||
+    clean.includes("manager") ||
+    clean.includes("wrong") ||
+    clean.includes("issue") ||
+    clean.includes("problem")
+  ) {
     return { intent: "SUPPORT", capability: "NEITHER", agent: "SUPPORT_AGENT" };
   }
 
@@ -317,21 +398,17 @@ function classifyError(error) {
 }
 
 function _printError({ type, message }) {
-  console.error(`\n╔══════════════════════════════════════════════════════════════╗`);
-  console.error(`║  ❌ MEZBAN ERROR — ${type.padEnd(40)}║`);
-  console.error(`╚══════════════════════════════════════════════════════════════╝`);
-  console.error(`  ${message}`);
-  console.error(`════════════════════════════════════════════════════════════════\n`);
+  console.error(`\n╔══════════════════════════════════════╗`);
+  console.error(`║  ❌ MEZBAN ERROR                     ║`);
+  console.error(`╚══════════════════════════════════════╝`);
+  console.error(`  [${type}] ${message}\n`);
 }
 
-// ─── Print + Clear ──────────────────────────────────────────────────────────
+// ─── Print + Clear (Simplified Terminal Output) ────────────────────────────
 
 export function printAndClear(traceId) {
   const t = traces.get(traceId);
   if (!t) return;
-
-  const elapsed = Date.now() - t.startTime;
-  const sep = "════════════════════════════════════════════════════════════════";
 
   // Derive intent and capability dynamically based on query and tools executed
   const derived = determineIntentAndCapability({
@@ -353,100 +430,48 @@ export function printAndClear(traceId) {
     }
   }
 
-  console.log(`\n╔══════════════════════════════════════════════════════════════╗`);
-  console.log(`║              📡  MEZBAN REQUEST TRACE                        ║`);
-  console.log(`╚══════════════════════════════════════════════════════════════╝`);
+  // Actual database / application tools executed (excluding RAG and internal agent transfer)
+  const executedDbTools = Array.from(
+    new Set(
+      (t.tools || [])
+        .filter((tool) => tool.name && tool.name !== "searchKnowledgeBase" && tool.name !== "transfer_to_agent")
+        .map((tool) => tool.name)
+    )
+  );
 
-  // 1. User Query
-  console.log(`\n📩  USER QUERY`);
-  console.log(`    ${t.query || "(empty)"}`);
+  const sep = "════════════════════════════════════";
 
-  // 2. Routing
-  console.log(`\n🧠  ROUTING`);
-  console.log(`    Agent     : ${finalAgent}`);
-  console.log(`    Intent    : ${finalIntent}`);
-  console.log(`    Capability: ${finalCapability}`);
-  console.log(`    Fast-path : ${t.fastPath ? "YES (immediate response)" : "NO"}`);
+  console.log(`\n${sep}`);
+  console.log(`USER QUERY`);
+  console.log(`${t.query || "(empty)"}`);
 
-  // 3. RAG
+  console.log(`\nAGENT ROUTING`);
+  console.log(`Agent : ${finalAgent}`);
+  console.log(`Intent: ${finalIntent}`);
+
+  console.log(`\nRAG`);
   if (t.rag.used) {
-    console.log(`\n📚  RAG`);
-    console.log(`    YES`);
-    console.log(`    Search Query : "${t.rag.query}"`);
-    console.log(`    Chunks Count : ${t.rag.chunkCount}`);
-    if (t.rag.chunks.length > 0) {
-      t.rag.chunks.forEach((chunk, i) => {
-        const title = chunk.documentTitle || chunk.docTitle || chunk.type || "Document";
-        const sim = typeof chunk.similarity === "number" ? chunk.similarity.toFixed(4) : "n/a";
-        const content = (chunk.content || chunk.text || "").trim().substring(0, 300);
-        console.log(`\n    ┌─ Chunk ${i + 1}: [${title}] (similarity: ${sim})`);
-        content.split("\n").forEach((line) => console.log(`    │  ${line}`));
-        console.log(`    └${"─".repeat(50)}`);
-      });
-    }
+    console.log(`Used`);
+    console.log(`Tool: searchKnowledgeBase`);
   } else {
-    console.log(`\n📚  RAG\n    NO`);
+    console.log(`Not Used`);
   }
 
-  // 4. Tool Calls
-  if (t.tools.length > 0) {
-    console.log(`\n🔧  TOOL CALLS`);
-    console.log(`    ${t.tools.length} call(s)`);
-    t.tools.forEach((tool, i) => {
-      console.log(`\n    Tool ${i + 1}: ${tool.name}${tool.timeMs ? ` (${tool.timeMs}ms)` : ""}`);
-      const argsStr = JSON.stringify(tool.args, null, 2);
-      if (argsStr && argsStr !== "{}") {
-        console.log(`    Arguments:`);
-        argsStr.split("\n").forEach((line) => console.log(`      ${line}`));
-      }
-      if (tool.name !== "transfer_to_agent" && tool.result !== undefined) {
-        console.log(`    Result:`);
-        const resultStr = JSON.stringify(tool.result, null, 2);
-        const preview = resultStr.length > 600 ? resultStr.substring(0, 600) + "\n      ... (truncated)" : resultStr;
-        preview.split("\n").forEach((line) => console.log(`      ${line}`));
-      }
-    });
+  console.log(`\nTOOL USED`);
+  if (executedDbTools.length > 0) {
+    console.log(executedDbTools.join("\n"));
   } else {
-    console.log(`\n🔧  TOOL CALLS\n    none`);
+    console.log(`None`);
   }
 
-  // 5. LLM Context Summary
-  if (t.llmContext && !t.fastPath) {
-    console.log(`\n📋  DATA SENT TO LLM (Context Summary)`);
-    const lines = t.llmContext.split("\n");
-    lines.slice(0, 20).forEach((line) => console.log(`    ${line}`));
-    if (lines.length > 20) {
-      console.log(`    ... (${lines.length - 20} more lines)`);
-    }
-  }
-
-  // 6. Raw LLM Response
-  if (!t.fastPath) {
-    console.log(`\n🤖  DATA RECEIVED FROM LLM (Raw Response)`);
-    const raw = t.rawLlmResponse || "(empty — fallback used)";
-    const rawPreview = raw.length > 600 ? raw.substring(0, 600) + "\n    ... (truncated)" : raw;
-    rawPreview.split("\n").forEach((line) => console.log(`    ${line}`));
-  }
-
-  // 7. Telegram Output
-  console.log(`\n📤  DATA SENT TO TELEGRAM`);
-  const tg = t.telegramOutput || "(empty)";
-  const tgPreview = tg.length > 600 ? tg.substring(0, 600) + "\n    ... (truncated)" : tg;
-  tgPreview.split("\n").forEach((line) => console.log(`    ${line}`));
-
-  // 8. Errors
   if (t.errors.length > 0) {
-    console.log(`\n❌  ERRORS DETECTED (${t.errors.length})`);
+    console.log(`\nERRORS DETECTED (${t.errors.length})`);
     t.errors.forEach((err, i) => {
-      console.log(`\n    ┌─ Error ${i + 1}: [${err.type}]`);
-      err.message.split("\n").forEach((line) => console.log(`    │  ${line}`));
-      console.log(`    └${"─".repeat(50)}`);
+      console.log(`[Error ${i + 1}] ${err.type}: ${err.message}`);
     });
   }
 
-  // 9. Total Latency
-  console.log(`\n⏱   TOTAL LATENCY: ${elapsed} ms`);
-  console.log(`\n${sep}\n`);
+  console.log(`${sep}\n`);
 
   traces.delete(traceId);
   return { intent: finalIntent, capability: finalCapability, agent: finalAgent };
