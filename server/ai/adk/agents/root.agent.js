@@ -4,7 +4,7 @@ import { generalAgent } from "./general.agent.js";
 import { orderAgent } from "./order.agent.js";
 import { reservationAgent } from "./reservation.agent.js";
 import { supportAgent } from "./support.agent.js";
-
+import { getToolSessionState } from "../tools/context.helper.js";
 
 export const rootAgent = new LlmAgent({
   name: "root_agent",
@@ -12,8 +12,8 @@ export const rootAgent = new LlmAgent({
   description:
     "Root orchestrator for the restaurant AI assistant. Routes customer queries to the appropriate specialized sub-agent.",
   instruction: (context) => {
-    const restaurantName =
-      context.session?.state?.restaurantName || "the restaurant";
+    const sessionState = getToolSessionState(context);
+    const restaurantName = sessionState.restaurantName || "the restaurant";
 
     return `You are the Root Orchestrator for ${restaurantName}'s AI Assistant.
 
@@ -66,6 +66,6 @@ CRITICAL DIRECTIVES
   },
   subAgents: [generalAgent, orderAgent, reservationAgent, supportAgent],
   generateContentConfig: {
-    temperature: 0.2,
+    temperature: 0.3,
   },
 });
