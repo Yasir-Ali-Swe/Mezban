@@ -14,6 +14,7 @@ import {
   adkCancelOrderTool,
   adkEscalateConversationTool,
 } from "../tools/index.js";
+import { getToolSessionState } from "../tools/context.helper.js";
 
 export const orderAgent = new LlmAgent({
   name: "order_agent",
@@ -21,10 +22,9 @@ export const orderAgent = new LlmAgent({
   description:
     "Handles all live menu and order operations: menu browsing, dish prices, item availability in stock, promotional deals and combo offers, placing food orders, tracking order status, order history, and cancelling orders. Route here for live menu or order tasks.",
   instruction: (context) => {
-    const restaurantName =
-      context.session?.state?.restaurantName || "our restaurant";
-    const customerContextText =
-      context.session?.state?.customerContextText || "";
+    const sessionState = getToolSessionState(context);
+    const restaurantName = sessionState.restaurantName || "our restaurant";
+    const customerContextText = sessionState.customerContextText || "";
 
     return `${BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName)}
 
