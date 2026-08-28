@@ -45,7 +45,6 @@ export const adkRagTool = new FunctionTool({
     const { businessId, traceId } = getToolSessionState(tool_context);
 
     if (!query || !query.trim() || !businessId) {
-      console.log(`[RAG TOOL] no relevant knowledge found (missing query or businessId)`);
       return {
         success: false,
         query: query || "",
@@ -64,10 +63,6 @@ export const adkRagTool = new FunctionTool({
         threshold: 0.25,
       });
 
-      console.log(
-        `[RAG TOOL] businessId: ${businessId} | query: "${cleanQuery}" | chunkCount: ${result.chunkCount || 0} | primaryDocumentType: ${result.primaryDocumentType || "none"} | embeddingTimeMs: ${result.embeddingTimeMs || 0} | vectorSearchTimeMs: ${result.vectorSearchTimeMs || 0}`
-      );
-
       // Report chunks to request tracer
       if (traceId) {
         recordRag(traceId, {
@@ -78,7 +73,6 @@ export const adkRagTool = new FunctionTool({
       }
 
       if (!result.contextText || result.chunkCount === 0) {
-        console.log(`[RAG TOOL] no relevant knowledge found for query "${cleanQuery}"`);
         return {
           success: false,
           query: cleanQuery,
@@ -89,7 +83,6 @@ export const adkRagTool = new FunctionTool({
         };
       }
 
-      console.log(`[RAG TOOL] context retrieved successfully (${result.chunkCount} chunks)`);
       return {
         success: true,
         query: cleanQuery,
