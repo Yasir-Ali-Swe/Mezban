@@ -39,7 +39,6 @@ export async function retrieveKnowledge(query, businessId, options = {}) {
       .join("\n\n");
 
     const primaryDocumentType = finalChunks.length > 0 ? finalChunks[0].documentType : null;
-    console.log("[RAG Retrieval Success] finalChunks:", finalChunks);
     return {
       chunks: finalChunks,
       contextText,
