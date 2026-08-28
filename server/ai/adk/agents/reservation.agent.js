@@ -9,6 +9,7 @@ import {
   adkCancelReservationTool,
   adkEscalateConversationTool,
 } from "../tools/index.js";
+import { getToolSessionState } from "../tools/context.helper.js";
 
 /**
  * Reservation Agent — ADK LlmAgent.
@@ -26,10 +27,9 @@ export const reservationAgent = new LlmAgent({
   description:
     "Handles table reservation inquiries, existing reservation status checks, and cancellations. (Table bookings are currently paused).",
   instruction: (context) => {
-    const restaurantName =
-      context.session?.state?.restaurantName || "our restaurant";
-    const customerContextText =
-      context.session?.state?.customerContextText || "";
+    const sessionState = getToolSessionState(context);
+    const restaurantName = sessionState.restaurantName || "our restaurant";
+    const customerContextText = sessionState.customerContextText || "";
 
     return `${BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName)}
 
