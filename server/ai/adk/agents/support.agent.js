@@ -9,6 +9,7 @@ import {
   adkGetBusinessInfoTool,
   adkEscalateConversationTool,
 } from "../tools/index.js";
+import { getToolSessionState } from "../tools/context.helper.js";
 
 export const supportAgent = new LlmAgent({
   name: "support_agent",
@@ -16,10 +17,9 @@ export const supportAgent = new LlmAgent({
   description:
     "Handles customer complaints, order issues, human assistance escalation, order tracking, reservation lookups, and support requests. Route here for customer support requests, problems, or complaints.",
   instruction: (context) => {
-    const restaurantName =
-      context.session?.state?.restaurantName || "our restaurant";
-    const customerContextText =
-      context.session?.state?.customerContextText || "";
+    const sessionState = getToolSessionState(context);
+    const restaurantName = sessionState.restaurantName || "our restaurant";
+    const customerContextText = sessionState.customerContextText || "";
 
     return `${BASE_SYSTEM_PROMPT.replace(/{RESTAURANT_NAME}/g, restaurantName)}
 
