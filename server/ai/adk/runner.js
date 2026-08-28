@@ -2,6 +2,7 @@ import { Runner, InMemorySessionService } from "@google/adk";
 import { rootAgent } from "./agents/root.agent.js";
 import {
   recordToolCall,
+  recordRag,
   setAgentRouting,
   setLlmContext,
   setRawLlmResponse,
@@ -74,7 +75,13 @@ export async function getOrCreateAdkSession({
   }
 
   if (existing) {
-    // Update traceId, conversationId, customerContextText, customerName, and restaurantName
+    if (typeof existing.state?.set === "function") {
+      existing.state.set("traceId", traceId);
+      existing.state.set("conversationId", conversationId);
+      existing.state.set("restaurantName", restaurantName || "our restaurant");
+      if (customerName !== undefined) existing.state.set("customerName", customerName);
+      if (customerContextText !== undefined) existing.state.set("customerContextText", customerContextText);
+    }
     existing.state.traceId = traceId;
     existing.state.conversationId = conversationId;
     existing.state.restaurantName = restaurantName || existing.state.restaurantName || "our restaurant";
@@ -247,6 +254,13 @@ export async function runAdkMessage({
           // Record to tracer
           if (traceId) {
             recordToolCall(traceId, toolRecord);
+            if (storedName === "searchKnowledgeBase") {
+              recordRag(traceId, {
+                query: storedArgs?.query || "",
+                chunks: result?.chunks || [],
+                chunkCount: result?.chunkCount || (result?.chunks?.length ?? 0),
+              });
+            }
           }
         }
 
