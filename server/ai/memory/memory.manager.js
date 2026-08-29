@@ -1,5 +1,5 @@
 import { getShortTermMemory } from "./shortTerm.memory.js";
-import { getLongTermMemory } from "./longTerm.memory.js";
+import { getCustomerContext } from "./customer.context.js";
 
 /**
  * Combines short-term conversation context and long-term customer context
@@ -7,7 +7,7 @@ import { getLongTermMemory } from "./longTerm.memory.js";
 export async function getConversationMemory({ conversationId, customerId, businessId }) {
   const [messages, customerProfile] = await Promise.all([
     getShortTermMemory(conversationId, 10),
-    getLongTermMemory(customerId, businessId, conversationId),
+    getCustomerContext({ customerId, businessId, currentConversationId: conversationId }),
   ]);
 
   const conversationHistoryText = messages
@@ -34,7 +34,8 @@ export async function getConversationMemory({ conversationId, customerId, busine
 
   let customerContextText = "";
   if (customerProfile) {
-    customerContextText = `Customer Name: ${customerProfile.customerName || "N/A"}`;
+    const cleanName = customerProfile.customerName;
+    customerContextText = `Customer Name: ${cleanName || "N/A (Name not provided - do NOT guess or output placeholders)"}`;
     customerContextText += `\nCustomer Status: ${isReturningCustomer ? "Returning Customer (has past interaction/history)" : "New Customer (first time interacting)"}`;
     customerContextText += `\nConversation Status: ${isOngoingConversation ? "Ongoing Conversation" : "New Conversation"}`;
     customerContextText += `\nGREETING MODE: ${greetingScenario} (${greetingScenarioDescription})`;
