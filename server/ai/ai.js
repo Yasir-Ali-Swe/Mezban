@@ -84,9 +84,11 @@ export async function processMessageWithAi({ businessId, conversationId, custome
 
   // 5. Response Formatting & Sanitization
   const isGreetingQuery =
-    /^(hi|hello|hey|good\s*(morning|afternoon|evening)|aoa|salam|assalam|slm|greetings|thanks|thank you|bye)/i.test(
+    /^(hi|hello|hey|good\s*(morning|afternoon|evening|night)|aoa|salam|assalam|slm|greetings|thanks|thank\s*you|bye|\/start|start|السلام\s*علیکم)/i.test(
       messageText.trim()
-    );
+    ) ||
+    memory.greetingScenario === "CASE_A_NEW_CUSTOMER" ||
+    memory.greetingScenario === "CASE_C_RETURNING_CUSTOMER_NEW_CONVERSATION";
 
   const finalReplyText = formatAiResponse(rawReply, {
     customerName: memory.customerProfile?.customerName,
