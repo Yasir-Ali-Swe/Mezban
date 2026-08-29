@@ -327,7 +327,7 @@ export const processTelegramUpdate = async (config, update, io) => {
   const telegramMessageId = String(message.message_id);
   const telegramUpdateId = update.update_id ? String(update.update_id) : null;
 
-  const customerName = [firstName, lastName].filter(Boolean).join(" ") || username || "Telegram User";
+  const customerName = [firstName, lastName].filter(Boolean).join(" ") || (username ? `@${username}` : "");
   const baseUrl = process.env.APP_URL || process.env.BASE_URL || "http://localhost:5000";
 
   // 1. Fire avatar fetch completely in background (FIRE AND FORGET - do NOT await!)
